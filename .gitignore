@@ -1,0 +1,47 @@
+# Node.js
+node_modules/
+npm-debug.log
+yarn-error.log
+package-lock.json
+yarn.lock
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+*.sublime-project
+*.sublime-workspace
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Build and dist
+dist/
+build/
+*.min.js
+*.min.css
+
+# OS files
+Thumbs.db
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# Testing
+coverage/
+.nyc_output/
+
+# Misc
+*.log
+*.swp
+.cache/

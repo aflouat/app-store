@@ -1,0 +1,5 @@
+.env
+minio/data/
+node_modules/
+.next/
+*.log

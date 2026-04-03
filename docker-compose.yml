@@ -1,0 +1,118 @@
+version: "3.8"
+
+# =============================================================
+# App Store POC — Infrastructure Backend
+# Domaine : perform-learn.fr
+# VPS OVH : 4 vCores / 8 Go RAM / 75 Go stockage
+# =============================================================
+
+services:
+
+  # ----- REVERSE PROXY + SSL AUTO -----
+  caddy:
+    image: caddy:2-alpine
+    container_name: caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"  # HTTP/3
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - app-network
+    depends_on:
+      - umami
+      - minio
+      - netdata
+
+  # ----- BASE DE DONNÉES CENTRALE -----
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${PG_USER:-appstore}
+      POSTGRES_PASSWORD: ${PG_PASSWORD:?Définir PG_PASSWORD dans .env}
+      POSTGRES_DB: appstore
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    ports:
+      - "127.0.0.1:5432:5432"  # Accès local uniquement
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U appstore"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ----- STOCKAGE FICHIERS S3-COMPATIBLE -----
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Définir MINIO_ROOT_PASSWORD dans .env}
+    volumes:
+      - ./minio/data:/data
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ----- ANALYTICS (MESURE UTILISATION) -----
+  umami:
+    image: ghcr.io/umami-software/umami:postgresql-latest
+    container_name: umami
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://appstore:${PG_PASSWORD}@postgres:5432/umami
+      APP_SECRET: ${UMAMI_SECRET:?Définir UMAMI_SECRET dans .env}
+    networks:
+      - app-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # ----- MONITORING SERVEUR -----
+  netdata:
+    image: netdata/netdata:stable
+    container_name: netdata
+    restart: unless-stopped
+    pid: host
+    cap_add:
+      - SYS_PTRACE
+      - SYS_ADMIN
+    security_opt:
+      - apparmor:unconfined
+    volumes:
+      - netdata_config:/etc/netdata
+      - netdata_lib:/var/lib/netdata
+      - netdata_cache:/var/cache/netdata
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /etc/os-release:/host/etc/os-release:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - app-network
+
+volumes:
+  pg_data:
+  caddy_data:
+  caddy_config:
+  netdata_config:
+  netdata_lib:
+  netdata_cache:
+
+networks:
+  app-network:
+    driver: bridge

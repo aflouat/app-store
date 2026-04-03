@@ -1,0 +1,41 @@
+# =============================================================
+# Caddyfile — perform-learn.fr
+# SSL automatique via Let's Encrypt
+# =============================================================
+
+# ----- API Backend -----
+api.perform-learn.fr {
+	reverse_proxy app:3000
+
+	header {
+		# CORS pour les fronts Vercel
+		Access-Control-Allow-Origin https://perform-learn.fr https://*.vercel.app
+		Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+		Access-Control-Allow-Headers "Content-Type, Authorization"
+	}
+}
+
+# ----- MinIO API (S3) -----
+s3.perform-learn.fr {
+	reverse_proxy minio:9000
+}
+
+# ----- MinIO Console -----
+minio.perform-learn.fr {
+	reverse_proxy minio:9001
+}
+
+# ----- Analytics Umami -----
+analytics.perform-learn.fr {
+	reverse_proxy umami:3000
+}
+
+# ----- Monitoring Netdata -----
+monitor.perform-learn.fr {
+	reverse_proxy netdata:19999
+
+	# Protection basique par mot de passe
+	basicauth * {
+		{$MONITOR_USER:admin} {$MONITOR_HASH}
+	}
+}
