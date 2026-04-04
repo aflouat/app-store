@@ -115,6 +115,23 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // GET /apps
+  if (req.method === 'GET' && url === '/apps') {
+    try {
+      const result = await pool.query(
+        `SELECT id, slug, name, description, icon_url, version, status, url
+         FROM store.apps
+         WHERE status = 'published'
+         ORDER BY name ASC`
+      );
+      send(res, 200, result.rows);
+    } catch (err) {
+      console.error('DB error:', err.message);
+      send(res, 500, { error: 'Server error' });
+    }
+    return;
+  }
+
   send(res, 404, { error: 'Not found' });
 });
 
