@@ -46,3 +46,6 @@ coverage/
 *.swp
 .cache/
 minio/data/
+node_modules/
+.next/
+*.log
