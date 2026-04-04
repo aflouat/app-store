@@ -1,10 +1,5 @@
 api.perform-learn.fr {
 	reverse_proxy app:3000
-	header {
-		Access-Control-Allow-Origin https://perform-learn.fr https://*.vercel.app
-		Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
-		Access-Control-Allow-Headers "Content-Type, Authorization"
-	}
 }
 
 s3.perform-learn.fr {
