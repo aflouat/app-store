@@ -6189,23 +6189,39 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
-      // Stocker les données (dans une vraie appli, ce serait un appel API)
-      console.log('Waitlist registration:', { userType, email, timestamp: new Date() });
+      const submitBtn = form.querySelector('button[type="submit"]');
+      submitBtn.disabled = true;
 
-      // Afficher le message de confirmation
-      form.style.display = 'none';
-      confirmMsg.classList.remove('hidden');
-      confirmEmail.textContent = `Nous avons bien reçu : ${email}`;
+      fetch('https://api.perform-learn.fr/waitlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email, user_type: userType })
+      })
+      .then(function(res){ return res.json().then(function(d){ return { ok: res.ok, data: d }; }); })
+      .then(function(result){
+        submitBtn.disabled = false;
+        if(result.ok){
+          // Afficher le message de confirmation
+          form.style.display = 'none';
+          confirmMsg.classList.remove('hidden');
+          confirmEmail.textContent = `Nous avons bien reçu : ${email}`;
 
-      // Réinitialiser le formulaire après 5 secondes
-      setTimeout(function(){
-        form.reset();
-        form.style.display = 'flex';
-        confirmMsg.classList.add('hidden');
-      }, 5000);
+          // Réinitialiser le formulaire après 5 secondes
+          setTimeout(function(){
+            form.reset();
+            form.style.display = 'flex';
+            confirmMsg.classList.add('hidden');
+          }, 5000);
 
-      // Toast de confirmation
-      showToast('Bienvenue ! Vous êtes maintenant en waitlist.', 'success');
+          showToast('Bienvenue ! Vous êtes maintenant en waitlist.', 'success');
+        } else {
+          showToast(result.data.error || 'Une erreur est survenue.', 'error');
+        }
+      })
+      .catch(function(){
+        submitBtn.disabled = false;
+        showToast('Impossible de contacter le serveur. Réessayez.', 'error');
+      });
     });
   }
 

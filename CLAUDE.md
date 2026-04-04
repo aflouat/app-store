@@ -91,7 +91,9 @@ L'objectif est de monter un **App Store interne** hébergeant plusieurs applicat
 │   └── Caddyfile           # Config active — montée dans le conteneur Caddy
 ├── deploy.sh
 ├── docker-compose.yml
-├── front.html              # Landing page actuelle — servie sur perform-learn.fr
+├── front.html              # Lprototype de la solutation
+├── landing.html              # Landing page actuelle — servie sur perform-learn.fr
+
 ├── init-db.sql             # Script init PostgreSQL (schémas + tables store.apps, shared.users, etc.)
 ├── logo.png
 └── minio/

@@ -547,22 +547,37 @@ function submitWaitlist() {
   if (!type) { shakeField('user-type'); return; }
   if (!email || !email.includes('@')) { shakeField('user-email'); return; }
 
-  // TODO: Envoyer vers API backend VPS
-  console.log('Waitlist:', { type, email, timestamp: new Date().toISOString() });
+  const btn = document.querySelector('.cta-btn');
+  btn.disabled = true;
 
-  // Show success
-  document.getElementById('form-content').style.display = 'none';
-  const msg = document.getElementById('success-msg');
-  msg.classList.add('show');
-  document.getElementById('success-email').textContent = 'Confirmation envoyée à ' + email;
+  fetch('https://api.perform-learn.fr/waitlist', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: email, user_type: type })
+  })
+  .then(function(res) { return res.json().then(function(d) { return { ok: res.ok, data: d }; }); })
+  .then(function(result) {
+    btn.disabled = false;
+    if (result.ok) {
+      document.getElementById('form-content').style.display = 'none';
+      const msg = document.getElementById('success-msg');
+      msg.classList.add('show');
+      document.getElementById('success-email').textContent = 'Confirmation envoyée à ' + email;
 
-  // Reset after 6s
-  setTimeout(() => {
-    msg.classList.remove('show');
-    document.getElementById('form-content').style.display = 'block';
-    document.getElementById('user-email').value = '';
-    document.getElementById('user-type').selectedIndex = 0;
-  }, 6000);
+      setTimeout(() => {
+        msg.classList.remove('show');
+        document.getElementById('form-content').style.display = 'block';
+        document.getElementById('user-email').value = '';
+        document.getElementById('user-type').selectedIndex = 0;
+      }, 6000);
+    } else {
+      alert(result.data.error || 'Une erreur est survenue. Réessayez.');
+    }
+  })
+  .catch(function() {
+    btn.disabled = false;
+    alert('Impossible de contacter le serveur. Réessayez.');
+  });
 }
 
 function shakeField(id) {

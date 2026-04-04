@@ -1,5 +1,3 @@
-version: "3.8"
-
 # =============================================================
 # App Store POC — Infrastructure Backend
 # Domaine : perform-learn.fr
@@ -79,6 +77,20 @@ services:
     environment:
       DATABASE_URL: postgresql://appstore:${PG_PASSWORD}@postgres:5432/umami
       APP_SECRET: ${UMAMI_SECRET:?Définir UMAMI_SECRET dans .env}
+    networks:
+      - app-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # ----- API NODE.JS (WAITLIST + BACKEND) -----
+  app:
+    build: ./api
+    container_name: app
+    restart: unless-stopped
+    environment:
+      PG_USER: ${PG_USER:-appstore}
+      PG_PASSWORD: ${PG_PASSWORD}
     networks:
       - app-network
     depends_on:

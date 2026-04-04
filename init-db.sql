@@ -59,3 +59,14 @@ CREATE INDEX idx_apps_status ON store.apps(status);
 CREATE INDEX idx_apps_slug ON store.apps(slug);
 CREATE INDEX idx_installations_user ON store.installations(user_id);
 CREATE INDEX idx_installations_app ON store.installations(app_id);
+
+-- Table waitlist
+CREATE TABLE IF NOT EXISTS store.waitlist (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email VARCHAR(255) NOT NULL,
+    user_type VARCHAR(20) NOT NULL CHECK (user_type IN ('client', 'freelance')),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(email)
+);
+CREATE INDEX idx_waitlist_type ON store.waitlist(user_type);
+CREATE INDEX idx_waitlist_date ON store.waitlist(created_at);
