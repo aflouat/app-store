@@ -547,7 +547,7 @@ function submitWaitlist() {
   if (!type) { shakeField('user-type'); return; }
   if (!email || !email.includes('@')) { shakeField('user-email'); return; }
 
-  const btn = document.querySelector('.cta-btn');
+  const btn = document.getElementById('btn-join');
   btn.disabled = true;
 
   fetch('https://api.perform-learn.fr/waitlist', {
