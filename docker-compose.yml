@@ -21,6 +21,8 @@ services:
       - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
+      - ./landing.html:/srv/index.html:ro
+
     networks:
       - app-network
     depends_on:
