@@ -1,15 +1,15 @@
 -- ============================================================
--- Seed Roadmap Perform-Learn — Gouvernance v1
--- Étapes 4 & 5 : Artefacts + Métriques Nord-Star Cycle 2
--- Base : appstore | Schéma : governance
+-- Seed Roadmap Perform-Learn - Gouvernance v1
+-- Etapes 4 & 5 : Artefacts + Metriques Nord-Star Cycle 2
+-- Base : appstore | Schema : governance
 -- ============================================================
 
--- UUIDs fixes pour assurer la cohérence des parent_id
+-- UUIDs fixes pour assurer la coherence des parent_id
 -- project_id  = '10000000-0000-0000-0000-000000000001'
 -- created_by  = '00000000-0000-0000-0000-000000000001'  (Abdel)
 
 -- ============================================================
--- NIVEAU STRATÉGIQUE — Vision + Roadmap Cycles
+-- NIVEAU STRATEGIQUE - Vision + Roadmap Cycles
 -- ============================================================
 
 INSERT INTO governance.artifacts
@@ -22,8 +22,8 @@ VALUES
     '10000000-0000-0000-0000-000000000001',
     NULL,
     'vision',
-    'Vision — Digital Service Hub haut de gamme',
-    'Connecter consultants freelance ERP/D365 et entreprises via une plateforme automatisée qui libère le talent de la paperasse. Lancement public cible : 30 avril 2026.',
+    'Vision - Digital Service Hub haut de gamme',
+    'Connecter consultants freelance ERP/D365 et entreprises via une plateforme automatisee qui libere le talent de la paperasse. Lancement public cible : 30 avril 2026.',
     'in_progress', 1, 0,
     '00000000-0000-0000-0000-000000000001'
 ),
@@ -34,8 +34,8 @@ VALUES
     '10000000-0000-0000-0000-000000000001',
     '20000000-0000-0000-0000-000000000001',
     'roadmap_cycle',
-    'Cycle 0 — Validation',
-    'Validation du concept, choix d'architecture, setup VPS OVH, domaine perform-learn.fr.',
+    'Cycle 0 - Validation',
+    'Validation du concept, choix d''architecture, setup VPS OVH, domaine perform-learn.fr.',
     'done', 2, 10,
     '00000000-0000-0000-0000-000000000001'
 ),
@@ -46,8 +46,8 @@ VALUES
     '10000000-0000-0000-0000-000000000001',
     '20000000-0000-0000-0000-000000000001',
     'roadmap_cycle',
-    'Cycle 1 — Infra & Waitlist',
-    'Infra Docker opérationnelle (PostgreSQL, MinIO, Umami, Caddy), landing page et API waitlist déployées.',
+    'Cycle 1 - Infra & Waitlist',
+    'Infra Docker operationnelle (PostgreSQL, MinIO, Umami, Caddy), landing page et API waitlist deployees.',
     'done', 2, 20,
     '00000000-0000-0000-0000-000000000001'
 ),
@@ -58,7 +58,7 @@ VALUES
     '10000000-0000-0000-0000-000000000001',
     '20000000-0000-0000-0000-000000000001',
     'roadmap_cycle',
-    'Cycle 2 — Portail + Autorité LPA',
+    'Cycle 2 - Portail + Autorite LPA',
     'Portail App Store Next.js sur Vercel, dashboard Sommet v1, marketing Phase B (papiers LPA + LinkedIn + Brevo).',
     'in_progress', 1, 30,
     '00000000-0000-0000-0000-000000000001'
@@ -70,8 +70,8 @@ VALUES
     '10000000-0000-0000-0000-000000000001',
     '20000000-0000-0000-0000-000000000001',
     'roadmap_cycle',
-    'Cycle 3 — Première app métier',
-    'Déploiement de la première app métier (meteo-projet ou gestion de stock) avec tracking Umami.',
+    'Cycle 3 - Premiere app metier',
+    'Deploiement de la premiere app metier (meteo-projet ou gestion de stock) avec tracking Umami.',
     'draft', 2, 40,
     '00000000-0000-0000-0000-000000000001'
 ),
@@ -82,8 +82,8 @@ VALUES
     '10000000-0000-0000-0000-000000000001',
     '20000000-0000-0000-0000-000000000001',
     'roadmap_cycle',
-    'Cycle 4 — Lancement public',
-    'Ouverture publique de la plateforme, onboarding premiers utilisateurs, monétisation initiale.',
+    'Cycle 4 - Lancement public',
+    'Ouverture publique de la plateforme, onboarding premiers utilisateurs, monetisation initiale.',
     'draft', 2, 50,
     '00000000-0000-0000-0000-000000000001'
 ),
@@ -94,8 +94,8 @@ VALUES
     '10000000-0000-0000-0000-000000000001',
     '20000000-0000-0000-0000-000000000001',
     'roadmap_cycle',
-    'Cycle 5 — Croissance',
-    'Acquisition utilisateurs, optimisation funnel, nouvelles apps métiers, partenariats.',
+    'Cycle 5 - Croissance',
+    'Acquisition utilisateurs, optimisation funnel, nouvelles apps metiers, partenariats.',
     'draft', 3, 60,
     '00000000-0000-0000-0000-000000000001'
 ),
@@ -106,14 +106,14 @@ VALUES
     '10000000-0000-0000-0000-000000000001',
     '20000000-0000-0000-0000-000000000001',
     'roadmap_cycle',
-    'Cycle 6 — Monétisation',
-    'Modèles de revenus actifs, scale infrastructure, recrutement communauté freelance.',
+    'Cycle 6 - Monetisation',
+    'Modeles de revenus actifs, scale infrastructure, recrutement communaute freelance.',
     'draft', 3, 70,
     '00000000-0000-0000-0000-000000000001'
 );
 
 -- ============================================================
--- NIVEAU TACTIQUE — Epics du Cycle 2
+-- NIVEAU TACTIQUE - Epics du Cycle 2
 -- ============================================================
 
 INSERT INTO governance.artifacts
@@ -127,7 +127,7 @@ VALUES
     '20000000-0000-0000-0000-000000000012',
     'epic',
     'Portail App Store',
-    'Front Next.js 14 déployé sur Vercel. Catalogue d'apps, auth magic link, intégration PostgreSQL VPS.',
+    'Front Next.js 14 deploye sur Vercel. Catalogue d''apps, auth magic link, integration PostgreSQL VPS.',
     'in_progress', 1, 10,
     '00000000-0000-0000-0000-000000000001'
 ),
@@ -139,7 +139,7 @@ VALUES
     '20000000-0000-0000-0000-000000000012',
     'epic',
     'Dashboard Sommet v1',
-    'Dashboard personnel de suivi de projet avec visuel montagne et barre de progression des tâches.',
+    'Dashboard personnel de suivi de projet avec visuel montagne et barre de progression des taches.',
     'in_progress', 2, 20,
     '00000000-0000-0000-0000-000000000001'
 ),
@@ -151,13 +151,13 @@ VALUES
     '20000000-0000-0000-0000-000000000012',
     'epic',
     'Marketing Phase B',
-    'Campagne de contenu pour établir l'autorité LPA : papiers de fond, posts LinkedIn, email waitlist via Brevo.',
+    'Campagne de contenu pour etablir l''autorite LPA : papiers de fond, posts LinkedIn, email waitlist via Brevo.',
     'in_progress', 2, 30,
     '00000000-0000-0000-0000-000000000001'
 );
 
 -- ============================================================
--- NIVEAU OPÉRATIONNEL — User Stories par Epic
+-- NIVEAU OPERATIONNEL - User Stories par Epic
 -- ============================================================
 
 INSERT INTO governance.artifacts
@@ -171,7 +171,7 @@ VALUES
     '20000000-0000-0000-0000-000000000020',
     'user_story',
     'Page catalogue apps',
-    'En tant qu'utilisateur, je vois la liste des apps disponibles avec titre, description et bouton d'accès. Les données viennent de store.apps via l'API VPS.',
+    'En tant qu''utilisateur, je vois la liste des apps disponibles avec titre, description et bouton d''acces. Les donnees viennent de store.apps via l''API VPS.',
     'in_progress', 1, 10,
     '00000000-0000-0000-0000-000000000001'
 ),
@@ -181,7 +181,7 @@ VALUES
     '20000000-0000-0000-0000-000000000020',
     'user_story',
     'Auth magic link',
-    'En tant qu'utilisateur, je m'authentifie via un lien email sans mot de passe (magic link). Session stockée côté client.',
+    'En tant qu''utilisateur, je m''authentifie via un lien email sans mot de passe (magic link). Session stockee cote client.',
     'draft', 1, 20,
     '00000000-0000-0000-0000-000000000001'
 ),
@@ -191,7 +191,7 @@ VALUES
     '20000000-0000-0000-0000-000000000020',
     'user_story',
     'Page Le Labo (LPA)',
-    'En tant que visiteur, j'accède à une page éditoriale présentant l'expertise LPA (Lean Project Approach) avec articles et ressources.',
+    'En tant que visiteur, j''accede a une page editoriale presentant l''expertise LPA (Lean Project Approach) avec articles et ressources.',
     'draft', 2, 30,
     '00000000-0000-0000-0000-000000000001'
 ),
@@ -203,7 +203,7 @@ VALUES
     '20000000-0000-0000-0000-000000000021',
     'user_story',
     'Choix photo montagne',
-    'En tant qu'utilisateur, je sélectionne une photo de montagne comme fond de tableau de bord pour personnaliser mon espace.',
+    'En tant qu''utilisateur, je selectionne une photo de montagne comme fond de tableau de bord pour personnaliser mon espace.',
     'draft', 3, 10,
     '00000000-0000-0000-0000-000000000001'
 ),
@@ -212,8 +212,8 @@ VALUES
     '10000000-0000-0000-0000-000000000001',
     '20000000-0000-0000-0000-000000000021',
     'user_story',
-    'Tâches statiques + barre progression',
-    'En tant qu'utilisateur, je vois mes tâches du cycle courant et une barre de progression visuelle vers le sommet.',
+    'Taches statiques + barre progression',
+    'En tant qu''utilisateur, je vois mes taches du cycle courant et une barre de progression visuelle vers le sommet.',
     'draft', 2, 20,
     '00000000-0000-0000-0000-000000000001'
 ),
@@ -225,7 +225,7 @@ VALUES
     '20000000-0000-0000-0000-000000000022',
     'user_story',
     'Papiers LPA #1 et #2',
-    'Rédiger et publier deux articles de fond positionnant la méthode LPA : audience cible consultants ERP senior.',
+    'Rediger et publier deux articles de fond positionnant la methode LPA : audience cible consultants ERP senior.',
     'draft', 2, 10,
     '00000000-0000-0000-0000-000000000001'
 ),
@@ -235,7 +235,7 @@ VALUES
     '20000000-0000-0000-0000-000000000022',
     'user_story',
     'Posts LinkedIn #4 et #5',
-    'Publier deux posts LinkedIn à forte valeur (retours terrain, micro-cas client) pour alimenter l'autorité et la waitlist.',
+    'Publier deux posts LinkedIn a forte valeur (retours terrain, micro-cas client) pour alimenter l''autorite et la waitlist.',
     'draft', 2, 20,
     '00000000-0000-0000-0000-000000000001'
 ),
@@ -251,7 +251,7 @@ VALUES
 );
 
 -- ============================================================
--- ÉTAPE 5 — Métriques Nord-Star Cycle 2
+-- ETAPE 5 - Metriques Nord-Star Cycle 2
 -- ============================================================
 
 INSERT INTO governance.metrics
@@ -259,31 +259,31 @@ INSERT INTO governance.metrics
 VALUES
 (
     '20000000-0000-0000-0000-000000000012',
-    'Utilisateurs connectés',
-    'Nombre d'utilisateurs ayant créé un compte et accédé au portail d'ici la fin du Cycle 2.',
+    'Utilisateurs connectes',
+    'Nombre d''utilisateurs ayant cree un compte et accede au portail d''ici la fin du Cycle 2.',
     20, 'utilisateurs', 'pending'
 ),
 (
     '20000000-0000-0000-0000-000000000012',
     'Temps moyen sur portail',
-    'Durée moyenne de session sur le portail App Store (indicateur engagement).',
+    'Duree moyenne de session sur le portail App Store (indicateur engagement).',
     120, 'secondes', 'pending'
 ),
 (
     '20000000-0000-0000-0000-000000000012',
     'Vues articles LPA',
-    'Nombre de vues par article LPA publié (mesure via Umami).',
+    'Nombre de vues par article LPA publie (mesure via Umami).',
     500, 'vues/article', 'pending'
 ),
 (
     '20000000-0000-0000-0000-000000000012',
     'Nouvelles inscriptions waitlist',
-    'Inscrits waitlist supplémentaires générés pendant le Cycle 2.',
+    'Inscrits waitlist supplementaires generes pendant le Cycle 2.',
     30, 'inscrits', 'pending'
 );
 
 -- ============================================================
--- ÉTAPE 7 — Premier log d'exécution (traçabilité setup)
+-- ETAPE 7 - Premier log d''execution (tracabilite setup)
 -- ============================================================
 
 INSERT INTO governance.execution_logs
@@ -294,20 +294,18 @@ VALUES (
     'agent',
     'onboarding_step',
     '{"status": "in_progress", "seed": "roadmap_v1_applied"}',
-    'Setup initial module gouvernance — migration v1 + seed roadmap Perform-Learn appliqués.'
+    'Setup initial module gouvernance - migration v1 + seed roadmap Perform-Learn appliques.'
 );
 
 -- ============================================================
--- VÉRIFICATION FINALE
+-- VERIFICATION FINALE
 -- ============================================================
 
--- Artefacts par niveau
 SELECT at.level, COUNT(*) AS nb
 FROM governance.artifacts a
 JOIN governance.artifact_types at ON at.slug = a.type_slug
 GROUP BY at.level ORDER BY at.level;
 
--- Vue onboarding agent
 SELECT level, type_label, title, status, metric_count, last_action
 FROM governance.v_artifact_context
 ORDER BY level, sort_order, title;
