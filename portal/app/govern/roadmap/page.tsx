@@ -1,4 +1,5 @@
-// Server Component — fetch direct via queries.ts
+export const dynamic = 'force-dynamic'
+
 import { getArtifactContext } from '@/lib/govern/queries'
 import { ArtifactCard } from '@/components/govern/ArtifactCard'
 

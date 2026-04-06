@@ -1,4 +1,5 @@
-// Server Component — détail artefact + enfants
+export const dynamic = 'force-dynamic'
+
 import { getArtifactById, getArtifactChildren, getMetrics, getLogs } from '@/lib/govern/queries'
 import { StatusBadge } from '@/components/govern/StatusBadge'
 import { LevelBadge } from '@/components/govern/LevelBadge'

@@ -1,4 +1,5 @@
-// Server Component — feed audit trail
+export const dynamic = 'force-dynamic'
+
 import { getLogs } from '@/lib/govern/queries'
 import { LogEntry } from '@/components/govern/LogEntry'
 

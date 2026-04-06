@@ -1,4 +1,5 @@
-// Server Component — liste filtrée
+export const dynamic = 'force-dynamic'
+
 import { getArtifactContext } from '@/lib/govern/queries'
 import { ArtifactCard } from '@/components/govern/ArtifactCard'
 
