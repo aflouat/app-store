@@ -1,9 +1,12 @@
 -- ============================================================
 -- Migration governance v1.1 — Ajout sort_order dans la vue
 -- Corrige le bug : sort_order absent de v_artifact_context
+-- DROP requis car PostgreSQL interdit de changer l'ordre des colonnes
 -- ============================================================
 
-CREATE OR REPLACE VIEW governance.v_artifact_context AS
+DROP VIEW IF EXISTS governance.v_artifact_context;
+
+CREATE VIEW governance.v_artifact_context AS
 SELECT
     a.id,
     a.title,
