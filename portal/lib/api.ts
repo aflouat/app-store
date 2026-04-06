@@ -101,6 +101,33 @@ export async function getApp(slug: string): Promise<App | null> {
   }
 }
 
+export async function postWaitlist(payload: {
+  email: string
+  target_type: 'app' | 'service' | 'skill' | 'consultant'
+  target_slug: string
+  target_label: string
+}): Promise<{ success: boolean; message?: string }> {
+  const base = process.env.NEXT_PUBLIC_API_URL
+  if (!base) {
+    console.warn('NEXT_PUBLIC_API_URL non défini — mode mock')
+    return { success: true }
+  }
+  try {
+    const res = await fetch(`${base}/waitlist`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      return { success: false, message: (err as { message?: string }).message ?? 'Erreur serveur' }
+    }
+    return { success: true }
+  } catch {
+    return { success: false, message: 'Impossible de joindre le serveur' }
+  }
+}
+
 export async function getWaitlistStats(): Promise<WaitlistStats | null> {
   try {
     const res = await fetch(`${API}/waitlist/stats`, { next: { revalidate: 300 } })
