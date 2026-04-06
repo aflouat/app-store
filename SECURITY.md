@@ -29,9 +29,9 @@ Last edit 06/04/2026
 | 2 | Fail2ban (anti brute-force) | 🔴 Critique | 5 min | ✅ 05/04/2026 |
 | 3 | Désactiver auth SSH par mot de passe | 🔴 Critique | 5 min | ✅ 05/04/2026 |
 | 4 | Mises à jour automatiques (unattended-upgrades) | 🟠 Important | 5 min | ✅ 05/04/2026 |
-| 5 | Changer le port SSH (22 → 2222) | 🟠 Important | 10 min | ⏳ En cours |
+| 5 | Changer le port SSH (22 → 2222) | 🟠 Important | 10 min | ✅ 06/04/2026 |
 | 6 | Ajouter swap (2 Go) | 🟡 Moyen | 5 min | ✅ 05/04/2026 |
-| 7 | Backup automatique PostgreSQL | 🟠 Important | 15 min | ⏳ Cron à fixer |
+| 7 | Backup automatique PostgreSQL | 🟠 Important | 15 min | ✅ 06/04/2026 |
 
 ---
 
@@ -292,3 +292,5 @@ Résultats attendus :
 | Date | Action | Par |
 |---|---|---|
 | 04/04/2026 | Audit initial + plan de remédiation | Abdel |
+| 05/04/2026 | UFW, Fail2ban, SSH hardening, auto-updates, swap | Abdel |
+| 06/04/2026 | Backup cron PostgreSQL, port SSH 22→2222 (socket systemd override) | Abdel |

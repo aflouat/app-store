@@ -1,47 +1,52 @@
-import { getApps } from '@/lib/api'
-import AppCard from '@/components/AppCard'
+import { getApps, getWaitlistStats } from '@/lib/api'
+import Navbar from '@/components/Navbar'
+import Footer from '@/components/Footer'
+import AppCatalog from '@/components/AppCatalog'
+import WaitlistBanner from '@/components/WaitlistBanner'
 import styles from './page.module.css'
 
 export default async function Home() {
-  const apps = await getApps()
+  const [apps, stats] = await Promise.all([getApps(), getWaitlistStats()])
+
+  const publishedCount = apps.filter(a => a.status === 'published').length
 
   return (
-    <main>
-      {/* NAV */}
-      <nav className={styles.nav}>
-        <a href="https://perform-learn.fr" className={styles.logo}>
-          <span className={styles.logoMark}>PL</span>
-          <span className={styles.logoText}>perform-learn</span>
-        </a>
-        <span className={styles.badge}>App Store</span>
-      </nav>
+    <div className={styles.layout}>
+      <Navbar />
 
       {/* HERO */}
       <section className={styles.hero}>
-        <h1 className={styles.heroTitle}>Vos outils métiers,<br />au même endroit.</h1>
+        <h1 className={styles.heroTitle}>
+          Vos outils métiers,<br />au même endroit.
+        </h1>
         <p className={styles.heroSub}>
-          Découvrez et accédez aux applications perform-learn pour piloter vos projets et gérer votre activité.
+          Découvrez et accédez aux applications perform-learn pour piloter vos projets ERP et gérer votre activité.
         </p>
-      </section>
 
-      {/* CATALOG */}
-      <section className={styles.catalog}>
-        <div className={styles.catalogHeader}>
-          <h2 className={styles.catalogTitle}>Applications disponibles</h2>
-          <span className={styles.count}>{apps.length} app{apps.length !== 1 ? 's' : ''}</span>
+        {/* STATS BAR */}
+        <div className={styles.statsBar}>
+          <div className={styles.stat}>
+            <span className={styles.statValue}>{publishedCount}</span>
+            <span className={styles.statLabel}>app{publishedCount !== 1 ? 's' : ''} disponible{publishedCount !== 1 ? 's' : ''}</span>
+          </div>
+          {stats && (
+            <div className={styles.stat}>
+              <span className={styles.statValue}>{stats.total}</span>
+              <span className={styles.statLabel}>inscrits waitlist</span>
+            </div>
+          )}
+          <div className={styles.stat}>
+            <span className={styles.statValue}>100%</span>
+            <span className={styles.statLabel}>Made with AI</span>
+          </div>
         </div>
-
-        {apps.length === 0 ? (
-          <div className={styles.empty}>
-            <p>Aucune application disponible pour le moment.</p>
-            <p>Revenez bientôt — le lancement est prévu le <strong>30 avril 2026</strong>.</p>
-          </div>
-        ) : (
-          <div className={styles.grid}>
-            {apps.map(app => <AppCard key={app.id} app={app} />)}
-          </div>
-        )}
       </section>
-    </main>
+
+      <AppCatalog apps={apps} />
+
+      <WaitlistBanner />
+
+      <Footer />
+    </div>
   )
 }

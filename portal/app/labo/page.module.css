@@ -1,0 +1,145 @@
+.layout {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.main {
+  flex: 1;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 56px 40px 80px;
+  width: 100%;
+}
+
+/* PAGE HEADER */
+.pageHeader {
+  margin-bottom: 52px;
+}
+
+.eyebrow {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--c1);
+  background: var(--c1-pale);
+  border-radius: 6px;
+  padding: 4px 10px;
+  margin-bottom: 16px;
+}
+
+.pageTitle {
+  font-family: 'Fraunces', serif;
+  font-weight: 900;
+  font-size: clamp(1.6rem, 3vw, 2.2rem);
+  color: var(--dark);
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  margin-bottom: 16px;
+}
+
+.pageDesc {
+  font-size: 0.95rem;
+  color: var(--text-mid);
+  font-weight: 300;
+  line-height: 1.7;
+  max-width: 560px;
+}
+
+/* ARTICLES */
+.articles {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 48px;
+}
+
+.article {
+  background: var(--white);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 28px 32px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.article:hover {
+  border-color: var(--c1-light);
+  box-shadow: 0 4px 16px rgba(185, 149, 141, 0.1);
+}
+
+.articleMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.articleCategory {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--c1);
+  background: var(--c1-pale);
+  border-radius: 5px;
+  padding: 2px 8px;
+}
+
+.articleDot {
+  color: var(--border);
+  font-size: 0.9rem;
+}
+
+.articleDate,
+.articleRead {
+  font-size: 0.78rem;
+  color: var(--text-light);
+}
+
+.articleTitle {
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 1.15rem;
+  color: var(--dark);
+  letter-spacing: -0.02em;
+  line-height: 1.35;
+  margin-bottom: 12px;
+}
+
+.articleExcerpt {
+  font-size: 0.87rem;
+  color: var(--text-mid);
+  font-weight: 300;
+  line-height: 1.65;
+  margin-bottom: 18px;
+}
+
+.articleCta {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--text-light);
+  font-style: italic;
+}
+
+/* BACK */
+.back {
+  display: inline-block;
+  font-size: 0.85rem;
+  color: var(--text-mid);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.back:hover {
+  color: var(--c1);
+}
+
+@media (max-width: 600px) {
+  .main {
+    padding: 40px 20px 60px;
+  }
+  .article {
+    padding: 22px 20px;
+  }
+}

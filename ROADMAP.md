@@ -98,15 +98,15 @@
 - [x] API waitlist (Node.js → PostgreSQL)
 - [x] Landing page avec countdown 30/04/2026 + formulaire waitlist segmenté (Client / Freelance)
 - [x] CLAUDE.md + SECURITY.md pour industrialiser le dev
-- [ ] Sécurisation VPS (SECURITY.md — 7 étapes)
-- [ ] Connecter Umami à la landing page (tracking visiteurs)
+- [x] Sécurisation VPS (SECURITY.md — 7 étapes)
+- [x] Connecter Umami à la landing page (tracking visiteurs)
 
 ### Build — Marketing (Phase A : Teasing)
-- [ ] **Post LinkedIn #1** : Le Problème — "Le chaos administratif qui tue la performance freelance" (storytelling personnel Abdel)
+- [] **Post LinkedIn #1** : Le Problème — "Le chaos administratif qui tue la performance freelance" (storytelling personnel Abdel)
 - [ ] **Post LinkedIn #2** : La Solution — "Et si réserver un expert prenait 5 minutes, pas 5 semaines ?" (teaser plateforme)
 - [ ] **Post LinkedIn #3** : L'Invitation — "On construit la plateforme qu'on aurait voulu avoir" (lien waitlist)
-- [ ] Partage direct à 20 contacts cibles (10 freelances D365, 10 décideurs entreprise)
-- [ ] 1 post dans un groupe Slack/Discord ERP/D365
+- [ ] Partage direct à 20 contacts cibles (10 freelances Digitalisation, 10 décideurs entreprise)
+- [ ] 1 post dans un groupe Slack/Discord Digitilisation
 
 ### Measure — KPIs cibles
 

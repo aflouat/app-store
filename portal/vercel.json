@@ -1,0 +1,11 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": ".next",
+  "framework": "nextjs",
+  "rewrites": [
+    {
+      "source": "/api/vps/:path*",
+      "destination": "https://api.perform-learn.fr/:path*"
+    }
+  ]
+}
