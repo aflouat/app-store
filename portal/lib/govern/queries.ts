@@ -10,7 +10,7 @@ export const getArtifactContext = (projectSlug: string, statuses?: string[]) =>
     ${statuses?.length ? `AND status = ANY($2::text[])` : ''}
     ORDER BY
       CASE level WHEN 'strategic' THEN 1 WHEN 'tactical' THEN 2 ELSE 3 END,
-      sort_order
+      created_at
   `, statuses?.length ? [projectSlug, statuses] : [projectSlug])
 
 // Arbre d'un artefact : enfants directs
@@ -18,7 +18,7 @@ export const getArtifactChildren = (parentId: string) =>
   query<Artifact>(`
     SELECT * FROM governance.v_artifact_context
     WHERE parent_id = $1
-    ORDER BY sort_order
+    ORDER BY created_at
   `, [parentId])
 
 // Détail unique
