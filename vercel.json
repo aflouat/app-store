@@ -1,4 +1,7 @@
 {
+  "buildCommand": "cd portal && npm install && npm run build",
+  "outputDirectory": "portal/.next",
+  "framework": "nextjs",
   "rewrites": [
     {
       "source": "/api/vps/:path*",
