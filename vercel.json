@@ -1,7 +1,10 @@
 {
-  "buildCommand": "cd portal && npm install && npm run build",
-  "outputDirectory": "portal/.next",
-  "framework": "nextjs",
+  "builds": [
+    {
+      "src": "portal/package.json",
+      "use": "@vercel/next"
+    }
+  ],
   "rewrites": [
     {
       "source": "/api/vps/:path*",
