@@ -1,12 +1,31 @@
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:wght@700;900&family=DM+Sans:wght@300;400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;0,700;0,900;1,400&family=DM+Sans:wght@300;400;500;600&display=swap');
 
 :root {
   --c1: #B9958D;
   --c1-light: #cca89f;
   --c1-pale: #ecddd9;
   --c1-bg: #faf4f2;
+  --c2: #AAB1AF;
+  --c2-light: #c2c8c6;
+  --c2-pale: #e3e7e6;
+  --c2-bg: #f4f6f5;
   --c3: #96AEAA;
+  --c3-light: #afc2be;
+  --c3-pale: #d8e5e3;
   --c3-bg: #eef3f2;
+  --c4: #A3AB9A;
+  --c4-light: #bac1b3;
+  --c4-pale: #dde1d8;
+  --c4-bg: #f2f4ef;
+
+  --rose: var(--c1);
+  --rose-light: var(--c1-light);
+  --rose-pale: var(--c1-pale);
+  --rose-bg: var(--c1-bg);
+  --sage: var(--c3);
+  --sage-light: var(--c3-light);
+  --sage-bg: var(--c3-bg);
+
   --dark: #22201e;
   --text: #2e2c2a;
   --text-mid: #5c5956;
@@ -14,7 +33,9 @@
   --border: #e2deda;
   --bg: #f7f5f3;
   --white: #ffffff;
+  --success: #96AEAA;
   --radius: 14px;
+  --radius-sm: 8px;
   --nav-h: 58px;
 }
 
@@ -25,4 +46,9 @@ html, body {
   color: var(--text);
   background: var(--bg);
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
 }
+
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }

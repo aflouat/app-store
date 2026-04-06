@@ -7,11 +7,7 @@ import styles from './AppCatalog.module.css'
 
 const ALL = 'Tous'
 
-interface Props {
-  apps: App[]
-}
-
-export default function AppCatalog({ apps }: Props) {
+export default function AppCatalog({ apps }: { apps: App[] }) {
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState(ALL)
 
@@ -24,8 +20,7 @@ export default function AppCatalog({ apps }: Props) {
     return apps.filter(app => {
       const matchCat = category === ALL || app.category === category
       const q = search.toLowerCase()
-      const matchSearch =
-        !q ||
+      const matchSearch = !q ||
         app.name.toLowerCase().includes(q) ||
         (app.description ?? '').toLowerCase().includes(q) ||
         app.tags.some(t => t.toLowerCase().includes(q))
@@ -35,33 +30,28 @@ export default function AppCatalog({ apps }: Props) {
 
   return (
     <section className={styles.catalog}>
-      <div className={styles.controls}>
+      <div className={styles.filterBar}>
         <input
           type="search"
-          className={styles.search}
-          placeholder="Rechercher une app..."
+          className={styles.filterInput}
+          placeholder="Filtrer les apps…"
           value={search}
           onChange={e => setSearch(e.target.value)}
-          aria-label="Rechercher"
         />
-        <div className={styles.filters}>
-          {categories.map(cat => (
-            <button
-              key={cat}
-              className={`${styles.pill} ${category === cat ? styles.pillActive : ''}`}
-              onClick={() => setCategory(cat)}
-            >
-              {cat}
-            </button>
-          ))}
-        </div>
+        {categories.map(cat => (
+          <button
+            key={cat}
+            className={`${styles.filterPill} ${category === cat ? styles.filterPillActive : ''}`}
+            onClick={() => setCategory(cat)}
+          >
+            {cat}
+          </button>
+        ))}
       </div>
 
       <div className={styles.header}>
-        <h2 className={styles.title}>Applications</h2>
-        <span className={styles.count}>
-          {filtered.length} app{filtered.length !== 1 ? 's' : ''}
-        </span>
+        <h2 className={styles.title}>Toutes les applications</h2>
+        <span className={styles.count}>{filtered.length} résultat{filtered.length !== 1 ? 's' : ''}</span>
       </div>
 
       {filtered.length === 0 ? (

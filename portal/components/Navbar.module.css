@@ -1,7 +1,9 @@
-.nav {
-  position: sticky;
+.topnav {
+  position: fixed;
   top: 0;
-  z-index: 100;
+  left: 0;
+  right: 0;
+  z-index: 200;
   height: var(--nav-h);
   background: rgba(255, 255, 255, 0.96);
   backdrop-filter: blur(10px);
@@ -17,6 +19,7 @@
   align-items: center;
   gap: 10px;
   text-decoration: none;
+  flex-shrink: 0;
 }
 
 .logoMark {
@@ -34,40 +37,85 @@
 }
 
 .logoText {
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
   font-size: 0.9rem;
-  font-weight: 600;
   color: var(--dark);
+  letter-spacing: -0.02em;
 }
 
-.links {
+.navTabs {
   display: flex;
-  align-items: center;
-  gap: 20px;
+  gap: 4px;
 }
 
-.link {
-  font-size: 0.85rem;
+.navTab {
+  padding: 7px 16px;
+  border-radius: 24px;
+  font-size: 0.83rem;
   font-weight: 500;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.2s;
   color: var(--text-mid);
+  background: none;
   text-decoration: none;
-  transition: color 0.2s;
 }
 
-.link:hover {
-  color: var(--c1);
+.navTab:hover {
+  background: var(--rose-bg);
+  color: var(--rose);
 }
 
-.badge {
-  font-size: 0.78rem;
+.navTabActive {
+  background: var(--rose);
+  color: #fff;
+  border-color: var(--rose);
+}
+
+.navTabActive:hover {
+  background: var(--rose);
+  color: #fff;
+}
+
+.navRight {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.btnSm {
+  padding: 7px 16px;
+  border-radius: 24px;
+  font-size: 0.83rem;
   font-weight: 500;
-  background: var(--c1-pale);
-  color: var(--c1);
-  border-radius: 20px;
-  padding: 4px 12px;
+  cursor: pointer;
+  border: 1.5px solid var(--border);
+  background: none;
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  transition: all 0.2s;
 }
 
-@media (max-width: 600px) {
-  .nav {
-    padding: 0 20px;
-  }
+.btnSm:hover {
+  border-color: var(--rose);
+  color: var(--rose);
+}
+
+.btnPrimary {
+  background: var(--rose);
+  color: #fff;
+  border-color: var(--rose);
+}
+
+.btnPrimary:hover {
+  background: var(--rose-light);
+  border-color: var(--rose-light);
+  color: #fff;
+}
+
+@media (max-width: 767px) {
+  .topnav { padding: 0 16px; }
+  .navTabs { display: none; }
+  .navRight { display: none; }
 }

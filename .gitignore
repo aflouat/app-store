@@ -49,3 +49,10 @@ minio/data/
 node_modules/
 .next/
 *.log
+.vercel
+
+# Claude Code
+.claude/settings.json
+
+# Temp / copies
+*copy*.sql
