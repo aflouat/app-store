@@ -25,13 +25,13 @@
 
 | # | Mesure | Criticité | Effort | Status |
 |---|---|---|---|---|
-| 1 | Firewall UFW | 🔴 Critique | 5 min | ⬜ |
-| 2 | Fail2ban (anti brute-force) | 🔴 Critique | 5 min | ⬜ |
-| 3 | Désactiver auth SSH par mot de passe | 🔴 Critique | 5 min | ⬜ |
-| 4 | Mises à jour automatiques (unattended-upgrades) | 🟠 Important | 5 min | ⬜ |
-| 5 | Changer le port SSH (22 → custom) | 🟠 Important | 10 min | ⬜ |
-| 6 | Ajouter swap (2 Go) | 🟡 Moyen | 5 min | ⬜ |
-| 7 | Backup automatique PostgreSQL | 🟠 Important | 15 min | ⬜ |
+| 1 | Firewall UFW | 🔴 Critique | 5 min | ✅ 05/04/2026 |
+| 2 | Fail2ban (anti brute-force) | 🔴 Critique | 5 min | ✅ 05/04/2026 |
+| 3 | Désactiver auth SSH par mot de passe | 🔴 Critique | 5 min | ✅ 05/04/2026 |
+| 4 | Mises à jour automatiques (unattended-upgrades) | 🟠 Important | 5 min | ✅ 05/04/2026 |
+| 5 | Changer le port SSH (22 → 2222) | 🟠 Important | 10 min | ⏳ En cours |
+| 6 | Ajouter swap (2 Go) | 🟡 Moyen | 5 min | ✅ 05/04/2026 |
+| 7 | Backup automatique PostgreSQL | 🟠 Important | 15 min | ⏳ Cron à fixer |
 
 ---
 
