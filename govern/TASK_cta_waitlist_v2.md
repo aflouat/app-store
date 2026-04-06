@@ -1,7 +1,7 @@
 # TASK.md — CTAs actifs : waitlist contextuelle + toast "bientôt disponible"
 
 > **Session Claude Code** — Cycle 2 / Portail Perform-Learn.fr
-> **User Story BDD** : `us000000-cta0-0000-0000-000000000001`
+> **User Story BDD** : `a5000000-0ca0-0000-0000-000000000001`
 > **Règle absolue** : chaque tâche commence par un `UPDATE status = 'in_progress'` et se termine par `UPDATE status = 'done'` + `execution_log`. Aucun code sans artefact tracé.
 
 ---
@@ -21,12 +21,12 @@ Le portail Next.js (App Router, Tailwind, Vercel) est le point d'entrée. Les bo
 -- 1. Marquer la US en cours
 UPDATE governance.artifacts
 SET status = 'in_progress', updated_at = NOW()
-WHERE id = 'us000000-cta0-0000-0000-000000000001';
+WHERE id = 'a5000000-0ca0-0000-0000-000000000001';
 
 INSERT INTO governance.execution_logs
     (artifact_id, actor_id, actor_type, action, new_value, note)
 VALUES (
-    'us000000-cta0-0000-0000-000000000001',
+    'a5000000-0ca0-0000-0000-000000000001',
     '00000000-0000-0000-0000-000000000002', 'agent',
     'status_changed', '{"status": "in_progress"}',
     'Démarrage session Claude Code — CTAs actifs'
@@ -38,11 +38,11 @@ VALUES (
 ## Tâches à exécuter dans l'ordre
 
 ### Tâche 1 — `postWaitlist()` dans `lib/api.ts`
-**BDD** : `ta000000-cta0-0000-0000-000000000001`
+**BDD** : `a7000000-0ca0-0000-0000-000000000001`
 
 ```sql
 UPDATE governance.artifacts SET status = 'in_progress', updated_at = NOW()
-WHERE id = 'ta000000-cta0-0000-0000-000000000001';
+WHERE id = 'a7000000-0ca0-0000-0000-000000000001';
 ```
 
 Ajouter dans le fichier existant `lib/api.ts` :
@@ -78,20 +78,20 @@ export async function postWaitlist(payload: {
 
 ```sql
 UPDATE governance.artifacts SET status = 'done', updated_at = NOW()
-WHERE id = 'ta000000-cta0-0000-0000-000000000001';
+WHERE id = 'a7000000-0ca0-0000-0000-000000000001';
 INSERT INTO governance.execution_logs (artifact_id, actor_id, actor_type, action, new_value, note)
-VALUES ('ta000000-cta0-0000-0000-000000000001', '00000000-0000-0000-0000-000000000002', 'agent',
+VALUES ('a7000000-0ca0-0000-0000-000000000001', '00000000-0000-0000-0000-000000000002', 'agent',
         'status_changed', '{"status": "done"}', 'postWaitlist() ajouté dans lib/api.ts');
 ```
 
 ---
 
 ### Tâche 2 — `hooks/useToast.ts`
-**BDD** : `ta000000-cta0-0000-0000-000000000002`
+**BDD** : `a7000000-0ca0-0000-0000-000000000002`
 
 ```sql
 UPDATE governance.artifacts SET status = 'in_progress', updated_at = NOW()
-WHERE id = 'ta000000-cta0-0000-0000-000000000002';
+WHERE id = 'a7000000-0ca0-0000-0000-000000000002';
 ```
 
 Vérifier d'abord si `sonner`, `react-hot-toast` ou équivalent est dans `package.json`.
@@ -131,20 +131,20 @@ Créer également `components/ToastContainer.tsx` (rendu des toasts, bas droite,
 
 ```sql
 UPDATE governance.artifacts SET status = 'done', updated_at = NOW()
-WHERE id = 'ta000000-cta0-0000-0000-000000000002';
+WHERE id = 'a7000000-0ca0-0000-0000-000000000002';
 INSERT INTO governance.execution_logs (artifact_id, actor_id, actor_type, action, new_value, note)
-VALUES ('ta000000-cta0-0000-0000-000000000002', '00000000-0000-0000-0000-000000000002', 'agent',
+VALUES ('a7000000-0ca0-0000-0000-000000000002', '00000000-0000-0000-0000-000000000002', 'agent',
         'status_changed', '{"status": "done"}', 'useToast créé ou branché sur lib existante');
 ```
 
 ---
 
 ### Tâche 3 — `components/WaitlistModal.tsx`
-**BDD** : `ta000000-cta0-0000-0000-000000000003`
+**BDD** : `a7000000-0ca0-0000-0000-000000000003`
 
 ```sql
 UPDATE governance.artifacts SET status = 'in_progress', updated_at = NOW()
-WHERE id = 'ta000000-cta0-0000-0000-000000000003';
+WHERE id = 'a7000000-0ca0-0000-0000-000000000003';
 ```
 
 ```typescript
@@ -250,20 +250,20 @@ export function WaitlistModal({ isOpen, onClose, targetType, targetSlug, targetL
 
 ```sql
 UPDATE governance.artifacts SET status = 'done', updated_at = NOW()
-WHERE id = 'ta000000-cta0-0000-0000-000000000003';
+WHERE id = 'a7000000-0ca0-0000-0000-000000000003';
 INSERT INTO governance.execution_logs (artifact_id, actor_id, actor_type, action, new_value, note)
-VALUES ('ta000000-cta0-0000-0000-000000000003', '00000000-0000-0000-0000-000000000002', 'agent',
+VALUES ('a7000000-0ca0-0000-0000-000000000003', '00000000-0000-0000-0000-000000000002', 'agent',
         'status_changed', '{"status": "done"}', 'WaitlistModal.tsx créé avec createPortal et trap focus');
 ```
 
 ---
 
 ### Tâche 4 — Brancher `AppCard.tsx`
-**BDD** : `ta000000-cta0-0000-0000-000000000004`
+**BDD** : `a7000000-0ca0-0000-0000-000000000004`
 
 ```sql
 UPDATE governance.artifacts SET status = 'in_progress', updated_at = NOW()
-WHERE id = 'ta000000-cta0-0000-0000-000000000004';
+WHERE id = 'a7000000-0ca0-0000-0000-000000000004';
 ```
 
 Localiser les deux boutons statiques. Les remplacer :
@@ -275,20 +275,20 @@ Ajouter le state local `const [waitlistOpen, setWaitlistOpen] = useState(false)`
 
 ```sql
 UPDATE governance.artifacts SET status = 'done', updated_at = NOW()
-WHERE id = 'ta000000-cta0-0000-0000-000000000004';
+WHERE id = 'a7000000-0ca0-0000-0000-000000000004';
 INSERT INTO governance.execution_logs (artifact_id, actor_id, actor_type, action, new_value, note)
-VALUES ('ta000000-cta0-0000-0000-000000000004', '00000000-0000-0000-0000-000000000002', 'agent',
+VALUES ('a7000000-0ca0-0000-0000-000000000004', '00000000-0000-0000-0000-000000000002', 'agent',
         'status_changed', '{"status": "done"}', 'AppCard.tsx — boutons branchés sur WaitlistModal et toast');
 ```
 
 ---
 
 ### Tâche 5 — Brancher `WaitlistBanner.tsx`
-**BDD** : `ta000000-cta0-0000-0000-000000000005`
+**BDD** : `a7000000-0ca0-0000-0000-000000000005`
 
 ```sql
 UPDATE governance.artifacts SET status = 'in_progress', updated_at = NOW()
-WHERE id = 'ta000000-cta0-0000-0000-000000000005';
+WHERE id = 'a7000000-0ca0-0000-0000-000000000005';
 ```
 
 Même pattern qu'AppCard. Props fixes :
@@ -296,20 +296,20 @@ Même pattern qu'AppCard. Props fixes :
 
 ```sql
 UPDATE governance.artifacts SET status = 'done', updated_at = NOW()
-WHERE id = 'ta000000-cta0-0000-0000-000000000005';
+WHERE id = 'a7000000-0ca0-0000-0000-000000000005';
 INSERT INTO governance.execution_logs (artifact_id, actor_id, actor_type, action, new_value, note)
-VALUES ('ta000000-cta0-0000-0000-000000000005', '00000000-0000-0000-0000-000000000002', 'agent',
+VALUES ('a7000000-0ca0-0000-0000-000000000005', '00000000-0000-0000-0000-000000000002', 'agent',
         'status_changed', '{"status": "done"}', 'WaitlistBanner.tsx — branché sur WaitlistModal plateforme');
 ```
 
 ---
 
 ### Tâche 6 — `.env.example`
-**BDD** : `ta000000-cta0-0000-0000-000000000006`
+**BDD** : `a7000000-0ca0-0000-0000-000000000006`
 
 ```sql
 UPDATE governance.artifacts SET status = 'in_progress', updated_at = NOW()
-WHERE id = 'ta000000-cta0-0000-0000-000000000006';
+WHERE id = 'a7000000-0ca0-0000-0000-000000000006';
 ```
 
 Vérifier `.env.local` → ajouter `NEXT_PUBLIC_API_URL=https://<domaine-vps>` si absent.
@@ -321,9 +321,9 @@ NEXT_PUBLIC_API_URL=https://your-vps-domain.com
 
 ```sql
 UPDATE governance.artifacts SET status = 'done', updated_at = NOW()
-WHERE id = 'ta000000-cta0-0000-0000-000000000006';
+WHERE id = 'a7000000-0ca0-0000-0000-000000000006';
 INSERT INTO governance.execution_logs (artifact_id, actor_id, actor_type, action, new_value, note)
-VALUES ('ta000000-cta0-0000-0000-000000000006', '00000000-0000-0000-0000-000000000002', 'agent',
+VALUES ('a7000000-0ca0-0000-0000-000000000006', '00000000-0000-0000-0000-000000000002', 'agent',
         'status_changed', '{"status": "done"}', 'NEXT_PUBLIC_API_URL documenté dans .env.example');
 ```
 
@@ -336,11 +336,11 @@ Après validation de tous les tests manuels ci-dessous :
 ```sql
 UPDATE governance.artifacts
 SET status = 'done', updated_at = NOW()
-WHERE id = 'us000000-cta0-0000-0000-000000000001';
+WHERE id = 'a5000000-0ca0-0000-0000-000000000001';
 
 INSERT INTO governance.execution_logs (artifact_id, actor_id, actor_type, action, new_value, note)
 VALUES (
-    'us000000-cta0-0000-0000-000000000001',
+    'a5000000-0ca0-0000-0000-000000000001',
     '00000000-0000-0000-0000-000000000002', 'agent',
     'status_changed', '{"status": "done"}',
     'US CTAs actifs — 6 tâches done, tests manuels validés'

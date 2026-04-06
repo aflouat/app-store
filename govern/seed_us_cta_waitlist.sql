@@ -28,7 +28,7 @@ INSERT INTO governance.artifacts (
     metadata,
     created_by
 ) VALUES (
-    'us000000-cta0-0000-0000-000000000001',
+    'a5000000-0ca0-0000-0000-000000000001',
     '10000000-0000-0000-0000-000000000001',  -- perform-learn
     (SELECT id FROM governance.artifacts
      WHERE type_slug = 'epic' AND title ILIKE '%Portail App Store%'
@@ -73,9 +73,9 @@ INSERT INTO governance.artifacts (
     id, project_id, parent_id, type_slug, title, description,
     status, priority, assignee_id, sort_order, tags, metadata, created_by
 ) VALUES (
-    'ta000000-cta0-0000-0000-000000000001',
+    'a7000000-0ca0-0000-0000-000000000001',
     '10000000-0000-0000-0000-000000000001',
-    'us000000-cta0-0000-0000-000000000001',
+    'a5000000-0ca0-0000-0000-000000000001',
     'task',
     'Ajouter postWaitlist() dans lib/api.ts',
     'Fonction async POST vers l''API VPS. Payload : email, target_type, target_slug, target_label. Fallback mock si NEXT_PUBLIC_API_URL absent.',
@@ -89,9 +89,9 @@ INSERT INTO governance.artifacts (
     id, project_id, parent_id, type_slug, title, description,
     status, priority, assignee_id, sort_order, tags, metadata, created_by
 ) VALUES (
-    'ta000000-cta0-0000-0000-000000000002',
+    'a7000000-0ca0-0000-0000-000000000002',
     '10000000-0000-0000-0000-000000000001',
-    'us000000-cta0-0000-0000-000000000001',
+    'a5000000-0ca0-0000-0000-000000000001',
     'task',
     'Créer hooks/useToast.ts (ou brancher l''existant)',
     'Hook toast minimaliste : showToast(message, type). Auto-dismiss 3s. Si sonner/react-hot-toast déjà installé, wrapper uniquement.',
@@ -105,9 +105,9 @@ INSERT INTO governance.artifacts (
     id, project_id, parent_id, type_slug, title, description,
     status, priority, assignee_id, sort_order, tags, metadata, created_by
 ) VALUES (
-    'ta000000-cta0-0000-0000-000000000003',
+    'a7000000-0ca0-0000-0000-000000000003',
     '10000000-0000-0000-0000-000000000001',
-    'us000000-cta0-0000-0000-000000000001',
+    'a5000000-0ca0-0000-0000-000000000001',
     'task',
     'Créer components/WaitlistModal.tsx',
     'Modal contextuel "use client". Props : isOpen, onClose, targetType, targetSlug, targetLabel. createPortal, trap focus, charte Terracotta #B9958D / Sauge #96AEAA.',
@@ -121,9 +121,9 @@ INSERT INTO governance.artifacts (
     id, project_id, parent_id, type_slug, title, description,
     status, priority, assignee_id, sort_order, tags, metadata, created_by
 ) VALUES (
-    'ta000000-cta0-0000-0000-000000000004',
+    'a7000000-0ca0-0000-0000-000000000004',
     '10000000-0000-0000-0000-000000000001',
-    'us000000-cta0-0000-0000-000000000001',
+    'a5000000-0ca0-0000-0000-000000000001',
     'task',
     'Brancher WaitlistModal et toast dans AppCard.tsx',
     '"Ouvrir l''app" → toast info. "Rejoindre la waitlist" → WaitlistModal avec targetType=app, targetSlug=app.slug.',
@@ -137,9 +137,9 @@ INSERT INTO governance.artifacts (
     id, project_id, parent_id, type_slug, title, description,
     status, priority, assignee_id, sort_order, tags, metadata, created_by
 ) VALUES (
-    'ta000000-cta0-0000-0000-000000000005',
+    'a7000000-0ca0-0000-0000-000000000005',
     '10000000-0000-0000-0000-000000000001',
-    'us000000-cta0-0000-0000-000000000001',
+    'a5000000-0ca0-0000-0000-000000000001',
     'task',
     'Brancher WaitlistModal dans WaitlistBanner.tsx',
     'targetType=service, targetSlug=platform, targetLabel=Perform-Learn. Waitlist générale plateforme.',
@@ -153,9 +153,9 @@ INSERT INTO governance.artifacts (
     id, project_id, parent_id, type_slug, title, description,
     status, priority, assignee_id, sort_order, tags, metadata, created_by
 ) VALUES (
-    'ta000000-cta0-0000-0000-000000000006',
+    'a7000000-0ca0-0000-0000-000000000006',
     '10000000-0000-0000-0000-000000000001',
-    'us000000-cta0-0000-0000-000000000001',
+    'a5000000-0ca0-0000-0000-000000000001',
     'task',
     'Documenter NEXT_PUBLIC_API_URL dans .env.example',
     'Vérifier .env.local, ajouter la variable si absente, documenter dans .env.example.',
@@ -170,7 +170,7 @@ INSERT INTO governance.artifacts (
 INSERT INTO governance.execution_logs (
     artifact_id, actor_id, actor_type, action, new_value, note
 ) VALUES (
-    'us000000-cta0-0000-0000-000000000001',
+    'a5000000-0ca0-0000-0000-000000000001',
     '00000000-0000-0000-0000-000000000001',
     'human',
     'created',
@@ -190,12 +190,12 @@ SELECT
 FROM governance.artifacts a
 JOIN governance.artifact_types at ON at.slug = a.type_slug
 WHERE a.id IN (
-    'us000000-cta0-0000-0000-000000000001',
-    'ta000000-cta0-0000-0000-000000000001',
-    'ta000000-cta0-0000-0000-000000000002',
-    'ta000000-cta0-0000-0000-000000000003',
-    'ta000000-cta0-0000-0000-000000000004',
-    'ta000000-cta0-0000-0000-000000000005',
-    'ta000000-cta0-0000-0000-000000000006'
+    'a5000000-0ca0-0000-0000-000000000001',
+    'a7000000-0ca0-0000-0000-000000000001',
+    'a7000000-0ca0-0000-0000-000000000002',
+    'a7000000-0ca0-0000-0000-000000000003',
+    'a7000000-0ca0-0000-0000-000000000004',
+    'a7000000-0ca0-0000-0000-000000000005',
+    'a7000000-0ca0-0000-0000-000000000006'
 )
 ORDER BY at.level DESC, a.sort_order;
