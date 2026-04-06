@@ -274,7 +274,7 @@ INSERT INTO governance.projects (id, slug, name, description, owner_id) VALUES
         '10000000-0000-0000-0000-000000000001',
         'perform-learn',
         'Perform-Learn.fr',
-        'Digital Service Hub haut de gamme — automatiser l'intermédiation pour libérer le talent de la paperasse.',
+        'Digital Service Hub haut de gamme — automatiser l''intermediation pour liberer le talent de la paperasse.',
         '00000000-0000-0000-0000-000000000001'
     );
 
