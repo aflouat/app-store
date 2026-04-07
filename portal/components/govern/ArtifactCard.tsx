@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { StatusBadge } from './StatusBadge'
 import { LevelBadge } from './LevelBadge'
+import { BusinessValueBadge } from './BusinessValueBadge'
 import type { Artifact } from '@/lib/govern/types'
 
 export function ArtifactCard({ artifact, showChildren = false }: { artifact: Artifact; showChildren?: boolean }) {
@@ -28,9 +29,14 @@ export function ArtifactCard({ artifact, showChildren = false }: { artifact: Art
 
       <div className="flex items-center justify-between text-xs text-gray-500">
         <span>#{artifact.id.slice(-8)}</span>
-        {artifact.assignee_name && (
-          <span>👤 {artifact.assignee_name}</span>
-        )}
+        <div className="flex items-center gap-2">
+          {artifact.business_value !== null && artifact.business_value !== undefined && (
+            <BusinessValueBadge value={artifact.business_value} valueType={artifact.value_type} />
+          )}
+          {artifact.assignee_name && (
+            <span>👤 {artifact.assignee_name}</span>
+          )}
+        </div>
       </div>
 
       {showChildren && artifact.metric_count > 0 && (
