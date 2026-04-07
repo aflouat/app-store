@@ -1,10 +1,11 @@
 import Link from 'next/link'
 
 const nav = [
-  { href: '/govern/roadmap',   label: 'Roadmap',    icon: '🗺' },
-  { href: '/govern/artifacts', label: 'Artefacts',  icon: '📋' },
-  { href: '/govern/agent',     label: 'Agent',      icon: '🤖' },
-  { href: '/govern/logs',      label: 'Logs',       icon: '📜' },
+  { href: '/govern/plan',      label: 'Plan d\'action', icon: '🎯' },
+  { href: '/govern/roadmap',   label: 'Roadmap',        icon: '🗺' },
+  { href: '/govern/artifacts', label: 'Artefacts',      icon: '📋' },
+  { href: '/govern/agent',     label: 'Agent',          icon: '🤖' },
+  { href: '/govern/logs',      label: 'Logs',           icon: '📜' },
 ]
 
 export function GovernSidebar() {

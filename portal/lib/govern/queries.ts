@@ -100,6 +100,47 @@ export const createArtifact = (data: {
     data.created_by
   ])
 
+// Plan d'action — epics + user stories triés par valeur business décroissante
+export const getActionPlan = (projectSlug: string) =>
+  query<Artifact>(`
+    SELECT * FROM governance.v_artifact_context
+    WHERE project_slug = $1
+      AND type_slug IN ('epic', 'user_story')
+    ORDER BY business_value DESC NULLS LAST, sort_order
+  `, [projectSlug])
+
+// Mettre à jour la valeur business d'un artefact + log automatique
+export const updateBusinessValue = async (
+  id: string,
+  businessValue: number | null,
+  valueType: string | null,
+  valueNote: string | null,
+  actorId: string
+) => {
+  const current = await queryOne<{ business_value: number | null }>(
+    'SELECT business_value FROM governance.artifacts WHERE id = $1', [id]
+  )
+  await query(
+    `UPDATE governance.artifacts
+     SET business_value = $1, value_type = $2, value_note = $3, updated_at = NOW()
+     WHERE id = $4`,
+    [businessValue, valueType, valueNote, id]
+  )
+  await query(`
+    INSERT INTO governance.execution_logs
+      (artifact_id, actor_id, actor_type, action, previous_value, new_value, note)
+    VALUES ($1, $2,
+      (SELECT actor_type FROM governance.users WHERE id = $2),
+      'metric_updated',
+      $3::jsonb, $4::jsonb, $5)
+  `, [
+    id, actorId,
+    JSON.stringify({ business_value: current?.business_value }),
+    JSON.stringify({ business_value: businessValue, value_type: valueType }),
+    valueNote ?? null
+  ])
+}
+
 // Insérer un log
 export const insertLog = (data: {
   artifact_id: string

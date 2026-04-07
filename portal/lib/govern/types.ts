@@ -4,6 +4,12 @@ export type ArtifactLevel = 'strategic' | 'tactical' | 'operational'
 export type ArtifactStatus = 'draft' | 'ready' | 'in_progress' | 'done' | 'cancelled' | 'blocked'
 export type ActorType = 'human' | 'agent'
 export type MetricStatus = 'pending' | 'on_track' | 'at_risk' | 'achieved' | 'missed'
+export type ValueType =
+  | 'revenue_impact'
+  | 'cost_reduction'
+  | 'risk_mitigation'
+  | 'strategic_positioning'
+  | 'user_acquisition'
 
 export interface Artifact {
   id: string
@@ -24,6 +30,9 @@ export interface Artifact {
   sort_order: number
   tags: string[]
   metadata: Record<string, unknown>
+  business_value: number | null
+  value_type: ValueType | null
+  value_note: string | null
   parent_title: string | null
   parent_type: string | null
   project_name: string
