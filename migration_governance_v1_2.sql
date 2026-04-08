@@ -30,9 +30,13 @@ CREATE INDEX IF NOT EXISTS idx_artifacts_business_value
 
 -- ------------------------------------------------------------
 -- 2. Recréer v_artifact_context pour inclure les nouvelles colonnes
+-- DROP requis car CREATE OR REPLACE VIEW interdit de changer
+-- l'ordre des colonnes (même pattern que v1.1 pour sort_order).
 -- ------------------------------------------------------------
 
-CREATE OR REPLACE VIEW governance.v_artifact_context AS
+DROP VIEW IF EXISTS governance.v_artifact_context CASCADE;
+
+CREATE VIEW governance.v_artifact_context AS
 SELECT
     a.id,
     a.title,
@@ -46,6 +50,7 @@ SELECT
     a.tags,
     a.metadata,
     a.due_date,
+    a.sort_order,
     -- Valeur business (v1.2)
     a.business_value,
     a.value_type,
@@ -78,7 +83,7 @@ LEFT JOIN governance.artifacts      p  ON p.id        = a.parent_id
 JOIN      governance.projects       pr ON pr.id       = a.project_id;
 
 COMMENT ON VIEW governance.v_artifact_context IS
-    'Vue enrichie pour lecture par agent IA ou dashboard — contexte complet avec valeur business (v1.2)';
+    'Vue enrichie v1.2 — sort_order + business_value/value_type/value_note';
 
 -- ------------------------------------------------------------
 -- 3. Log de migration
