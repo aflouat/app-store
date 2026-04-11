@@ -1,18 +1,12 @@
 import NextAuth from 'next-auth'
 import Credentials from 'next-auth/providers/credentials'
 import bcrypt from 'bcryptjs'
-import { getUserWithPasswordHash, getUserById } from '@/lib/freelancehub/auth-queries'
+import { getUserWithPasswordHash } from '@/lib/freelancehub/auth-queries'
+import { authConfig } from './auth.config'
 import type { UserRole } from '@/lib/freelancehub/types'
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
-  secret: process.env.NEXTAUTH_SECRET,
-  session: { strategy: 'jwt' },
-
-  pages: {
-    signIn: '/freelancehub/login',
-    error:  '/freelancehub/login',
-  },
-
+  ...authConfig,
   providers: [
     Credentials({
       name: 'credentials',
@@ -41,23 +35,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       },
     }),
   ],
-
-  callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
-        token.id   = user.id
-        token.role = (user as { role: UserRole }).role
-      }
-      return token
-    },
-    async session({ session, token }) {
-      if (token) {
-        session.user.id   = token.id   as string
-        session.user.role = token.role as UserRole
-      }
-      return session
-    },
-  },
 })
 
 // Augment next-auth types
