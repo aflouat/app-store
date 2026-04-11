@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { query, queryOne } from '@/lib/freelancehub/db'
+import { sendReviewRequest, sendFundRelease } from '@/lib/freelancehub/email'
 
 export async function POST(req: NextRequest) {
   const session = await auth()
@@ -82,6 +83,49 @@ export async function POST(req: NextRequest) {
        WHERE booking_id = $1 AND status = 'captured'`,
       [booking_id]
     )
+    // Notify consultant of fund release (fire-and-forget)
+    try {
+      if (process.env.RESEND_API_KEY) {
+        const fundInfo = await queryOne<{
+          consultant_email: string; consultant_name: string | null; consultant_net: number
+        }>(
+          `SELECT uc2.email AS consultant_email, uc2.name AS consultant_name,
+                  b.consultant_amount AS consultant_net
+           FROM freelancehub.bookings b
+           JOIN freelancehub.consultants c ON c.id = b.consultant_id
+           JOIN freelancehub.users uc2 ON uc2.id = c.user_id
+           WHERE b.id = $1`,
+          [booking_id]
+        )
+        if (fundInfo) {
+          await sendFundRelease(
+            fundInfo.consultant_email,
+            fundInfo.consultant_name ?? 'Consultant',
+            fundInfo.consultant_net,
+            booking_id
+          )
+        }
+      }
+    } catch (_) { /* email failure is non-blocking */ }
+  } else {
+    // Send review request to the other party (fire-and-forget)
+    try {
+      if (process.env.RESEND_API_KEY) {
+        // Determine who hasn't reviewed yet
+        const otherUserId  = reviewer_role === 'client' ? booking.consultant_id : booking.client_id
+        const otherUser = await queryOne<{ email: string; name: string | null; role: string }>(
+          `SELECT u.email, u.name,
+                  CASE WHEN u.id = (SELECT user_id FROM freelancehub.consultants WHERE id = $2)
+                    THEN 'consultant' ELSE 'client' END AS role
+           FROM freelancehub.users u WHERE u.id = $1`,
+          [otherUserId, booking.consultant_id]
+        )
+        if (otherUser) {
+          const otherRole = otherUser.role as 'client' | 'consultant'
+          await sendReviewRequest(booking_id, otherUser.email, otherUser.name ?? '', otherRole)
+        }
+      }
+    } catch (_) { /* email failure is non-blocking */ }
   }
 
   return NextResponse.json({ success: true, review_id: review?.id })
