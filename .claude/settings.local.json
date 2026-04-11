@@ -1,7 +1,12 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx next:*)",
+      "Bash(ssh -p 2222 abdel@37.59.125.159 'cd /appli/app-store && git pull origin main 2>&1')",
+      "Bash(ssh -p 2222 abdel@37.59.125.159 'docker compose -f /appli/app-store/docker-compose.yml ps --format \"table {{.Name}}\\\\t{{.Status}}\"')",
+      "Bash(ssh -p 2222 abdel@37.59.125.159 'docker exec -i postgres psql -U appstore -d appstore < /appli/app-store/migrations/006_freelancehub_v1.sql')"
     ]
   }
 }
