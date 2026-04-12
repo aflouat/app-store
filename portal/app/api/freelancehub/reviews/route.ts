@@ -18,14 +18,27 @@ export async function POST(req: NextRequest) {
   }
 
   // Verify booking is completed and reviewer is a participant
-  const booking = await queryOne<{ id: string; client_id: string; status: string; consultant_id: string }>(
-    `SELECT id, client_id, consultant_id, status FROM freelancehub.bookings WHERE id = $1`,
+  const booking = await queryOne<{
+    id: string; client_id: string; status: string; consultant_id: string; consultant_user_id: string
+  }>(
+    `SELECT b.id, b.client_id, b.consultant_id, b.status, c.user_id AS consultant_user_id
+     FROM freelancehub.bookings b
+     JOIN freelancehub.consultants c ON c.id = b.consultant_id
+     WHERE b.id = $1`,
     [booking_id]
   )
 
   if (!booking) return NextResponse.json({ error: 'Réservation introuvable.' }, { status: 404 })
   if (booking.status !== 'completed') {
     return NextResponse.json({ error: 'La mission doit être terminée pour être évaluée.' }, { status: 409 })
+  }
+
+  // Ensure the session user is actually a participant in this booking
+  const isParticipant =
+    (reviewer_role === 'client'      && session.user.id === booking.client_id) ||
+    (reviewer_role === 'consultant'  && session.user.id === booking.consultant_user_id)
+  if (!isParticipant) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
   // Check not already reviewed
@@ -106,7 +119,7 @@ export async function POST(req: NextRequest) {
           )
         }
       }
-    } catch (_) { /* email failure is non-blocking */ }
+    } catch (emailErr) { console.error('[reviews] email error:', emailErr) }
   } else {
     // Send review request to the other party (fire-and-forget)
     try {
@@ -125,7 +138,7 @@ export async function POST(req: NextRequest) {
           await sendReviewRequest(booking_id, otherUser.email, otherUser.name ?? '', otherRole)
         }
       }
-    } catch (_) { /* email failure is non-blocking */ }
+    } catch (emailErr) { console.error('[reviews] email error:', emailErr) }
   }
 
   return NextResponse.json({ success: true, review_id: review?.id })

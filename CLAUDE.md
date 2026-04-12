@@ -2,15 +2,15 @@
 
 ## Contexte projet
 
-**perform-learn.fr** est une plateforme digitale qui connecte freelances et entreprises (consulting, formation, outils métiers). Le projet est en phase pré-lancement avec une date cible : **30 avril 2026**.
+**perform-learn.fr** est une plateforme digitale qui connecte freelances et entreprises . 3 profils sont prévus client,consultant et admin.
 
-L'objectif est de monter un **App Store interne** hébergeant plusieurs applications métiers (meteo-projet, gestion de stock, FreelanceHub, etc.) avec mesure de l'utilisation pour pouvoir scaler.
+L'objectif est de monter une solution permettant à des freelances de s'enregsitrer, renseigner les compétences, valider quelques prérequis administratifs et renseigner leurs dispo, les clients peuvent acheter une consultation sur un calendrier avec des heurs comme doctolib
 
-**Propriétaire** : Abdel — PMP-certified, spécialiste D365 F&O, side business PMFlow.
+**Propriétaire** : Abdel — développeur fullstack - PMP-certified, actuellement chef de projet.
 
 ---
 
-## Architecture choisie : Option A — Hybride VPS + Vercel
+## Architecture choisie : Hybride VPS + Vercel
 
 ```
 ┌─────────────────────────────────────────────────┐
@@ -49,23 +49,15 @@ L'objectif est de monter un **App Store interne** hébergeant plusieurs applicat
 - **Domaine** : `perform-learn.fr` (acheté sur Hostinger)
 - **DNS** : Enregistrements A pointant vers `37.59.125.159`
 
-| Sous-domaine | Service | Status |
-|---|---|---|
-| `perform-learn.fr` | Landing page (HTML statique via Caddy) | ✅ Opérationnel |
-| `portal.perform-learn.fr` | Portail Next.js (Vercel) | ⏳ CNAME à créer sur Hostinger |
-| `api.perform-learn.fr` | API Node.js backend | ⏳ Container `app` à builder/déployer |
-| `s3.perform-learn.fr` | MinIO API (S3-compatible) | ✅ Cert SSL OK |
-| `minio.perform-learn.fr` | MinIO Console | ✅ Opérationnel |
-| `analytics.perform-learn.fr` | Umami (métriques) | ✅ Opérationnel |
-| `monitor.perform-learn.fr` | Netdata (monitoring serveur) | ✅ Opérationnel |
-
-### CNAME à créer sur Hostinger pour portal.perform-learn.fr
-
-| Type | Nom | Valeur | TTL |
-|---|---|---|---|
-| CNAME | `portal` | `cname.vercel-dns.com.` | 3600 |
-
-Le domaine est déjà déclaré et vérifié côté Vercel (`verified: true`). Dès propagation DNS, `https://portal.perform-learn.fr` sera actif avec SSL auto.
+| Sous-domaine                 | Service                                | Status                   |
+| ---------------------------- | -------------------------------------- | ------------------------ |
+| `perform-learn.fr`           | Landing page (HTML statique via Caddy) | ✅ Opérationnel          |
+| `portal.perform-learn.fr`    | Portail Next.js (Vercel)               | CNAME crée sur Hostinger |
+| `api.perform-learn.fr`       | API Node.js backend                    |
+| `s3.perform-learn.fr`        | MinIO API (S3-compatible)              | ✅ Cert SSL              |
+| `minio.perform-learn.fr`     | MinIO Console                          | ✅ Opérationnel          |
+| `analytics.perform-learn.fr` | Umami (métriques)                      | ✅ Opérationnel          |
+| `monitor.perform-learn.fr`   | Netdata (monitoring serveur)           | ✅ Opérationnel          |
 
 ---
 
@@ -74,14 +66,12 @@ Le domaine est déjà déclaré et vérifié côté Vercel (`verified: true`). D
 **Chemin projet** : `/appli/app-store/`
 
 **Conteneurs Docker qui tournent** :
+
 - `postgres` (PostgreSQL 16 Alpine) — ✅ Healthy, port 5432 exposé sur IP publique (Vercel)
 - `minio` (MinIO latest) — ✅ Healthy
 - `umami` (ghcr.io/umami-software/umami:postgresql-latest) — ✅ Running
 - `netdata` (netdata/netdata:stable) — ✅ Healthy
 - `caddy` (caddy:2-alpine) — ✅ Running, SSL certs obtenus
-
-**Conteneur manquant** :
-- `app` (API Node.js) — ⏳ Code prêt dans `api/`, pas encore buildé
 
 **User système** : `abdel` (sudoer, port SSH : **2222**)
 
@@ -93,29 +83,17 @@ Le domaine est déjà déclaré et vérifié côté Vercel (`verified: true`). D
 
 ### Schémas dans `appstore` :
 
-| Schéma | Usage | Status |
-|---|---|---|
-| `store` | App Store (portail, apps, installations, waitlist) | ✅ Tables créées |
-| `governance` | Framework gouvernance (Vision→Cycle→Epic→US→Task) | ✅ Opérationnel |
-| `freelancehub` | Marketplace B2B consulting (8 tables) | ✅ Migration appliquée |
-| `meteo` | Meteo-projet dashboard | ⏳ À venir |
-| `stock` | Gestion de stock | ⏳ À venir |
-| `shared` | Tables partagées (users) | ✅ Table créée |
-
-### Migrations appliquées sur le VPS :
-
-| Fichier | Contenu | Status VPS |
-|---|---|---|
-| `init-db.sql` | Schémas + tables store/shared | ✅ Appliqué |
-| `migration_governance_v1.sql` | Schema governance, tables artifacts/metrics/logs | ✅ Appliqué |
-| `migration_governance_v1_1.sql` | Ajout `sort_order` dans la vue | ✅ Appliqué |
-| `migration_governance_v1_2.sql` | Ajout `business_value`, `value_type`, `value_note` | ✅ Appliqué |
-| `migration_governance_v1_2_fix.sql` | Patch `DROP VIEW CASCADE + CREATE VIEW` | ✅ Appliqué |
-| `seed_governance_v1.sql` | Seed Vision + Cycles + Epics initiaux | ✅ Appliqué |
-| `govern/seed_business_value_v1.sql` | Backfill business_value sur 17 artefacts | ✅ Appliqué |
-| `migrations/006_freelancehub_v1.sql` | Schema freelancehub, 8 tables + 12 skills seeds + 3 comptes demo | ✅ Appliqué |
+| Schéma         | Usage                                              | Status                 |
+| -------------- | -------------------------------------------------- | ---------------------- |
+| `store`        | App Store (portail, apps, installations, waitlist) | ✅ Tables créées       |
+| `governance`   | Framework gouvernance (Vision→Cycle→Epic→US→Task)  | ✅ Opérationnel        |
+| `freelancehub` | Marketplace B2B consulting (8 tables)              | ✅ Migration appliquée |
+| `meteo`        | Meteo-projet dashboard                             | ⏳ À venir             |
+| `stock`        | Gestion de stock                                   | ⏳ À venir             |
+| `shared`       | Tables partagées (users)                           | ✅ Table créée         |
 
 ### Vue `governance.v_artifact_context` :
+
 Jointure artifacts + parent + assignee. Inclut toutes les colonnes.
 **Attention** : toujours utiliser `DROP VIEW IF EXISTS ... CASCADE; CREATE VIEW` (pas `CREATE OR REPLACE VIEW`) pour éviter l'erreur de réordonnancement de colonnes PostgreSQL.
 
@@ -192,28 +170,30 @@ score = 0.40 × skill_match
       + 0.20 × availability_score (slot dispo à la date demandée)
       + 0.10 × price_score        (1 - tarif_norm / budget_max)
 ```
+
 Top 5 consultants retournés, **identité masquée** (pas de nom ni email).
 
 ### Comptes de démonstration (mot de passe : `demo1234`)
 
-| Rôle | Email |
-|---|---|
-| Admin | `admin@perform-learn.fr` |
+| Rôle       | Email                          |
+| ---------- | ------------------------------ |
+| Admin      | `admin@perform-learn.fr`       |
 | Consultant | `consultant1@perform-learn.fr` |
-| Client | `client1@perform-learn.fr` |
+| Client     | `client1@perform-learn.fr`     |
 
 ### Emails transactionnels (Resend)
 
-| Déclencheur | Destinataires |
-|---|---|
-| Paiement capturé | Client (confirmation) + Consultant (nouvelle mission) |
-| J-1 avant mission | Client + Consultant (rappel) |
-| Mission terminée | Client + Consultant (demande d'évaluation) |
-| 2e évaluation soumise | Consultant (libération des fonds) |
+| Déclencheur           | Destinataires                                         |
+| --------------------- | ----------------------------------------------------- |
+| Paiement capturé      | Client (confirmation) + Consultant (nouvelle mission) |
+| J-1 avant mission     | Client + Consultant (rappel)                          |
+| Mission terminée      | Client + Consultant (demande d'évaluation)            |
+| 2e évaluation soumise | Consultant (libération des fonds)                     |
 
 ### Point technique important — Edge Runtime
 
 Le middleware Next.js tourne sur Edge Runtime (pas Node.js). `bcryptjs` et `pg` sont incompatibles Edge. Pattern utilisé :
+
 - `auth.config.ts` : config JWT/callbacks **sans** providers → importé par le middleware
 - `auth.ts` : étend `authConfig` + Credentials provider avec bcrypt → Node.js uniquement
 - `middleware.ts` : instancie `NextAuth(authConfig)` (pas d'import de `auth.ts`)
@@ -228,19 +208,20 @@ Le middleware Next.js tourne sur Edge Runtime (pas Node.js). `bcryptjs` et `pg` 
 
 ### Variables d'environnement Vercel (toutes configurées)
 
-| Variable | Status |
-|---|---|
-| `DATABASE_URL` | ✅ `postgresql://appstore:***@37.59.125.159:5432/appstore` |
-| `NEXTAUTH_SECRET` | ✅ configuré |
-| `NEXTAUTH_URL` | ✅ `https://portal.perform-learn.fr` |
-| `RESEND_API_KEY` | ✅ configuré |
-| `NEXT_PUBLIC_API_URL` | ✅ `https://api.perform-learn.fr` |
+| Variable              | Status                                                     |
+| --------------------- | ---------------------------------------------------------- |
+| `DATABASE_URL`        | ✅ `postgresql://appstore:***@37.59.125.159:5432/appstore` |
+| `NEXTAUTH_SECRET`     | ✅ configuré                                               |
+| `NEXTAUTH_URL`        | ✅ `https://portal.perform-learn.fr`                       |
+| `RESEND_API_KEY`      | ✅ configuré                                               |
+| `NEXT_PUBLIC_API_URL` | ✅ `https://api.perform-learn.fr`                          |
 
 ---
 
 ## Tests E2E — Scénarios de validation
 
 ### Pré-requis
+
 - Accès sur `https://portal.perform-learn.fr` (ou `https://app-store-sandy.vercel.app` tant que le CNAME n'est pas propagé)
 - Comptes demo actifs avec bcrypt hashes (`demo1234`)
 
@@ -415,7 +396,6 @@ NEXT_PUBLIC_API_URL=https://api.perform-learn.fr
 
 ### Infra VPS
 
-1. **⏳ DNS** : créer CNAME `portal` → `cname.vercel-dns.com.` sur Hostinger
 2. **⏳ Déployer le container `app` (API waitlist)** :
    ```bash
    ssh -p 2222 abdel@37.59.125.159 'cd /appli/app-store && docker compose up -d --build app'
@@ -424,23 +404,23 @@ NEXT_PUBLIC_API_URL=https://api.perform-learn.fr
 
 ### FreelanceHub — évolutions post-MVP
 
-| Priorité | Feature |
-|---|---|
-| 🔴 | Intégration Stripe réelle (remplacer le mock) |
-| 🔴 | Cron J-1 : envoi automatique des rappels (`sendBookingReminder`) |
-| 🟠 | Notifications in-app (badge sur la cloche) |
-| 🟠 | Page profil consultant éditable |
-| 🟡 | Export CSV des réservations (admin) |
+| Priorité | Feature                                                          |
+| -------- | ---------------------------------------------------------------- |
+| 🔴       | Intégration Stripe réelle (remplacer le mock)                    |
+| 🔴       | Cron J-1 : envoi automatique des rappels (`sendBookingReminder`) |
+| 🟠       | Notifications in-app (badge sur la cloche)                       |
+| 🟠       | Page profil consultant éditable                                  |
+| 🟡       | Export CSV des réservations (admin)                              |
 
 ### Gouvernance — évolutions
 
-| Priorité | Feature | Valeur business |
-|---|---|---|
-| 🔴 Haute | Édition inline business_value depuis `/govern/plan` | 85 |
-| 🔴 Haute | Filtres sur `/govern/plan` : cycle, statut, valeur | 80 |
-| 🟠 Moyenne | Graphe burndown par cycle | 65 |
-| 🟠 Moyenne | Page `/govern/agent` : prompt → artefact via LLM | 60 |
-| 🟡 Faible | Export CSV du plan d'action | 40 |
+| Priorité   | Feature                                             | Valeur business |
+| ---------- | --------------------------------------------------- | --------------- |
+| 🔴 Haute   | Édition inline business_value depuis `/govern/plan` | 85              |
+| 🔴 Haute   | Filtres sur `/govern/plan` : cycle, statut, valeur  | 80              |
+| 🟠 Moyenne | Graphe burndown par cycle                           | 65              |
+| 🟠 Moyenne | Page `/govern/agent` : prompt → artefact via LLM    | 60              |
+| 🟡 Faible  | Export CSV du plan d'action                         | 40              |
 
 ### Apps métiers futures
 
@@ -461,6 +441,7 @@ Vision
 ```
 
 **Scoring business_value** :
+
 - `≥75` → Haute (badge sauge)
 - `50–74` → Moyenne (badge terracotta)
 - `25–49` → Faible (badge gris)

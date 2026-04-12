@@ -79,10 +79,12 @@ function LoginForm() {
           </button>
         </form>
 
-        <p className="fh-login-demo">
-          Comptes démo&nbsp;: <code>consultant1@demo.fr</code> · <code>client1@demo.fr</code>
-          <br /><code>admin@perform-learn.fr</code> — mot de passe&nbsp;: <code>demo1234</code>
-        </p>
+        {process.env.NEXT_PUBLIC_DEMO_MODE === 'true' && (
+          <p className="fh-login-demo">
+            Comptes démo&nbsp;: <code>consultant1@perform-learn.fr</code> · <code>client1@perform-learn.fr</code>
+            <br /><code>admin@perform-learn.fr</code> — mot de passe&nbsp;: <code>demo1234</code>
+          </p>
+        )}
       </div>
 
       <style>{`
