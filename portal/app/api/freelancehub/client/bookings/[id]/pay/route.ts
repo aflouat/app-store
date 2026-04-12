@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { queryOne } from '@/lib/freelancehub/db'
 import { sendBookingConfirmation } from '@/lib/freelancehub/email'
+import { createNotification } from '@/lib/freelancehub/notifications'
 import Stripe from 'stripe'
 
 export async function POST(
@@ -108,6 +109,44 @@ export async function POST(
       })
     }
   } catch (emailErr) { console.error('[pay] email error:', emailErr) }
+
+  // In-app notifications (fire-and-forget)
+  try {
+    const p = await queryOne<{
+      client_id: string; consultant_user_id: string; skill_name: string | null;
+      slot_date: string; slot_time: string;
+    }>(
+      `SELECT b.client_id, c.user_id AS consultant_user_id,
+              sk.name AS skill_name, s.slot_date::text, s.slot_time::text
+       FROM freelancehub.bookings b
+       JOIN freelancehub.consultants c ON c.id = b.consultant_id
+       JOIN freelancehub.slots s ON s.id = b.slot_id
+       LEFT JOIN freelancehub.skills sk ON sk.id = b.skill_requested
+       WHERE b.id = $1`,
+      [bookingId]
+    )
+    if (p) {
+      const skill   = p.skill_name ?? 'Expertise'
+      const dateStr = new Date(p.slot_date + 'T00:00:00')
+        .toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })
+      const timeStr = p.slot_time.slice(0, 5)
+
+      await createNotification(
+        p.client_id,
+        'booking_confirmed',
+        'Réservation confirmée',
+        `${skill} le ${dateStr} à ${timeStr} — votre expert a été révélé.`,
+        { booking_id: bookingId }
+      )
+      await createNotification(
+        p.consultant_user_id,
+        'new_booking',
+        'Nouvelle mission',
+        `${skill} le ${dateStr} à ${timeStr}.`,
+        { booking_id: bookingId }
+      )
+    }
+  } catch (notifErr) { console.error('[pay] notification error:', notifErr) }
 
   return NextResponse.json({ success: true, booking_id: bookingId })
 }

@@ -451,6 +451,74 @@ Vision
 
 ---
 
+## Workflow Claude — Comment travailler sur ce projet
+
+### Avant de coder
+
+1. **Lire les fichiers concernés** avant toute modification (ne jamais modifier à l'aveugle)
+2. **Annoncer le plan** : lister les fichiers à toucher, décrire les changements attendus
+3. **Valider avec Abdel** si le plan impacte la DB, le middleware Edge, ou le flow de paiement
+4. **Travailler phase par phase** : une phase = un ensemble cohérent de fichiers, un commit
+
+### Cycle dev → déploiement
+
+```
+1. Modifier les fichiers localement (portal/ ou migrations/)
+2. Tester le build Next.js si changements portal/ :
+   cd portal && npm run build
+3. Commiter avec un message conventionnel :
+   git add <fichiers spécifiques>
+   git commit -m "feat(freelancehub): description courte"
+4. Pusher sur GitHub :
+   git push origin main
+5. Vercel redéploie automatiquement (surveiller https://vercel.com/aflouat)
+6. Si migration SQL : appliquer manuellement sur le VPS AVANT ou APRÈS selon le sens du changement
+```
+
+### Appliquer une migration SQL sur le VPS
+
+```bash
+# Depuis le repo local, envoyer et exécuter la migration
+ssh -p 2222 abdel@37.59.125.159 \
+  'docker exec -i postgres psql -U appstore -d appstore' \
+  < migrations/007_freelancehub_v2.sql
+
+# Vérifier
+ssh -p 2222 abdel@37.59.125.159 \
+  'docker exec postgres psql -U appstore -d appstore -c "\d freelancehub.consultants"'
+```
+
+### Pull sur le VPS (si fichiers VPS modifiés — docker-compose, Caddyfile, etc.)
+
+```bash
+ssh -p 2222 abdel@37.59.125.159 'cd /appli/app-store && git pull origin main'
+# Si changement Caddyfile :
+ssh -p 2222 abdel@37.59.125.159 'cd /appli/app-store && docker compose exec caddy caddy reload --config /etc/caddy/Caddyfile'
+# Si changement docker-compose :
+ssh -p 2222 abdel@37.59.125.159 'cd /appli/app-store && docker compose up -d --build'
+```
+
+### Conventions de commit
+
+```
+feat(scope): nouvelle fonctionnalité
+fix(scope): correction de bug
+refactor(scope): refactoring sans changement de comportement
+chore(scope): migration SQL, config, CI
+test(scope): tests E2E ou unitaires
+
+Scopes : freelancehub | govern | infra | portal | db
+```
+
+### Règles de sécurité immuables
+
+- **Ne jamais** calculer le montant Stripe côté client — toujours recalculer depuis la DB
+- **Ne jamais** exposer `name`, `email`, `bio`, `linkedin_url` avant `revealed_at IS NOT NULL`
+- **Ne jamais** importer `bcryptjs` dans `auth.config.ts` (Edge Runtime — incompatible)
+- **Ne jamais** utiliser `CREATE OR REPLACE VIEW` si les colonnes changent d'ordre
+
+---
+
 ## Conventions
 
 - **Formatting** : Scannable — headings, tables, bullet points

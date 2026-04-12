@@ -1,12 +1,12 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
 import type { UserRole } from '@/lib/freelancehub/types'
 
 interface FHNavProps {
-  user: { name: string; email: string; role: UserRole }
+  user:        { name: string; email: string; role: UserRole }
+  unreadCount?: number
 }
 
 const ROLE_LABELS: Record<UserRole, string> = {
@@ -21,9 +21,8 @@ const ROLE_COLORS: Record<UserRole, string> = {
   admin:      '#A3AB9A',
 }
 
-export default function FHNav({ user }: FHNavProps) {
-  const pathname = usePathname()
-  const homeUrl  = `/freelancehub/${user.role}`
+export default function FHNav({ user, unreadCount = 0 }: FHNavProps) {
+  const homeUrl = `/freelancehub/${user.role}`
 
   return (
     <nav className="fh-nav">
@@ -40,6 +39,21 @@ export default function FHNav({ user }: FHNavProps) {
           {ROLE_LABELS[user.role]}
         </span>
         <span className="fh-nav-user">{user.name || user.email}</span>
+
+        {/* Notification bell */}
+        <Link href="/freelancehub/notifications" className="fh-bell" aria-label="Notifications">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+          </svg>
+          {unreadCount > 0 && (
+            <span className="fh-bell-badge">
+              {unreadCount > 9 ? '9+' : unreadCount}
+            </span>
+          )}
+        </Link>
+
         <button
           className="fh-nav-signout"
           onClick={() => signOut({ callbackUrl: '/freelancehub/login' })}
@@ -84,6 +98,25 @@ export default function FHNav({ user }: FHNavProps) {
           font-size: .88rem; color: var(--text-mid);
           white-space: nowrap; max-width: 180px;
           overflow: hidden; text-overflow: ellipsis;
+        }
+        .fh-bell {
+          position: relative;
+          display: flex; align-items: center; justify-content: center;
+          width: 34px; height: 34px;
+          border-radius: 8px;
+          color: var(--text-mid);
+          text-decoration: none;
+          transition: background .12s, color .12s;
+        }
+        .fh-bell:hover { background: var(--bg); color: var(--text); }
+        .fh-bell-badge {
+          position: absolute; top: 2px; right: 2px;
+          background: var(--c1); color: #fff;
+          font-size: .6rem; font-weight: 700;
+          min-width: 16px; height: 16px;
+          border-radius: 8px; padding: 0 4px;
+          display: flex; align-items: center; justify-content: center;
+          line-height: 1;
         }
         .fh-nav-signout {
           font-size: .82rem; color: var(--text-light);

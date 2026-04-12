@@ -50,8 +50,19 @@ export default async function AdminBookingsPage() {
   return (
     <div className="fh-page">
       <header className="fh-page-header">
-        <h1 className="fh-page-title">Gestion des réservations</h1>
-        <p className="fh-page-sub">{bookings.length} réservation{bookings.length !== 1 ? 's' : ''}</p>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <h1 className="fh-page-title">Gestion des réservations</h1>
+            <p className="fh-page-sub">{bookings.length} réservation{bookings.length !== 1 ? 's' : ''}</p>
+          </div>
+          <a
+            href="/api/freelancehub/admin/export-csv"
+            download
+            className="adm-export-btn"
+          >
+            ↓ Export CSV
+          </a>
+        </div>
       </header>
 
       <div className="adm-table-wrap">
@@ -121,6 +132,13 @@ export default async function AdminBookingsPage() {
       <style>{`
         .fh-page { display: flex; flex-direction: column; gap: 1.5rem; }
         .fh-page-header { display: flex; flex-direction: column; gap: .3rem; }
+        .adm-export-btn {
+          font-size: .82rem; color: var(--c3); background: none;
+          border: 1px solid var(--c3); border-radius: 6px;
+          padding: .4em 1em; text-decoration: none; white-space: nowrap;
+          transition: background .12s, color .12s;
+        }
+        .adm-export-btn:hover { background: var(--c3); color: #fff; }
         .fh-page-title { font-family: 'Fraunces', serif; font-size: 1.7rem; font-weight: 700; color: var(--dark); }
         .fh-page-sub { color: var(--text-mid); font-size: .9rem; }
         .adm-table-wrap { overflow-x: auto; background: var(--white); border-radius: var(--radius); border: 1px solid var(--border); }

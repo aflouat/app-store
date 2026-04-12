@@ -3,6 +3,7 @@ import { auth } from '@/auth'
 import FHNav     from '@/components/freelancehub/FHNav'
 import FHSidebar from '@/components/freelancehub/FHSidebar'
 import type { UserRole } from '@/lib/freelancehub/types'
+import { getUnreadCount } from '@/lib/freelancehub/notifications'
 
 export const metadata = {
   title: 'FreelanceHub — perform-learn.fr',
@@ -28,9 +29,11 @@ export default async function FreelanceHubLayout({
     role:  session.user.role  as UserRole,
   }
 
+  const unreadCount = await getUnreadCount(session.user.id).catch(() => 0)
+
   return (
     <div className="fh-shell">
-      <FHNav user={user} />
+      <FHNav user={user} unreadCount={unreadCount} />
       <div className="fh-body">
         <FHSidebar role={user.role} />
         <main className="fh-main">{children}</main>
