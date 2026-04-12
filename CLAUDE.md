@@ -1,436 +1,272 @@
-# CLAUDE.md — perform-learn.fr App Store POC
+# CLAUDE.md — perform-learn.fr · Instructions pour Claude
 
-## Contexte projet
+## Contexte & propriétaire
+Ce fichier ne contient aucune info liée aux règles de gestion actuelle ou futur, il se focalisé sur l'architecture high level et comment claude delivre avec qualité en conformité avec les priorités de la roadmap tout en analysant, planifiant avant de choisir la meilleur solution technique par rapport au contexte complet.
+le fichier ROADMAP.md contient une liste priorisé des fonctionnalités futures organisées par release cohérente pour le client. les releases  n'ont plus besoin de date mais les releases passées peuvent recevoir une date histo. elles ont juste besoin d'un numéro.
 
-**perform-learn.fr** est une plateforme digitale qui connecte freelances et entreprises . 3 profils sont prévus client,consultant et admin.
+**perform-learn.fr** — Digital Service Hub B2B : connecte freelances experts (DEV,ERP, D365, Data…) avec consultation horaire et entreprises via une marketplace avec matching algorithmique, paiement séquestre et anonymat jusqu'au paiement.
 
-L'objectif est de monter une solution permettant à des freelances de s'enregsitrer, renseigner les compétences, valider quelques prérequis administratifs et renseigner leurs dispo, les clients peuvent acheter une consultation sur un calendrier avec des heurs comme doctolib
+**Propriétaire** : Abdel — développeur fullstack, PMP-certified, chef de projet.
 
-**Propriétaire** : Abdel — développeur fullstack - PMP-certified, actuellement chef de projet.
+**Version courante** : voir le ROADMAP.MD
+
 
 ---
 
-## Architecture choisie : Hybride VPS + Vercel
+## Architecture globale
 
 ```
-┌─────────────────────────────────────────────────┐
-│              VPS OVH (37.59.125.159)             │
-│              Ubuntu 24.04 LTS                    │
-│              4 vCores / 8 Go RAM / 75 Go         │
+┌──────────────────────────────────────────────────┐
+│               VPS OVH (37.59.125.159)            │
+│               Ubuntu 24.04 · 4 vCores/8Go        │
 │                                                  │
-│  ┌──────────┐  ┌──────────┐  ┌───────────┐      │
-│  │PostgreSQL │  │  MinIO   │  │  Umami    │      │
-│  │  16-alp  │  │(S3 files)│  │(analytics)│      │
-│  │multi-schm│  │          │  │           │      │
-│  └──────────┘  └──────────┘  └───────────┘      │
-│  ┌──────────┐  ┌──────────┐  ┌───────────┐      │
-│  │  Caddy   │  │ Netdata  │  │  API Node │      │
-│  │(reverse  │  │(monitor) │  │ (waitlist)│      │
-│  │ proxy)   │  │          │  │           │      │
-│  └──────────┘  └──────────┘  └───────────┘      │
-└──────────────────┬──────────────────────────────┘
-                   │
-    ┌──────────────┼──────────────┐
-    │              │              │
-┌───▼───┐    ┌────▼────┐   ┌────▼────┐
-│Vercel │    │ Vercel  │   │ Vercel  │
-│Portal │    │ Meteo   │   │ Stock   │
-│Govern │    │ Projet  │   │ App     │
-│FreeHub│    │ (front) │   │ (front) │
-└───────┘    └─────────┘   └─────────┘
+│  PostgreSQL 16  │  MinIO (S3)  │  Umami          │
+│  Caddy (proxy)  │  Netdata     │  API Node.js    │
+└──────────────────┬───────────────────────────────┘
+                   │ HTTPS
+        ┌──────────┴──────────┐
+        │                     │
+   ┌────▼────┐           ┌────▼────┐
+   │ Vercel  │           │ Vercel  │
+   │ Portal  │           │ Apps    │
+   │ Next.js │           │ (futur) │
+   └─────────┘           └─────────┘
 ```
 
-**Principe** : Le VPS est le backend central (données, fichiers, analytics). Les fronts Next.js sont déployés sur Vercel (tier gratuit). Les données restent sous contrôle sur le VPS.
+**Principe** : VPS = backend central (données, fichiers, analytics). Fronts Next.js sur Vercel (tier gratuit). Données sous contrôle local.
 
 ---
 
-## Domaine & DNS
+## Infra VPS
 
-- **Domaine** : `perform-learn.fr` (acheté sur Hostinger)
-- **DNS** : Enregistrements A pointant vers `37.59.125.159`
+| Élément | Valeur |
+|---|---|
+| IP | `37.59.125.159` |
+| SSH | `ssh -p 2222 abdel@37.59.125.159` |
+| Chemin projet | `/appli/app-store/` |
+| User | `abdel` (sudoer) |
 
-| Sous-domaine                 | Service                                | Status                   |
-| ---------------------------- | -------------------------------------- | ------------------------ |
-| `perform-learn.fr`           | Landing page (HTML statique via Caddy) | ✅ Opérationnel          |
-| `portal.perform-learn.fr`    | Portail Next.js (Vercel)               | CNAME crée sur Hostinger |
-| `api.perform-learn.fr`       | API Node.js backend                    |
-| `s3.perform-learn.fr`        | MinIO API (S3-compatible)              | ✅ Cert SSL              |
-| `minio.perform-learn.fr`     | MinIO Console                          | ✅ Opérationnel          |
-| `analytics.perform-learn.fr` | Umami (métriques)                      | ✅ Opérationnel          |
-| `monitor.perform-learn.fr`   | Netdata (monitoring serveur)           | ✅ Opérationnel          |
+**Conteneurs Docker actifs** : `postgres`, `minio`, `umami`, `netdata`, `caddy`
 
----
+**Sous-domaines opérationnels** :
 
-## État actuel sur le VPS
-
-**Chemin projet** : `/appli/app-store/`
-
-**Conteneurs Docker qui tournent** :
-
-- `postgres` (PostgreSQL 16 Alpine) — ✅ Healthy, port 5432 exposé sur IP publique (Vercel)
-- `minio` (MinIO latest) — ✅ Healthy
-- `umami` (ghcr.io/umami-software/umami:postgresql-latest) — ✅ Running
-- `netdata` (netdata/netdata:stable) — ✅ Healthy
-- `caddy` (caddy:2-alpine) — ✅ Running, SSL certs obtenus
-
-**User système** : `abdel` (sudoer, port SSH : **2222**)
+| URL | Service |
+|---|---|
+| `perform-learn.fr` | Landing page statique |
+| `portal.perform-learn.fr` | Portail Next.js (Vercel) → CNAME Hostinger |
+| `api.perform-learn.fr` | API Node.js backend |
+| `s3.perform-learn.fr` | MinIO API |
+| `analytics.perform-learn.fr` | Umami |
+| `monitor.perform-learn.fr` | Netdata |
 
 ---
 
-## PostgreSQL — Schémas et tables
+## PostgreSQL — Schémas `appstore`
 
-**Base** : `appstore` | **Base séparée** : `umami` (Umami analytics)
+| Schéma | Usage | Status |
+|---|---|---|
+| `store` | App Store (portail, apps, waitlist) | ✅ |
+| `governance` | Framework Vision→Cycle→Epic→US→Task | ✅ |
+| `freelancehub` | Marketplace B2B consulting | ✅ Migration 007 |
+| `shared` | Users partagés | ✅ |
+| `meteo` / `stock` | Apps métiers futures | ⏳ |
 
-### Schémas dans `appstore` :
-
-| Schéma         | Usage                                              | Status                 |
-| -------------- | -------------------------------------------------- | ---------------------- |
-| `store`        | App Store (portail, apps, installations, waitlist) | ✅ Tables créées       |
-| `governance`   | Framework gouvernance (Vision→Cycle→Epic→US→Task)  | ✅ Opérationnel        |
-| `freelancehub` | Marketplace B2B consulting (8 tables)              | ✅ Migration appliquée |
-| `meteo`        | Meteo-projet dashboard                             | ⏳ À venir             |
-| `stock`        | Gestion de stock                                   | ⏳ À venir             |
-| `shared`       | Tables partagées (users)                           | ✅ Table créée         |
-
-### Vue `governance.v_artifact_context` :
-
-Jointure artifacts + parent + assignee. Inclut toutes les colonnes.
-**Attention** : toujours utiliser `DROP VIEW IF EXISTS ... CASCADE; CREATE VIEW` (pas `CREATE OR REPLACE VIEW`) pour éviter l'erreur de réordonnancement de colonnes PostgreSQL.
-
----
-
-## FreelanceHub — Marketplace B2B Consulting
-
-### Concept
-
-Place de marché B2B anonyme jusqu'au paiement : le client cherche une compétence, obtient des cartes consultants sans nom ni email, réserve et paie. L'identité du consultant n'est révélée qu'après capture du paiement (escrow 15% commission).
-
-### Architecture applicative
+### FreelanceHub — Tables principales
 
 ```
-portal/
-├── app/freelancehub/
-│   ├── login/page.tsx                      # Page login commune (3 rôles)
-│   ├── (auth)/layout.tsx                   # Layout protégé : FHNav + FHSidebar
-│   ├── (auth)/consultant/
-│   │   ├── page.tsx                        # Dashboard consultant
-│   │   ├── bookings/page.tsx               # Mes réservations
-│   │   ├── bookings/[id]/review/page.tsx   # Évaluer une mission
-│   │   ├── slots/page.tsx                  # Gérer mes disponibilités
-│   │   └── earnings/page.tsx               # Mes gains
-│   ├── (auth)/client/
-│   │   ├── page.tsx                        # Dashboard client
-│   │   ├── search/page.tsx                 # Recherche + matching
-│   │   ├── bookings/page.tsx               # Mes réservations
-│   │   └── reviews/[id]/page.tsx           # Évaluer une mission
-│   └── (auth)/admin/
-│       ├── page.tsx                        # Dashboard admin
-│       ├── users/page.tsx                  # Gestion utilisateurs
-│       └── bookings/page.tsx               # Toutes les réservations
-├── app/api/freelancehub/
-│   ├── matching/route.ts                   # POST : algo scoring 4 critères
-│   ├── client/bookings/route.ts            # POST : créer réservation
-│   ├── client/bookings/[id]/pay/route.ts   # POST : simuler paiement Stripe
-│   ├── consultant/slots/route.ts           # GET/POST : créneaux dispo
-│   └── reviews/route.ts                   # POST : soumettre évaluation
-├── components/freelancehub/
-│   ├── FHNav.tsx                           # Nav sticky, badge rôle, signOut
-│   ├── FHSidebar.tsx                       # 5 items par rôle
-│   ├── client/SearchClient.tsx             # Formulaire recherche + cartes anonymes
-│   ├── client/BookingModal.tsx             # 3 étapes : confirm → pay → reveal
-│   └── consultant/SlotManager.tsx          # Calendrier disponibilités
-├── lib/freelancehub/
-│   ├── matching.ts                         # findMatches() — score composite
-│   ├── auth-queries.ts                     # getUserWithPasswordHash()
-│   ├── email.ts                            # Resend : 4 templates email
-│   └── types.ts                            # UserRole, Booking, Consultant...
-├── auth.config.ts                          # Config JWT Edge-safe (middleware)
-├── auth.ts                                 # NextAuth v5 + Credentials + bcrypt
-└── middleware.ts                           # Protection routes + RBAC
-```
-
-### Schema PostgreSQL `freelancehub`
-
-```
-skills            → 12 compétences seedées (ERP, Management, Data, Tech, Finance)
+skills            → 12 compétences (ERP, Data, Tech, Finance, Management)
 users             → 3 rôles : client | consultant | admin
 consultants       → profil, tarif, rating (lié à users)
 consultant_skills → pivot compétences ↔ consultants
 slots             → créneaux disponibles par consultant
 bookings          → réservations (revealed_at = NULL jusqu'au paiement)
 payments          → escrow : pending → authorized → captured → transferred
-reviews           → évaluations mutuelles (déclenche libération fonds si les 2 soumises)
+reviews           → évaluations mutuelles (libération fonds si 2 soumises)
+notifications     → in-app : booking_confirmed | new_booking | review_request | fund_released | reminder
 ```
 
-### Algorithme de matching
+---
+
+## Structure repo (éléments clés)
+
+```
+app-store/
+├── CLAUDE.md                           ← ce fichier
+├── ROADMAP.md                          ← roadmap + release notes
+├── docker-compose.yml
+├── caddy/Caddyfile
+├── migrations/
+│   ├── 006_freelancehub_v1.sql         ← schema freelancehub
+│   └── 007_freelancehub_v2.sql         ← notifications + index
+└── portal/                             ← Next.js App Router (Vercel)
+    ├── auth.config.ts                  ← Edge-safe (middleware)
+    ├── auth.ts                         ← NextAuth v5 + bcrypt (Node only)
+    ├── middleware.ts                   ← RBAC
+    ├── vercel.json                     ← rewrites + crons
+    ├── app/
+    │   ├── freelancehub/               ← Marketplace B2B
+    │   │   ├── login/page.tsx
+    │   │   ├── (auth)/layout.tsx       ← injecte unreadCount notifications
+    │   │   ├── (auth)/consultant/      ← dashboard, profil, agenda, bookings, earnings
+    │   │   ├── (auth)/client/          ← dashboard, search, bookings, payments, reviews
+    │   │   ├── (auth)/admin/           ← dashboard, consultants, bookings, payments, matching
+    │   │   └── (auth)/notifications/   ← page notifications in-app
+    │   └── api/freelancehub/
+    │       ├── matching/route.ts
+    │       ├── notifications/route.ts  ← GET list · PATCH mark read
+    │       ├── cron/reminders/route.ts ← cron J-1 (08:00 UTC daily)
+    │       ├── admin/export-csv/       ← export CSV réservations
+    │       ├── client/bookings/        ← création + paiement Stripe
+    │       ├── consultant/             ← profil + slots
+    │       └── reviews/route.ts
+    ├── components/freelancehub/
+    │   ├── FHNav.tsx                   ← nav + cloche notifications
+    │   ├── FHSidebar.tsx
+    │   ├── client/SearchClient.tsx
+    │   ├── client/BookingModal.tsx     ← confirm → Stripe → reveal
+    │   └── consultant/
+    └── lib/freelancehub/
+        ├── types.ts
+        ├── db.ts
+        ├── auth-queries.ts
+        ├── email.ts                    ← Resend (4 templates)
+        ├── matching.ts                 ← algo scoring 4 critères
+        └── notifications.ts           ← createNotification, getUnreadCount…
+```
+
+---
+
+## Algorithme de matching
 
 ```
 score = 0.40 × skill_match
       + 0.30 × rating_score       (rating / 5)
-      + 0.20 × availability_score (slot dispo à la date demandée)
+      + 0.20 × availability_score (slot dispo à la date)
       + 0.10 × price_score        (1 - tarif_norm / budget_max)
 ```
 
-Top 5 consultants retournés, **identité masquée** (pas de nom ni email).
+Prix fixe : **85 € TTC** (70,83 € HT). Commission plateforme : **15 %**. Net consultant : **72,12 €** (85 % HT).
 
-### Comptes de démonstration (mot de passe : `demo1234`)
+---
 
-| Rôle       | Email                          |
-| ---------- | ------------------------------ |
-| Admin      | `admin@perform-learn.fr`       |
+## Variables d'environnement Vercel
+
+| Variable | Statut |
+|---|---|
+| `DATABASE_URL` | ✅ `postgresql://appstore:***@37.59.125.159:5432/appstore` |
+| `NEXTAUTH_SECRET` | ✅ |
+| `NEXTAUTH_URL` | ✅ `https://portal.perform-learn.fr` |
+| `RESEND_API_KEY` | ✅ |
+| `STRIPE_SECRET_KEY` | ✅ |
+| `STRIPE_PUBLISHABLE_KEY` | ✅ |
+| `NEXT_PUBLIC_API_URL` | ✅ `https://api.perform-learn.fr` |
+| `CRON_SECRET` | ✅ (secret pour `/api/freelancehub/cron/reminders`) |
+
+---
+
+## Comptes de démonstration (mot de passe : `demo1234`)
+
+| Rôle | Email |
+|---|---|
+| Admin | `admin@perform-learn.fr` |
 | Consultant | `consultant1@perform-learn.fr` |
-| Client     | `client1@perform-learn.fr`     |
-
-### Emails transactionnels (Resend)
-
-| Déclencheur           | Destinataires                                         |
-| --------------------- | ----------------------------------------------------- |
-| Paiement capturé      | Client (confirmation) + Consultant (nouvelle mission) |
-| J-1 avant mission     | Client + Consultant (rappel)                          |
-| Mission terminée      | Client + Consultant (demande d'évaluation)            |
-| 2e évaluation soumise | Consultant (libération des fonds)                     |
-
-### Point technique important — Edge Runtime
-
-Le middleware Next.js tourne sur Edge Runtime (pas Node.js). `bcryptjs` et `pg` sont incompatibles Edge. Pattern utilisé :
-
-- `auth.config.ts` : config JWT/callbacks **sans** providers → importé par le middleware
-- `auth.ts` : étend `authConfig` + Credentials provider avec bcrypt → Node.js uniquement
-- `middleware.ts` : instancie `NextAuth(authConfig)` (pas d'import de `auth.ts`)
+| Client | `client1@perform-learn.fr` |
 
 ---
 
-## Déploiement Vercel — Status production
+## Workflow Claude — Comment travailler sur ce projet
 
-**URL** : `https://app-store-sandy.vercel.app` (alias : `portal.perform-learn.fr` une fois CNAME propagé)
-**Projet Vercel** : `prj_9rs20IFlEJaEwQDwsmtBTplbucwl` | Team : `team_0hYXNWFdzAbTf8FOBmaI5hPC`
-**Dernier commit déployé** : `376b119` (fix Edge Runtime middleware)
+### Règle fondamentale : planifier avant de coder
 
-### Variables d'environnement Vercel (toutes configurées)
+**Avant toute modification :**
 
-| Variable              | Status                                                     |
-| --------------------- | ---------------------------------------------------------- |
-| `DATABASE_URL`        | ✅ `postgresql://appstore:***@37.59.125.159:5432/appstore` |
-| `NEXTAUTH_SECRET`     | ✅ configuré                                               |
-| `NEXTAUTH_URL`        | ✅ `https://portal.perform-learn.fr`                       |
-| `RESEND_API_KEY`      | ✅ configuré                                               |
-| `NEXT_PUBLIC_API_URL` | ✅ `https://api.perform-learn.fr`                          |
+1. **Lire les fichiers concernés** (ne jamais modifier à l'aveugle)
+2. **Annoncer le plan** : lister les fichiers à toucher, décrire les changements attendus
+3. **Valider avec Abdel** si le plan impacte : la DB, le middleware Edge, le flow de paiement Stripe, ou plusieurs modules à la fois
+4. **Travailler phase par phase** : une phase cohérente = un ensemble de fichiers liés = un commit
 
----
-
-## Tests E2E — Scénarios de validation
-
-### Pré-requis
-
-- Accès sur `https://portal.perform-learn.fr` (ou `https://app-store-sandy.vercel.app` tant que le CNAME n'est pas propagé)
-- Comptes demo actifs avec bcrypt hashes (`demo1234`)
-
-### Scénario 1 — Login et RBAC
+### Cycle de développement
 
 ```
-1. Aller sur /freelancehub/login
-2. Login admin@perform-learn.fr / demo1234
-   → Doit rediriger vers /freelancehub/admin
-3. Logout
-4. Login consultant1@perform-learn.fr / demo1234
-   → Doit rediriger vers /freelancehub/consultant
-5. Tenter d'accéder à /freelancehub/client
-   → Doit rediriger vers /freelancehub/consultant (mauvais rôle)
-6. Login client1@perform-learn.fr / demo1234
-   → Doit rediriger vers /freelancehub/client
+1. Lire les fichiers concernés (Read tool)
+2. Annoncer le plan (liste fichiers + changements)
+3. Obtenir validation si besoin
+4. Modifier les fichiers (Edit/Write tools)
+5. Tester le build :
+   cd portal && npm run build
+6. Commiter en local :
+   git add <fichiers spécifiques — jamais git add -A>
+   git commit -m "feat(scope): description courte"
+7. Pusher sur GitHub :
+   git push origin main
+   → Vercel redéploie automatiquement
+8. Appliquer migration SQL si besoin (voir ci-dessous)
 ```
 
-### Scénario 2 — Recherche et matching consultant
-
-```
-1. Login client1
-2. Aller sur /freelancehub/client/search
-3. Sélectionner une compétence (ex: "ERP / D365 F&O"), une date, une heure
-4. Cliquer "Rechercher"
-   → Doit afficher ≤5 cartes anonymes (sans nom ni email)
-   → Chaque carte affiche : compétence, score composite, rating, tarif HT, barres de score
-5. Cliquer sur une carte → BookingModal s'ouvre
-```
-
-### Scénario 3 — Booking et paiement (flow complet)
-
-```
-1. Dans BookingModal (étape confirm) : vérifier récapitulatif
-2. Cliquer "Procéder au paiement"
-   → Étape payment : formulaire carte mock (4242 4242 4242 4242)
-3. Remplir la carte et valider
-   → API POST /api/freelancehub/client/bookings crée la réservation
-   → API POST /api/freelancehub/client/bookings/[id]/pay capture le paiement
-   → Email confirmation envoyé au client ET au consultant (Resend)
-   → Étape done : NOM et EMAIL du consultant révélés
-4. Vérifier dans /freelancehub/client/bookings que la réservation apparaît (status: confirmed)
-```
-
-### Scénario 4 — Vue consultant
-
-```
-1. Login consultant1
-2. Aller sur /freelancehub/consultant/bookings
-   → La réservation créée en scénario 3 doit apparaître
-3. Aller sur /freelancehub/consultant/slots
-   → Possibilité d'ajouter/supprimer des créneaux
-```
-
-### Scénario 5 — Évaluations et libération des fonds
-
-```
-1. (Admin ou trigger manuel) Passer booking en status 'completed'
-2. Login client1 → /freelancehub/client/reviews/[bookingId]
-   → Soumettre note + commentaire
-   → Email envoyé au consultant pour demande d'évaluation
-3. Login consultant1 → /freelancehub/consultant/bookings/[bookingId]/review
-   → Soumettre note + commentaire
-   → Déclenchement automatique : payments.status → 'transferred'
-   → Email de libération des fonds envoyé au consultant
-4. Vérifier /freelancehub/consultant/earnings que le montant net apparaît
-```
-
-### Scénario 6 — Admin
-
-```
-1. Login admin
-2. /freelancehub/admin/users → liste tous les utilisateurs avec rôles
-3. /freelancehub/admin/bookings → toutes les réservations (client + consultant visibles)
-```
-
-### Commandes de diagnostic rapide (VPS)
+### Appliquer une migration SQL sur le VPS
 
 ```bash
-# Vérifier les 8 tables freelancehub
-ssh -p 2222 abdel@37.59.125.159 'docker exec postgres psql -U appstore -d appstore -c "\dt freelancehub.*"'
+# Envoyer et exécuter
+ssh -p 2222 abdel@37.59.125.159 \
+  'docker exec -i postgres psql -U appstore -d appstore' \
+  < migrations/007_freelancehub_v2.sql
 
-# Voir les réservations en cours
-ssh -p 2222 abdel@37.59.125.159 'docker exec postgres psql -U appstore -d appstore -c "SELECT b.id, u_client.email as client, u_cons.email as consultant, b.status, b.revealed_at FROM freelancehub.bookings b JOIN freelancehub.users u_client ON b.client_id = u_client.id JOIN freelancehub.consultants c ON b.consultant_id = c.id JOIN freelancehub.users u_cons ON c.user_id = u_cons.id ORDER BY b.created_at DESC LIMIT 10;"'
+# Vérifier
+ssh -p 2222 abdel@37.59.125.159 \
+  'docker exec postgres psql -U appstore -d appstore -c "\dt freelancehub.*"'
+```
 
-# Voir les paiements
-ssh -p 2222 abdel@37.59.125.159 'docker exec postgres psql -U appstore -d appstore -c "SELECT booking_id, status, amount_ht, commission FROM freelancehub.payments ORDER BY created_at DESC LIMIT 10;"'
+### Pull sur le VPS (si fichiers VPS modifiés)
+
+```bash
+# Fichiers docker-compose ou Caddyfile
+ssh -p 2222 abdel@37.59.125.159 'cd /appli/app-store && git pull origin main'
+
+# Rechargement Caddy
+ssh -p 2222 abdel@37.59.125.159 \
+  'cd /appli/app-store && docker compose exec caddy caddy reload --config /etc/caddy/Caddyfile'
+
+# Rebuild containers
+ssh -p 2222 abdel@37.59.125.159 'cd /appli/app-store && docker compose up -d --build'
+```
+
+### Conventions de commit
+
+```
+feat(scope):     nouvelle fonctionnalité
+fix(scope):      correction de bug
+refactor(scope): refactoring sans changement de comportement
+chore(scope):    migration SQL, config, CI
+test(scope):     tests E2E ou unitaires
+
+Scopes : freelancehub | govern | infra | portal | db
 ```
 
 ---
 
-## Structure du repo
+## Règles de sécurité immuables
 
-```
-/home/user/app-store/  (mirrored sur VPS /appli/app-store/)
-├── CLAUDE.md
-├── README.md
-├── docker-compose.yml
-├── caddy/Caddyfile
-├── .env                                    # Secrets (non committé)
-├── init-db.sql
-├── migration_governance_v*.sql
-├── migrations/
-│   └── 006_freelancehub_v1.sql             # Schema freelancehub complet
-├── seed_governance_v1.sql
-├── govern/                                 # Seeds et docs gouvernance
-├── api/                                    # API Node.js waitlist (⏳ non déployé)
-├── landing.html
-└── portal/                                 # Next.js App Router — Vercel
-    ├── auth.config.ts                      # Config Edge-safe (middleware)
-    ├── auth.ts                             # NextAuth v5 + Credentials
-    ├── middleware.ts                       # RBAC protection routes
-    ├── app/
-    │   ├── govern/                         # Framework gouvernance
-    │   └── freelancehub/                   # Marketplace B2B
-    ├── components/
-    │   ├── govern/
-    │   └── freelancehub/
-    └── lib/
-        ├── govern/
-        └── freelancehub/
-```
+| Règle | Raison |
+|---|---|
+| Ne jamais calculer le montant Stripe côté client | Toujours recalculer depuis la DB |
+| Ne jamais exposer `name`, `email`, `bio`, `linkedin_url` avant `revealed_at IS NOT NULL` | Anonymat jusqu'au paiement |
+| Ne jamais importer `bcryptjs` dans `auth.config.ts` | Edge Runtime incompatible |
+| Ne jamais utiliser `CREATE OR REPLACE VIEW` si les colonnes changent d'ordre | Bug PostgreSQL silencieux |
+| Ne jamais utiliser `git add -A` ou `git add .` | Risque de commit de fichiers sensibles (.env) |
 
 ---
 
-## Caddyfile actuel (fonctionnel)
+## Point technique — Edge Runtime
 
-```caddyfile
-api.perform-learn.fr {
-	reverse_proxy app:3000
-	header {
-		Access-Control-Allow-Origin https://perform-learn.fr https://*.vercel.app https://portal.perform-learn.fr
-		Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
-		Access-Control-Allow-Headers "Content-Type, Authorization"
-	}
-}
+Le middleware Next.js tourne sur Edge Runtime (pas Node.js). Pattern obligatoire :
 
-s3.perform-learn.fr    { reverse_proxy minio:9000 }
-minio.perform-learn.fr { reverse_proxy minio:9001 }
-analytics.perform-learn.fr { reverse_proxy umami:3000 }
-monitor.perform-learn.fr   { reverse_proxy netdata:19999 }
-
-perform-learn.fr, www.perform-learn.fr {
-	root * /srv
-	file_server
-}
-```
+- `auth.config.ts` → config JWT/callbacks **sans** providers → importé par middleware
+- `auth.ts` → étend authConfig + Credentials + bcrypt → Node.js uniquement
+- `middleware.ts` → instancie `NextAuth(authConfig)` (jamais `auth.ts`)
 
 ---
 
-## Variables d'environnement
-
-```
-# VPS .env (non committé)
-PG_USER=appstore
-PG_PASSWORD=<secret>
-MINIO_ROOT_USER=minioadmin
-MINIO_ROOT_PASSWORD=<secret>
-UMAMI_SECRET=<secret>
-
-# Vercel (portal) — toutes configurées
-DATABASE_URL=postgresql://appstore:<secret>@37.59.125.159:5432/appstore
-NEXTAUTH_SECRET=<secret>
-NEXTAUTH_URL=https://portal.perform-learn.fr
-RESEND_API_KEY=<secret>
-NEXT_PUBLIC_API_URL=https://api.perform-learn.fr
-```
-
----
-
-## Tâches restantes — par priorité
-
-### Infra VPS
-
-2. **⏳ Déployer le container `app` (API waitlist)** :
-   ```bash
-   ssh -p 2222 abdel@37.59.125.159 'cd /appli/app-store && docker compose up -d --build app'
-   ```
-3. **⏳ Mettre à jour le Caddyfile** pour ajouter `https://portal.perform-learn.fr` dans les CORS du bloc `api.perform-learn.fr`
-
-### FreelanceHub — évolutions post-MVP
-
-| Priorité | Feature                                                          |
-| -------- | ---------------------------------------------------------------- |
-| 🔴       | Intégration Stripe réelle (remplacer le mock)                    |
-| 🔴       | Cron J-1 : envoi automatique des rappels (`sendBookingReminder`) |
-| 🟠       | Notifications in-app (badge sur la cloche)                       |
-| 🟠       | Page profil consultant éditable                                  |
-| 🟡       | Export CSV des réservations (admin)                              |
-
-### Gouvernance — évolutions
-
-| Priorité   | Feature                                             | Valeur business |
-| ---------- | --------------------------------------------------- | --------------- |
-| 🔴 Haute   | Édition inline business_value depuis `/govern/plan` | 85              |
-| 🔴 Haute   | Filtres sur `/govern/plan` : cycle, statut, valeur  | 80              |
-| 🟠 Moyenne | Graphe burndown par cycle                           | 65              |
-| 🟠 Moyenne | Page `/govern/agent` : prompt → artefact via LLM    | 60              |
-| 🟡 Faible  | Export CSV du plan d'action                         | 40              |
-
-### Apps métiers futures
-
-- `meteo-projet` : dashboard météo de projet (schéma `meteo` prêt)
-- `stock` : gestion de stock (schéma `stock` prêt)
-- Chaque app = repo Next.js séparé déployé sur Vercel + tracking Umami
-
----
-
-## Framework gouvernance — rappel hiérarchie
+## Gouvernance — rappel hiérarchie
 
 ```
 Vision
@@ -442,125 +278,56 @@ Vision
 
 **Scoring business_value** :
 
-- `≥75` → Haute (badge sauge)
-- `50–74` → Moyenne (badge terracotta)
-- `25–49` → Faible (badge gris)
-- `<25` → Très faible (badge kaki)
+| Score | Label | Badge |
+|---|---|---|
+| ≥ 75 | Haute | sauge |
+| 50–74 | Moyenne | terracotta |
+| 25–49 | Faible | gris |
+| < 25 | Très faible | kaki |
 
-**value_type** : `user_acquisition` | `cost_reduction` | `strategic_positioning` | `ux_improvement` | `technical_debt`
+**value_type** : `user_acquisition` \| `cost_reduction` \| `strategic_positioning` \| `ux_improvement` \| `technical_debt`
 
----
-
-## Workflow Claude — Comment travailler sur ce projet
-
-### Avant de coder
-
-1. **Lire les fichiers concernés** avant toute modification (ne jamais modifier à l'aveugle)
-2. **Annoncer le plan** : lister les fichiers à toucher, décrire les changements attendus
-3. **Valider avec Abdel** si le plan impacte la DB, le middleware Edge, ou le flow de paiement
-4. **Travailler phase par phase** : une phase = un ensemble cohérent de fichiers, un commit
-
-### Cycle dev → déploiement
-
-```
-1. Modifier les fichiers localement (portal/ ou migrations/)
-2. Tester le build Next.js si changements portal/ :
-   cd portal && npm run build
-3. Commiter avec un message conventionnel :
-   git add <fichiers spécifiques>
-   git commit -m "feat(freelancehub): description courte"
-4. Pusher sur GitHub :
-   git push origin main
-5. Vercel redéploie automatiquement (surveiller https://vercel.com/aflouat)
-6. Si migration SQL : appliquer manuellement sur le VPS AVANT ou APRÈS selon le sens du changement
-```
-
-### Appliquer une migration SQL sur le VPS
-
-```bash
-# Depuis le repo local, envoyer et exécuter la migration
-ssh -p 2222 abdel@37.59.125.159 \
-  'docker exec -i postgres psql -U appstore -d appstore' \
-  < migrations/007_freelancehub_v2.sql
-
-# Vérifier
-ssh -p 2222 abdel@37.59.125.159 \
-  'docker exec postgres psql -U appstore -d appstore -c "\d freelancehub.consultants"'
-```
-
-### Pull sur le VPS (si fichiers VPS modifiés — docker-compose, Caddyfile, etc.)
-
-```bash
-ssh -p 2222 abdel@37.59.125.159 'cd /appli/app-store && git pull origin main'
-# Si changement Caddyfile :
-ssh -p 2222 abdel@37.59.125.159 'cd /appli/app-store && docker compose exec caddy caddy reload --config /etc/caddy/Caddyfile'
-# Si changement docker-compose :
-ssh -p 2222 abdel@37.59.125.159 'cd /appli/app-store && docker compose up -d --build'
-```
-
-### Conventions de commit
-
-```
-feat(scope): nouvelle fonctionnalité
-fix(scope): correction de bug
-refactor(scope): refactoring sans changement de comportement
-chore(scope): migration SQL, config, CI
-test(scope): tests E2E ou unitaires
-
-Scopes : freelancehub | govern | infra | portal | db
-```
-
-### Règles de sécurité immuables
-
-- **Ne jamais** calculer le montant Stripe côté client — toujours recalculer depuis la DB
-- **Ne jamais** exposer `name`, `email`, `bio`, `linkedin_url` avant `revealed_at IS NOT NULL`
-- **Ne jamais** importer `bcryptjs` dans `auth.config.ts` (Edge Runtime — incompatible)
-- **Ne jamais** utiliser `CREATE OR REPLACE VIEW` si les colonnes changent d'ordre
+**Règle critique views** : toujours `DROP VIEW IF EXISTS ... CASCADE; CREATE VIEW` (jamais `CREATE OR REPLACE VIEW`)
 
 ---
 
-## Conventions
+## Commandes de diagnostic rapide
 
-- **Formatting** : Scannable — headings, tables, bullet points
+```bash
+# Conteneurs VPS
+ssh -p 2222 abdel@37.59.125.159 'cd /appli/app-store && docker compose ps'
+
+# Tables FreelanceHub
+ssh -p 2222 abdel@37.59.125.159 \
+  'docker exec postgres psql -U appstore -d appstore -c "\dt freelancehub.*"'
+
+# Réservations récentes
+ssh -p 2222 abdel@37.59.125.159 \
+  'docker exec postgres psql -U appstore -d appstore -c "
+    SELECT b.id, uc.email AS client, uc2.email AS consultant,
+           b.status, b.revealed_at
+    FROM freelancehub.bookings b
+    JOIN freelancehub.users uc ON uc.id = b.client_id
+    JOIN freelancehub.consultants c ON c.id = b.consultant_id
+    JOIN freelancehub.users uc2 ON uc2.id = c.user_id
+    ORDER BY b.created_at DESC LIMIT 5;"'
+
+# Notifications non lues
+ssh -p 2222 abdel@37.59.125.159 \
+  'docker exec postgres psql -U appstore -d appstore -c "
+    SELECT type, COUNT(*) FROM freelancehub.notifications
+    WHERE is_read = false GROUP BY type;"'
+
+# Build portal local
+cd portal && npm run build
+```
+
+---
+
+## Conventions générales
+
+- **Langue** : français pour les échanges, anglais pour le code
+- **Formatting** : scannable — headings, tables, bullet points
 - **LaTeX** : uniquement pour formules mathématiques complexes
-- **Langue** : Français pour les échanges, anglais pour le code
-- **Git** : GitHub repo `aflouat/app-store` (privé), branche `main`
+- **Git** : repo GitHub `aflouat/app-store` (privé), branche `main`
 - **Approche** : POC fonctionnel, étapes par étapes, résultats concrets
-- **PostgreSQL views** : toujours `DROP VIEW IF EXISTS ... CASCADE; CREATE VIEW` (jamais `CREATE OR REPLACE VIEW` si les colonnes changent d'ordre)
-- **Next.js middleware** : toujours séparer `auth.config.ts` (Edge-safe) de `auth.ts` (Node.js) pour éviter l'incompatibilité bcrypt/Edge Runtime
-
----
-
-## Connexion VPS
-
-```bash
-ssh -p 2222 abdel@37.59.125.159
-cd /appli/app-store
-```
-
----
-
-## Commandes utiles
-
-```bash
-# Conteneurs
-docker compose ps
-docker compose logs app --tail 20
-docker compose up -d --build
-
-# PostgreSQL — gouvernance
-docker exec -i postgres psql -U appstore -d appstore -c "SELECT type, COUNT(*), AVG(business_value) FROM governance.artifacts WHERE business_value IS NOT NULL GROUP BY type;"
-docker exec -i postgres psql -U appstore -d appstore -c "\d governance.v_artifact_context"
-
-# PostgreSQL — freelancehub
-docker exec postgres psql -U appstore -d appstore -c "\dt freelancehub.*"
-docker exec postgres psql -U appstore -d appstore -c "SELECT email, role FROM freelancehub.users;"
-docker exec postgres psql -U appstore -d appstore -c "SELECT b.id, b.status, b.revealed_at, p.status as pay_status FROM freelancehub.bookings b LEFT JOIN freelancehub.payments p ON p.booking_id = b.id ORDER BY b.created_at DESC LIMIT 5;"
-
-# Backup
-docker exec postgres pg_dumpall -U appstore > backup_$(date +%Y%m%d).sql
-
-# Git sur VPS
-git pull origin main
-git log --oneline -5
-```
