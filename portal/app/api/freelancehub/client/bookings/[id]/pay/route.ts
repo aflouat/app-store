@@ -2,10 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { queryOne } from '@/lib/freelancehub/db'
 import { sendBookingConfirmation } from '@/lib/freelancehub/email'
+import Stripe from 'stripe'
 
-// Demo payment endpoint — in production this would use Stripe PaymentIntents
 export async function POST(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await auth()
@@ -14,7 +14,13 @@ export async function POST(
   }
 
   const { id: bookingId } = await params
+  const { payment_intent_id } = await req.json().catch(() => ({}))
 
+  if (!payment_intent_id) {
+    return NextResponse.json({ error: 'payment_intent_id manquant.' }, { status: 400 })
+  }
+
+  // Verify booking ownership
   const booking = await queryOne<{ id: string; client_id: string; status: string }>(
     `SELECT id, client_id, status FROM freelancehub.bookings WHERE id = $1`,
     [bookingId]
@@ -26,7 +32,30 @@ export async function POST(
     return NextResponse.json({ error: 'Cette réservation ne peut plus être payée.' }, { status: 409 })
   }
 
-  // Simulate Stripe payment capture — set status to confirmed + reveal consultant
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
+
+  // Verify PaymentIntent with Stripe
+  let paymentIntent: Stripe.PaymentIntent
+  try {
+    paymentIntent = await stripe.paymentIntents.retrieve(payment_intent_id)
+  } catch (err) {
+    console.error('[pay] Stripe retrieve error:', err)
+    return NextResponse.json({ error: 'PaymentIntent introuvable.' }, { status: 400 })
+  }
+
+  if (paymentIntent.status !== 'succeeded') {
+    return NextResponse.json(
+      { error: `Paiement non finalisé (statut: ${paymentIntent.status}).` },
+      { status: 402 }
+    )
+  }
+
+  // Verify metadata matches this booking (prevents replay attacks)
+  if (paymentIntent.metadata.booking_id !== bookingId) {
+    return NextResponse.json({ error: 'PaymentIntent invalide pour cette réservation.' }, { status: 400 })
+  }
+
+  // Update booking: confirmed + reveal consultant identity
   const updated = await queryOne<{ id: string }>(
     `UPDATE freelancehub.bookings
      SET status = 'confirmed', revealed_at = NOW(), updated_at = NOW()
@@ -37,16 +66,16 @@ export async function POST(
 
   if (!updated) return NextResponse.json({ error: 'Mise à jour impossible.' }, { status: 500 })
 
-  // Create payment record
+  // Create payment record with real Stripe PaymentIntent ID
   await queryOne(
     `INSERT INTO freelancehub.payments
        (booking_id, stripe_payment_id, amount, status, authorized_at, captured_at)
-     SELECT id, 'pi_demo_' || substr(id::text,1,8), amount_ht, 'captured', NOW(), NOW()
+     SELECT id, $2, amount_ht, 'captured', NOW(), NOW()
      FROM freelancehub.bookings WHERE id = $1`,
-    [bookingId]
+    [bookingId, payment_intent_id]
   )
 
-  // Send confirmation emails (fire-and-forget — don't block response)
+  // Send confirmation emails (fire-and-forget)
   try {
     const details = await queryOne<{
       client_name: string | null; client_email: string
@@ -78,7 +107,7 @@ export async function POST(
         amountHt:        details.amount_ht,
       })
     }
-  } catch (_) { /* email failure is non-blocking */ }
+  } catch (emailErr) { console.error('[pay] email error:', emailErr) }
 
   return NextResponse.json({ success: true, booking_id: bookingId })
 }
