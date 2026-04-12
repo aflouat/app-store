@@ -6,6 +6,7 @@ import styles from './Navbar.module.css'
 
 const TABS = [
   { label: 'Applications', href: '/' },
+  { label: 'FreelanceHub', href: '/freelancehub/login' },
   { label: 'Le Labo', href: '/labo' },
 ]
 

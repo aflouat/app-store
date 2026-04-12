@@ -21,13 +21,17 @@ const STATUS_CLASS: Record<App['status'], string> = {
 
 export default function AppCard({ app }: { app: App }) {
   const initials = app.name.slice(0, 2).toUpperCase()
-  const isAvailable = app.status === 'published' && app.url
+  // url starting with '/' = internal Next.js route (usable now)
+  const isLive = app.status === 'published' && app.url?.startsWith('/')
   const { toasts, showToast } = useToast()
   const [waitlistOpen, setWaitlistOpen] = useState(false)
 
+  const cardHref = isLive ? app.url! : `/apps/${app.slug}`
+
   const handleCtaClick = (e: React.MouseEvent) => {
+    if (isLive) return // let the Link handle navigation
     e.preventDefault()
-    if (isAvailable) {
+    if (app.status === 'published') {
       showToast('Bientôt disponible', 'info')
     } else {
       setWaitlistOpen(true)
@@ -36,7 +40,7 @@ export default function AppCard({ app }: { app: App }) {
 
   return (
     <>
-      <Link href={`/apps/${app.slug}`} className={styles.card}>
+      <Link href={cardHref} className={styles.card}>
         {/* Status badge */}
         <div className={`${styles.statusBadge} ${STATUS_CLASS[app.status]}`}>
           {STATUS_LABELS[app.status]}
@@ -77,9 +81,9 @@ export default function AppCard({ app }: { app: App }) {
           <span
             role="button"
             onClick={handleCtaClick}
-            className={`${styles.cta} ${isAvailable ? styles.ctaActive : styles.ctaSoon}`}
+            className={`${styles.cta} ${app.status === 'published' ? styles.ctaActive : styles.ctaSoon}`}
           >
-            {isAvailable ? 'Ouvrir →' : 'Rejoindre la waitlist'}
+            {isLive ? 'Ouvrir →' : app.status === 'published' ? 'Bientôt →' : 'Rejoindre la waitlist'}
           </span>
         </div>
       </Link>

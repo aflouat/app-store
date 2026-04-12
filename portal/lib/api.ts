@@ -57,15 +57,15 @@ const MOCK_APPS: App[] = [
   },
   {
     id: '4',
-    slug: 'booking-consultant',
-    name: 'Booking Consultant',
-    description: 'Réservez un expert en quelques clics. Calendrier temps réel, NDA automatique, paiement sécurisé.',
+    slug: 'freelancehub',
+    name: 'FreelanceHub',
+    description: 'Marketplace B2B : trouvez et réservez un consultant expert en quelques clics. Matching IA, paiement sécurisé, identité révélée après paiement.',
     icon_url: null,
-    version: '0.1.0',
-    status: 'coming_soon',
-    url: null,
+    version: '1.0.0',
+    status: 'published',
+    url: '/freelancehub/login',
     category: 'Consulting',
-    tags: ['Booking', 'Freelance', 'Matching'],
+    tags: ['Consulting', 'Freelance', 'Matching', 'Paiement'],
   },
   {
     id: '5',
@@ -85,7 +85,8 @@ export async function getApps(): Promise<App[]> {
   try {
     const res = await fetch(`${API}/apps`, { next: { revalidate: 60 } })
     if (!res.ok) return MOCK_APPS
-    return res.json()
+    const data: App[] = await res.json()
+    return data.length > 0 ? data : MOCK_APPS
   } catch {
     return MOCK_APPS
   }
