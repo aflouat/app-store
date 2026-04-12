@@ -7,6 +7,18 @@ import type { MatchingResult } from '@/lib/freelancehub/types'
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
 
+// ─── Tarification plateforme (identique à lib/matching.ts) ───
+const PRICE_TTC       = 85      // € TTC
+const PRICE_HT        = +(85 / 1.20).toFixed(2)   // 70.83 €
+const TVA             = +(PRICE_TTC - PRICE_HT).toFixed(2) // 14.17 €
+const COMMISSION      = +(PRICE_HT * 0.15).toFixed(2)     // 10.62 €
+const CONSULTANT_NET  = +(PRICE_HT - COMMISSION).toFixed(2) // 60.21 €
+// Centimes pour Stripe et DB
+const PRICE_TTC_CENTS = 8500
+const PRICE_HT_CENTS  = Math.round(PRICE_HT * 100)
+const COMMISSION_CENTS = Math.round(COMMISSION * 100)
+const CONSULTANT_CENTS = Math.round(CONSULTANT_NET * 100)
+
 interface Props {
   match:    MatchingResult
   clientId: string
@@ -87,7 +99,7 @@ function StripeForm({
     <>
       <h2 className="modal-title">Paiement sécurisé</h2>
       <div className="modal-payment-info">
-        <p>Montant à régler : <strong>{amountHt} € HT</strong></p>
+        <p>Montant à régler : <strong>{PRICE_TTC} € TTC</strong></p>
         <p className="modal-stripe-note">
           Les fonds sont sécurisés sur escrow jusqu&apos;à la fin de la mission.
         </p>
@@ -102,7 +114,7 @@ function StripeForm({
       <div className="modal-actions">
         <button className="modal-btn-ghost" onClick={onBack} disabled={paying}>Retour</button>
         <button className="fh-btn-primary" onClick={handlePay} disabled={paying || !stripe}>
-          {paying ? 'Traitement…' : `Payer ${amountHt} €`}
+          {paying ? 'Traitement…' : `Payer ${PRICE_TTC} € TTC`}
         </button>
       </div>
     </>
@@ -117,18 +129,15 @@ export default function BookingModal({ match, clientId, notes, onClose, onBooked
   const [bookingId,    setBookingId]    = useState<string | null>(null)
   const [clientSecret, setClientSecret] = useState<string | null>(null)
 
-  // Price calculation (TJM × duration in hours)
-  const durationH      = slot.duration_min / 60
-  const tjm            = c.daily_rate ?? 500
-  const amountHt       = Math.round(tjm * durationH)
-  const commission     = Math.round(amountHt * 0.15)
-  const consultantNet  = amountHt - commission
+  const nextDate = new Date(slot.slot_date + 'T00:00:00').toLocaleDateString('fr-FR', {
+    weekday: 'long', day: 'numeric', month: 'long',
+  })
 
   async function handleConfirm() {
     setError('')
     setLoading(true)
 
-    // 1. Create booking
+    // 1. Créer la réservation
     const bookingRes = await fetch('/api/freelancehub/client/bookings', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -138,9 +147,9 @@ export default function BookingModal({ match, clientId, notes, onClose, onBooked
         slot_id:        slot.id,
         matching_score: match.score,
         notes:          notes,
-        amount_ht:      amountHt * 100,     // centimes
-        commission:     commission * 100,
-        consultant_net: consultantNet * 100,
+        amount_ht:      PRICE_HT_CENTS,
+        commission:     COMMISSION_CENTS,
+        consultant_net: CONSULTANT_CENTS,
       }),
     })
 
@@ -181,14 +190,32 @@ export default function BookingModal({ match, clientId, notes, onClose, onBooked
           <>
             <h2 className="modal-title">Confirmation de réservation</h2>
             <div className="modal-summary">
-              <Row label="Expertise"        value={c.title ?? 'Consultant Expert'} />
-              <Row label="Date"             value={new Date(slot.slot_date + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })} />
-              <Row label="Heure"            value={`${slot.slot_time.slice(0,5)} (${slot.duration_min} min)`} />
-              <Row label="Score"            value={`${match.score} / 100`} />
+              <Row label="Expertise"   value={c.title ?? 'Consultant Expert'} />
+              <Row label="Date"        value={nextDate} />
+              <Row label="Heure"       value={`${slot.slot_time.slice(0,5)} — 1h de consultation`} />
+              <Row label="Score match" value={`${match.score} / 100`} />
               <hr className="modal-divider" />
-              <Row label="Montant HT"           value={`${amountHt} €`} />
-              <Row label="Commission (15%)"     value={`${commission} €`} />
-              <Row label="Net consultant"       value={`${consultantNet} €`} bold />
+              <div className="modal-price-block">
+                <div className="modal-price-line">
+                  <span>Montant HT</span><span>{PRICE_HT} €</span>
+                </div>
+                <div className="modal-price-line modal-price-tva">
+                  <span>TVA 20%</span><span>+ {TVA} €</span>
+                </div>
+                <div className="modal-price-line modal-price-total">
+                  <span>Total TTC</span><span>{PRICE_TTC} €</span>
+                </div>
+              </div>
+              <hr className="modal-divider" />
+              <div className="modal-ventil">
+                <p className="modal-ventil-title">Ventilation plateforme</p>
+                <div className="modal-price-line">
+                  <span>CA plateforme (15% HT)</span><span>{COMMISSION} €</span>
+                </div>
+                <div className="modal-price-line">
+                  <span>Honoraire consultant</span><span>{CONSULTANT_NET} €</span>
+                </div>
+              </div>
             </div>
             <p className="modal-anon-notice">
               🔒 L&apos;identité du consultant vous sera révélée après confirmation du paiement.
@@ -216,7 +243,7 @@ export default function BookingModal({ match, clientId, notes, onClose, onBooked
           >
             <StripeForm
               bookingId={bookingId!}
-              amountHt={amountHt}
+              amountHt={PRICE_TTC}
               onSuccess={() => setStep('done')}
               onBack={() => setStep('confirm')}
             />
@@ -254,6 +281,13 @@ export default function BookingModal({ match, clientId, notes, onClose, onBooked
           .modal-close:hover { color: var(--text); }
           .modal-title { font-family: 'Fraunces', serif; font-size: 1.35rem; font-weight: 700; color: var(--dark); }
           .modal-summary { display: flex; flex-direction: column; gap: .6rem; background: var(--bg); border-radius: var(--radius-sm); padding: 1.1rem; }
+          .modal-price-block { display: flex; flex-direction: column; gap: .4rem; }
+          .modal-price-line { display: flex; justify-content: space-between; font-size: .88rem; color: var(--text-mid); }
+          .modal-price-tva { color: var(--text-light); font-size: .82rem; }
+          .modal-price-total { font-weight: 700; font-size: 1rem; color: var(--dark); padding-top: .3rem; border-top: 1.5px solid var(--border); margin-top: .2rem; }
+          .modal-ventil { display: flex; flex-direction: column; gap: .35rem; }
+          .modal-ventil-title { font-size: .75rem; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--text-light); margin-bottom: .1rem; }
+          .modal-ventil .modal-price-line { font-size: .82rem; color: var(--text-light); }
           .modal-divider { border: none; border-top: 1px solid var(--border); margin: .2rem 0; }
           .modal-anon-notice { font-size: .85rem; color: var(--text-mid); background: var(--c1-pale); padding: .75rem; border-radius: var(--radius-sm); line-height: 1.5; }
           .modal-error { color: #c0392b; font-size: .85rem; background: #fdf0ef; padding: .5rem .75rem; border-radius: 6px; }

@@ -1,23 +1,43 @@
 // lib/freelancehub/matching.ts — SERVER ONLY
-// Matching algorithm : 40% skill match + 30% rating + 20% availability + 10% price
+//
+// Tarification : 85 € TTC fixe par consultation (1h)
+//   HT         = 85 / 1.20  = 70.83 €
+//   TVA 20%    = 85 - 70.83 = 14.17 €
+//   Commission = HT × 15%   = 10.62 €
+//   Consultant = HT - comm  = 60.21 €
+//
+// Score composite :
+//   55 % skill_match   (niveau déclaré par le consultant)
+//   35 % rating_score  (note / 5)
+//   10 % availability_score (prochain slot dans < 7j → 100, sinon dégressif)
+
 import { query } from './db'
 import type { MatchingResult } from './types'
 
+// ─── Prix plateforme (centimes) ──────────────────────────────
+export const CONSULTATION_PRICE_TTC  = 8500   // 85,00 € TTC
+export const CONSULTATION_PRICE_HT   = Math.round(CONSULTATION_PRICE_TTC / 1.20) // 7083 c
+export const CONSULTATION_TVA        = CONSULTATION_PRICE_TTC - CONSULTATION_PRICE_HT // 1417 c
+export const PLATFORM_COMMISSION     = Math.round(CONSULTATION_PRICE_HT * 0.15)   // 1062 c
+export const CONSULTANT_NET          = CONSULTATION_PRICE_HT - PLATFORM_COMMISSION  // 6021 c
+
 interface MatchInput {
   skill_id:      number
-  slot_date:     string
-  slot_time:     string
-  client_budget: number | null  // TJM max in euros, null = no constraint
+  client_budget: number | null  // budget max TTC en euros (null = pas de limite)
 }
 
 export async function findMatches(input: MatchInput): Promise<MatchingResult[]> {
-  const { skill_id, slot_date, slot_time, client_budget } = input
+  const { skill_id, client_budget } = input
 
-  // Find consultants with the skill + an available slot at this datetime
+  // Budget check : le prix fixe est 85 € TTC
+  if (client_budget !== null && client_budget < CONSULTATION_PRICE_TTC / 100) {
+    return []
+  }
+
+  // Trouver les consultants ayant la compétence + leur PROCHAIN créneau dispo
   const candidates = await query<{
     consultant_id: string
     user_id:       string
-    name:          string | null
     title:         string | null
     bio:           string | null
     daily_rate:    number | null
@@ -30,13 +50,11 @@ export async function findMatches(input: MatchInput): Promise<MatchingResult[]> 
     slot_date:     string
     slot_time:     string
     duration_min:  number
-    // availability score factors
-    available_slots_count: number
+    days_until:    number   // jours avant le prochain créneau
   }>(
-    `SELECT
+    `SELECT DISTINCT ON (c.id)
        c.id          AS consultant_id,
        c.user_id,
-       u.name,
        c.title,
        c.bio,
        c.daily_rate,
@@ -49,34 +67,24 @@ export async function findMatches(input: MatchInput): Promise<MatchingResult[]> 
        s.slot_date::text,
        s.slot_time::text,
        s.duration_min,
-       -- how many total available slots the consultant has in next 14 days
-       (SELECT COUNT(*) FROM freelancehub.slots s2
-        WHERE s2.consultant_id = c.id
-          AND s2.status = 'available'
-          AND s2.slot_date BETWEEN CURRENT_DATE AND CURRENT_DATE + 14
-       )            AS available_slots_count
+       (s.slot_date - CURRENT_DATE) AS days_until
      FROM freelancehub.consultants c
-     JOIN freelancehub.users u ON u.id = c.user_id
-     JOIN freelancehub.consultant_skills cs ON cs.consultant_id = c.id AND cs.skill_id = $1
-     JOIN freelancehub.slots s ON s.consultant_id = c.id
-       AND s.slot_date = $2
-       AND s.slot_time = $3
-       AND s.status = 'available'
+     JOIN freelancehub.users u       ON u.id = c.user_id
+     JOIN freelancehub.consultant_skills cs
+       ON cs.consultant_id = c.id AND cs.skill_id = $1
+     JOIN freelancehub.slots s
+       ON s.consultant_id = c.id
+      AND s.status = 'available'
+      AND s.slot_date >= CURRENT_DATE
      WHERE c.is_available = true
-       AND ($4::int IS NULL OR c.daily_rate IS NULL OR c.daily_rate <= $4)
-     ORDER BY c.rating DESC`,
-    [skill_id, slot_date, slot_time, client_budget]
+     ORDER BY c.id, s.slot_date ASC, s.slot_time ASC`,
+    [skill_id]
   )
 
   if (candidates.length === 0) return []
 
-  // Compute max daily_rate among candidates for price normalization
-  const rates = candidates.map(c => c.daily_rate ?? 0).filter(r => r > 0)
-  const maxRate = rates.length > 0 ? Math.max(...rates) : 1
-  const minRate = rates.length > 0 ? Math.min(...rates) : 0
-
   const results: MatchingResult[] = candidates.map(c => {
-    // Skill match (based on level)
+    // Skill match (niveau déclaré)
     const LEVEL_SCORE: Record<string, number> = {
       expert:       100,
       senior:        80,
@@ -85,62 +93,58 @@ export async function findMatches(input: MatchInput): Promise<MatchingResult[]> 
     }
     const skillScore = LEVEL_SCORE[c.skill_level] ?? 50
 
-    // Rating score (0-100)
+    // Rating score (0–100)
     const ratingScore = (Number(c.rating) / 5) * 100
 
-    // Availability score (more available slots = more flexible = higher score, capped at 100)
-    const availabilityScore = Math.min(Number(c.available_slots_count) * 10, 100)
+    // Availability score : créneau dans < 7j → 100, linéaire jusqu'à 30j → 0
+    const days = Number(c.days_until)
+    const availabilityScore = days <= 7
+      ? 100
+      : Math.max(0, Math.round(100 - ((days - 7) / 23) * 100))
 
-    // Price competitiveness (lower rate = higher score)
-    let priceScore = 100
-    if (c.daily_rate && maxRate > minRate) {
-      priceScore = ((maxRate - c.daily_rate) / (maxRate - minRate)) * 100
-    }
-
-    // Weighted composite score
+    // Score composite 55 / 35 / 10
     const score =
-      0.40 * skillScore +
-      0.30 * ratingScore +
-      0.20 * availabilityScore +
-      0.10 * priceScore
+      0.55 * skillScore +
+      0.35 * ratingScore +
+      0.10 * availabilityScore
 
     return {
       consultant: {
-        id:              c.consultant_id,
-        user_id:         c.user_id,
-        title:           c.title,
-        bio:             c.bio,
-        daily_rate:      c.daily_rate,
+        id:               c.consultant_id,
+        user_id:          c.user_id,
+        title:            c.title,
+        bio:              c.bio,
+        daily_rate:       c.daily_rate,
         experience_years: 0,
-        rating:          Number(c.rating),
-        rating_count:    Number(c.rating_count),
-        is_verified:     c.is_verified,
-        is_available:    true,
-        location:        c.location,
-        linkedin_url:    null,
-        // Anonymized — name is NOT exposed here
-        name:            undefined,
-        email:           undefined,
+        rating:           Number(c.rating),
+        rating_count:     Number(c.rating_count),
+        is_verified:      c.is_verified,
+        is_available:     true,
+        location:         c.location,
+        linkedin_url:     null,
+        // Anonymisé : nom/email non exposés
+        name:  undefined,
+        email: undefined,
       },
       slot: {
-        id:           c.slot_id,
+        id:            c.slot_id,
         consultant_id: c.consultant_id,
-        slot_date:    c.slot_date,
-        slot_time:    c.slot_time,
-        duration_min: Number(c.duration_min),
-        status:       'available',
-        created_at:   '',
+        slot_date:     c.slot_date,
+        slot_time:     c.slot_time,
+        duration_min:  60,   // 1 heure fixe
+        status:        'available',
+        created_at:    '',
       },
       score: Math.round(score * 10) / 10,
       score_breakdown: {
         skill_match:        Math.round(skillScore),
         rating_score:       Math.round(ratingScore),
         availability_score: Math.round(availabilityScore),
-        price_score:        Math.round(priceScore),
+        price_score:        100,  // prix fixe plateforme = 85 € pour tous
       },
     }
   })
 
-  // Sort by score desc, return top 5
+  // Tri par score desc, top 5
   return results.sort((a, b) => b.score - a.score).slice(0, 5)
 }

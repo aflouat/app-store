@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { queryOne } from '@/lib/freelancehub/db'
+import { CONSULTATION_PRICE_TTC, CONSULTATION_PRICE_HT, CONSULTATION_TVA, PLATFORM_COMMISSION, CONSULTANT_NET } from '@/lib/freelancehub/matching'
 import Stripe from 'stripe'
 
 export async function POST(
@@ -14,10 +15,8 @@ export async function POST(
 
   const { id: bookingId } = await params
 
-  const booking = await queryOne<{
-    id: string; client_id: string; status: string; amount_ht: number
-  }>(
-    `SELECT id, client_id, status, amount_ht FROM freelancehub.bookings WHERE id = $1`,
+  const booking = await queryOne<{ id: string; client_id: string; status: string }>(
+    `SELECT id, client_id, status FROM freelancehub.bookings WHERE id = $1`,
     [bookingId]
   )
 
@@ -35,14 +34,21 @@ export async function POST(
 
   try {
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: booking.amount_ht, // already in centimes (stored as integer cents)
+      // Prix fixe TTC : 85,00 € = 8500 centimes
+      amount: CONSULTATION_PRICE_TTC,
       currency: 'eur',
       metadata: {
-        booking_id: bookingId,
-        client_id: session.user.id,
-        platform: 'perform-learn.fr',
+        booking_id:          bookingId,
+        client_id:           session.user.id,
+        platform:            'perform-learn.fr',
+        // Ventilation (en centimes)
+        amount_ttc:          CONSULTATION_PRICE_TTC,
+        amount_ht:           CONSULTATION_PRICE_HT,
+        tva:                 CONSULTATION_TVA,
+        platform_commission: PLATFORM_COMMISSION,
+        consultant_net:      CONSULTANT_NET,
       },
-      description: 'Honoraire consultant - perform-learn.fr',
+      description: 'Consultation 1h — perform-learn.fr',
     })
 
     return NextResponse.json({ client_secret: paymentIntent.client_secret })

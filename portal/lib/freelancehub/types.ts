@@ -121,9 +121,7 @@ export interface Review {
 // ─── Matching ─────────────────────────────────────────────────
 export interface MatchingInput {
   skill_id: number
-  slot_date: string
-  slot_time: string
-  client_budget?: number  // TJM max en euros
+  client_budget?: number | null  // budget max TTC en euros (null = sans limite)
 }
 
 export interface MatchingResult {
