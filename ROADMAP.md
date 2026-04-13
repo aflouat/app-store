@@ -1,6 +1,6 @@
 # ROADMAP.md — perform-learn.fr
 
-> **Vision** : "Une entreprise performante est une entreprise apprenante."
+> **Vision** : "Une entreprise performante est une entreprise apprenante. permettre à chaque consultant de proposer un service de qualité et à chaque entreprise d'accéder à un consultant compétent à l'heure et sans engagement!"
 > **Positionnement** : Digital Service Hub haut de gamme — automatiser l'intermédiation freelance/entreprise pour libérer le talent de la paperasse.
 > **Entité** : Marketplace d'intermediation entre freelance et client, 
 > **Lancement public** : 30 avril 2026
@@ -93,9 +93,10 @@
 - [ ] Landing page → redirection portail
 - [ ] Offre Early Adopter (commission réduite, badge fondateur)
 - [ ] Onboarding consultant KYC/URSSAF complet
-- [ ] NDA automatique
 - [ ] CGU / Politique de confidentialité (RGPD)
 - [ ] Email de lancement aux inscrits waitlist (Brevo)
+- [ ] **Signatures Phase 1** — table `freelancehub.signatures` + checkbox CGU horodatée à l'onboarding (migration 008, provider `checkbox`, légalement suffisant pour CGU/ToS)
+- [ ] **NDA automatique Phase 1** — template PDF NDA généré à la 1ère mission, acceptation checkbox + signature stockée en DB
 
 ---
 
@@ -108,6 +109,9 @@
 - [ ] Dashboard client : historique, factures, experts favoris
 - [ ] 2ème-3ème app métier dans le catalogue (Météo Projet ou Gestion Stock)
 - [ ] Publication régulière LPA (1 article/semaine)
+- [ ] **Agenda Doctolib — CalendarWeek consultant** ✅ implémenté C5 : grille semaine visuelle (clic par case), navigation sem. précédente/suivante, duplication de semaine en 1 clic, migration 008
+- [ ] **Agenda — Slot picker client** ✅ implémenté C5 : étape 0 BookingModal, sélection date + heure parmi les créneaux disponibles du consultant (60 jours)
+- [ ] **Signatures Phase 2 — Yousign** : intégration API Yousign (éditeur français, RGPD), NDA signé électroniquement avant 1ère mission consultant, document stocké MinIO, `provider_signature_id` tracé en DB
 
 **KPIs cibles** : taux récurrence > 30 %, Time-to-Contract < 5 min, 20+ experts Ready-to-book
 

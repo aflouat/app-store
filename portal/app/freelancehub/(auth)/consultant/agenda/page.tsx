@@ -1,7 +1,7 @@
 import { auth } from '@/auth'
 import { redirect } from 'next/navigation'
-import { query, queryOne } from '@/lib/freelancehub/db'
-import AgendaManager from '@/components/freelancehub/consultant/AgendaManager'
+import { queryOne } from '@/lib/freelancehub/db'
+import AgendaCalendar from '@/components/freelancehub/consultant/AgendaCalendar'
 
 export default async function ConsultantAgendaPage() {
   const session = await auth()
@@ -31,30 +31,15 @@ export default async function ConsultantAgendaPage() {
     )
   }
 
-  const slots = await query<{
-    id: string
-    slot_date: string
-    slot_time: string
-    duration_min: number
-    status: string
-  }>(
-    `SELECT id, slot_date::text, slot_time::text, duration_min, status
-     FROM freelancehub.slots
-     WHERE consultant_id = $1 AND slot_date >= CURRENT_DATE
-     ORDER BY slot_date, slot_time
-     LIMIT 60`,
-    [consultant.id]
-  )
-
   return (
     <div className="fh-page">
       <header className="fh-page-header">
         <div>
           <h1 className="fh-page-title">Mon agenda</h1>
-          <p className="fh-page-sub">Gérez vos disponibilités. Les créneaux libres seront proposés aux clients.</p>
+          <p className="fh-page-sub">Cliquez sur une case pour ajouter ou supprimer un créneau. Utilisez &quot;Dupliquer →&quot; pour copier la semaine entière.</p>
         </div>
       </header>
-      <AgendaManager consultantId={consultant.id} initialSlots={slots} />
+      <AgendaCalendar consultantId={consultant.id} />
       <style>{`
         .fh-page { display: flex; flex-direction: column; gap: 2rem; max-width: 900px; }
         .fh-page-header { display: flex; flex-direction: column; gap: .4rem; }

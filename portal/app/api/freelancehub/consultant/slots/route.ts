@@ -1,6 +1,48 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
-import { queryOne } from '@/lib/freelancehub/db'
+import { query, queryOne } from '@/lib/freelancehub/db'
+
+// ─── GET /api/freelancehub/consultant/slots?week=YYYY-MM-DD ──
+// Returns all non-cancelled slots for the week containing the given date.
+export async function GET(req: NextRequest) {
+  const session = await auth()
+  if (!session?.user || session.user.role !== 'consultant') {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const consultant = await queryOne<{ id: string }>(
+    `SELECT id FROM freelancehub.consultants WHERE user_id = $1`,
+    [session.user.id]
+  )
+  if (!consultant) return NextResponse.json({ error: 'Profil consultant introuvable.' }, { status: 404 })
+
+  // Compute Monday of the requested week
+  const weekParam = new URL(req.url).searchParams.get('week')
+  const ref = weekParam && /^\d{4}-\d{2}-\d{2}$/.test(weekParam)
+    ? new Date(weekParam + 'T00:00:00')
+    : new Date()
+  const dayOfWeek = ref.getDay()
+  const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
+  ref.setDate(ref.getDate() + diffToMonday)
+  const weekStart = ref.toISOString().split('T')[0]
+  const weekEndDate = new Date(ref)
+  weekEndDate.setDate(weekEndDate.getDate() + 6)
+  const weekEnd = weekEndDate.toISOString().split('T')[0]
+
+  const slots = await query<{
+    id: string; slot_date: string; slot_time: string; duration_min: number; status: string
+  }>(
+    `SELECT id, slot_date::text, slot_time::text, duration_min, status
+     FROM freelancehub.slots
+     WHERE consultant_id = $1
+       AND slot_date >= $2 AND slot_date <= $3
+       AND status != 'cancelled'
+     ORDER BY slot_date, slot_time`,
+    [consultant.id, weekStart, weekEnd]
+  )
+
+  return NextResponse.json({ slots, weekStart })
+}
 
 export async function POST(req: NextRequest) {
   const session = await auth()

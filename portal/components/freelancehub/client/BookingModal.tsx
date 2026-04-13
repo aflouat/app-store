@@ -1,9 +1,18 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { loadStripe } from '@stripe/stripe-js'
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js'
 import type { MatchingResult } from '@/lib/freelancehub/types'
+
+interface AvailableSlot { id: string; slot_time: string; duration_min: number }
+
+const MONTHS_FR = ['jan','fév','mar','avr','mai','jun','jul','aoû','sep','oct','nov','déc']
+
+function fmtDate(dateStr: string) {
+  const d = new Date(dateStr + 'T00:00:00')
+  return d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })
+}
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
 
@@ -122,14 +131,52 @@ function StripeForm({
 }
 
 export default function BookingModal({ match, clientId, notes, onClose, onBooked }: Props) {
-  const { consultant: c, slot } = match
-  const [step,         setStep]         = useState<'confirm' | 'payment' | 'done'>('confirm')
-  const [error,        setError]        = useState('')
-  const [loading,      setLoading]      = useState(false)
-  const [bookingId,    setBookingId]    = useState<string | null>(null)
-  const [clientSecret, setClientSecret] = useState<string | null>(null)
+  const { consultant: c } = match
 
-  const nextDate = new Date(slot.slot_date + 'T00:00:00').toLocaleDateString('fr-FR', {
+  const [step,           setStep]           = useState<'slot' | 'confirm' | 'payment' | 'done'>('slot')
+  const [selectedSlot,   setSelectedSlot]   = useState(match.slot)
+  const [selectedDate,   setSelectedDate]   = useState(match.slot.slot_date)
+  const [slotsByDate,    setSlotsByDate]    = useState<Record<string, AvailableSlot[]>>({})
+  const [slotsLoading,   setSlotsLoading]   = useState(true)
+  const [error,          setError]          = useState('')
+  const [loading,        setLoading]        = useState(false)
+  const [bookingId,      setBookingId]      = useState<string | null>(null)
+  const [clientSecret,   setClientSecret]   = useState<string | null>(null)
+
+  // Fetch available slots for this consultant
+  useEffect(() => {
+    setSlotsLoading(true)
+    fetch(`/api/freelancehub/client/slots?consultant_id=${c.id}`)
+      .then(r => r.json())
+      .then(d => {
+        setSlotsByDate(d.slots_by_date ?? {})
+        // Pre-select first available date/slot
+        const dates = Object.keys(d.slots_by_date ?? {}).sort()
+        if (dates.length > 0) {
+          setSelectedDate(dates[0])
+          const firstSlots = d.slots_by_date[dates[0]]
+          if (firstSlots?.length > 0) setSelectedSlot({ ...match.slot, ...firstSlots[0], slot_date: dates[0] })
+        }
+      })
+      .catch(() => {})
+      .finally(() => setSlotsLoading(false))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [c.id])
+
+  const availableDates = Object.keys(slotsByDate).sort()
+  const slotsForDate   = slotsByDate[selectedDate] ?? []
+
+  function selectDate(date: string) {
+    setSelectedDate(date)
+    const first = slotsByDate[date]?.[0]
+    if (first) setSelectedSlot({ ...match.slot, ...first, slot_date: date })
+  }
+
+  function selectTime(s: AvailableSlot) {
+    setSelectedSlot({ ...match.slot, ...s, slot_date: selectedDate })
+  }
+
+  const nextDate = new Date(selectedSlot.slot_date + 'T00:00:00').toLocaleDateString('fr-FR', {
     weekday: 'long', day: 'numeric', month: 'long',
   })
 
@@ -144,7 +191,7 @@ export default function BookingModal({ match, clientId, notes, onClose, onBooked
       body: JSON.stringify({
         client_id:      clientId,
         consultant_id:  c.id,
-        slot_id:        slot.id,
+        slot_id:        selectedSlot.id,
         matching_score: match.score,
         notes:          notes,
         amount_ht:      PRICE_HT_CENTS,
@@ -186,13 +233,70 @@ export default function BookingModal({ match, clientId, notes, onClose, onBooked
       <div className="modal-box">
         <button className="modal-close" onClick={onClose} aria-label="Fermer">×</button>
 
+        {step === 'slot' && (
+          <>
+            <h2 className="modal-title">Choisir un créneau</h2>
+            <p className="modal-slot-sub">Sélectionnez une date et une heure pour votre consultation.</p>
+
+            {slotsLoading ? (
+              <div className="modal-slot-loading">Chargement des disponibilités…</div>
+            ) : availableDates.length === 0 ? (
+              <div className="modal-slot-empty">
+                Ce consultant n&apos;a aucun créneau disponible pour les 60 prochains jours.
+              </div>
+            ) : (
+              <>
+                {/* Date chips */}
+                <div className="modal-slot-section-label">Date</div>
+                <div className="modal-date-chips">
+                  {availableDates.map(d => (
+                    <button
+                      key={d}
+                      className={`modal-date-chip${d === selectedDate ? ' modal-date-chip--active' : ''}`}
+                      onClick={() => selectDate(d)}
+                    >
+                      {fmtDate(d)}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Time chips */}
+                <div className="modal-slot-section-label">Heure</div>
+                <div className="modal-time-chips">
+                  {slotsForDate.map(s => (
+                    <button
+                      key={s.id}
+                      className={`modal-time-chip${s.id === selectedSlot.id ? ' modal-time-chip--active' : ''}`}
+                      onClick={() => selectTime(s)}
+                    >
+                      {s.slot_time.slice(0, 5)}
+                      <span className="modal-time-chip-dur">{s.duration_min} min</span>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+
+            <div className="modal-actions">
+              <button className="modal-btn-ghost" onClick={onClose}>Annuler</button>
+              <button
+                className="fh-btn-primary"
+                onClick={() => setStep('confirm')}
+                disabled={slotsLoading || availableDates.length === 0}
+              >
+                Continuer →
+              </button>
+            </div>
+          </>
+        )}
+
         {step === 'confirm' && (
           <>
             <h2 className="modal-title">Confirmation de réservation</h2>
             <div className="modal-summary">
               <Row label="Expertise"   value={c.title ?? 'Consultant Expert'} />
               <Row label="Date"        value={nextDate} />
-              <Row label="Heure"       value={`${slot.slot_time.slice(0,5)} — 1h de consultation`} />
+              <Row label="Heure"       value={`${selectedSlot.slot_time.slice(0,5)} — ${selectedSlot.duration_min} min de consultation`} />
               <Row label="Score match" value={`${match.score} / 100`} />
               <hr className="modal-divider" />
               <div className="modal-price-block">
@@ -222,7 +326,7 @@ export default function BookingModal({ match, clientId, notes, onClose, onBooked
             </p>
             {error && <p className="modal-error">{error}</p>}
             <div className="modal-actions">
-              <button className="modal-btn-ghost" onClick={onClose} disabled={loading}>Annuler</button>
+              <button className="modal-btn-ghost" onClick={() => setStep('slot')} disabled={loading}>Retour</button>
               <button className="fh-btn-primary" onClick={handleConfirm} disabled={loading}>
                 {loading ? 'Chargement…' : 'Confirmer et payer'}
               </button>
@@ -313,6 +417,21 @@ export default function BookingModal({ match, clientId, notes, onClose, onBooked
           .reveal-title { font-size: .85rem; color: var(--text-mid); }
           .reveal-location { font-size: .8rem; color: var(--text-light); }
           .modal-reveal-note { font-size: .82rem; color: var(--text-light); }
+          /* Slot picker */
+          .modal-slot-sub { font-size: .88rem; color: var(--text-mid); margin-top: -.4rem; }
+          .modal-slot-loading { font-size: .88rem; color: var(--text-light); padding: 1.5rem 0; text-align: center; }
+          .modal-slot-empty { font-size: .88rem; color: var(--text-mid); background: var(--bg); padding: 1rem; border-radius: var(--radius-sm); text-align: center; }
+          .modal-slot-section-label { font-size: .75rem; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--text-light); }
+          .modal-date-chips { display: flex; flex-wrap: wrap; gap: .5rem; }
+          .modal-date-chip { padding: .42rem .85rem; border: 1.5px solid var(--border); border-radius: 20px; background: var(--white); font-size: .83rem; color: var(--text-mid); cursor: pointer; transition: border-color .12s, background .12s; white-space: nowrap; }
+          .modal-date-chip:hover { border-color: var(--c1); color: var(--c1); }
+          .modal-date-chip--active { border-color: var(--c1); background: var(--c1-pale); color: var(--c1); font-weight: 600; }
+          .modal-time-chips { display: flex; flex-wrap: wrap; gap: .5rem; }
+          .modal-time-chip { padding: .42rem .85rem; border: 1.5px solid var(--border); border-radius: var(--radius-sm); background: var(--white); font-size: .88rem; color: var(--text); cursor: pointer; display: flex; align-items: center; gap: .4rem; transition: border-color .12s, background .12s; }
+          .modal-time-chip:hover { border-color: var(--c1); color: var(--c1); }
+          .modal-time-chip--active { border-color: var(--c1); background: var(--c1-pale); color: var(--c1); font-weight: 600; }
+          .modal-time-chip-dur { font-size: .73rem; color: var(--text-light); font-weight: 400; }
+          .modal-time-chip--active .modal-time-chip-dur { color: var(--c1); }
         `}</style>
       </div>
     </div>
