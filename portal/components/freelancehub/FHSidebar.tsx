@@ -16,6 +16,7 @@ const CONSULTANT_NAV: NavItem[] = [
   { label: 'Mon agenda',      href: '/freelancehub/consultant/agenda',    icon: '◫' },
   { label: 'Réservations',    href: '/freelancehub/consultant/bookings',  icon: '◈' },
   { label: 'Mes gains',       href: '/freelancehub/consultant/earnings',  icon: '◇' },
+  { label: 'Mon CV',          href: '/freelancehub/consultant/cv',        icon: '◻' },
 ]
 
 const CLIENT_NAV: NavItem[] = [
@@ -29,6 +30,7 @@ const CLIENT_NAV: NavItem[] = [
 const ADMIN_NAV: NavItem[] = [
   { label: 'Dashboard',       href: '/freelancehub/admin',               icon: '◉' },
   { label: 'Consultants',     href: '/freelancehub/admin/consultants',   icon: '○' },
+  { label: 'Expertises',      href: '/freelancehub/admin/skills',        icon: '◑' },
   { label: 'Réservations',    href: '/freelancehub/admin/bookings',      icon: '◈' },
   { label: 'Paiements',       href: '/freelancehub/admin/payments',      icon: '◇' },
   { label: 'Matching engine', href: '/freelancehub/admin/matching',      icon: '◎' },

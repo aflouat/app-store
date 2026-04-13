@@ -25,6 +25,7 @@ export interface Consultant {
   is_available: boolean
   location: string | null
   linkedin_url: string | null
+  youtube_url:  string | null
   // joined from users
   name?: string
   email?: string

@@ -17,6 +17,7 @@ export async function POST(req: NextRequest) {
     experience_years,
     location,
     linkedin_url,
+    youtube_url,
     skills,
   } = body
 
@@ -28,8 +29,8 @@ export async function POST(req: NextRequest) {
   // Upsert consultant profile
   const consultant = await queryOne<{ id: string }>(
     `INSERT INTO freelancehub.consultants
-       (user_id, title, bio, daily_rate, experience_years, location, linkedin_url)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)
+       (user_id, title, bio, daily_rate, experience_years, location, linkedin_url, youtube_url)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
      ON CONFLICT (user_id) DO UPDATE SET
        title            = EXCLUDED.title,
        bio              = EXCLUDED.bio,
@@ -37,9 +38,10 @@ export async function POST(req: NextRequest) {
        experience_years = EXCLUDED.experience_years,
        location         = EXCLUDED.location,
        linkedin_url     = EXCLUDED.linkedin_url,
+       youtube_url      = EXCLUDED.youtube_url,
        updated_at       = NOW()
      RETURNING id`,
-    [user_id, title, bio, daily_rate, experience_years, location, linkedin_url]
+    [user_id, title, bio, daily_rate, experience_years, location, linkedin_url, youtube_url ?? null]
   )
 
   if (!consultant) {

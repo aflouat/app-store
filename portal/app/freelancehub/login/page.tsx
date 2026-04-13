@@ -79,6 +79,11 @@ function LoginForm() {
           </button>
         </form>
 
+        <p className="fh-login-register">
+          Pas encore inscrit ?{' '}
+          <a href="/freelancehub/register" className="fh-login-register-link">Rejoindre la plateforme</a>
+        </p>
+
         {process.env.NEXT_PUBLIC_DEMO_MODE === 'true' && (
           <p className="fh-login-demo">
             Comptes démo&nbsp;: <code>consultant1@perform-learn.fr</code> · <code>client1@perform-learn.fr</code>
@@ -168,6 +173,14 @@ function LoginForm() {
           background: var(--bg); padding: .1em .35em;
           border-radius: 4px; font-size: .82rem;
         }
+        .fh-login-register {
+          text-align: center; font-size: .88rem;
+          color: var(--text-mid); margin-top: .5rem;
+        }
+        .fh-login-register-link {
+          color: var(--c1); font-weight: 600; text-decoration: none;
+        }
+        .fh-login-register-link:hover { text-decoration: underline; }
       `}</style>
     </div>
   )

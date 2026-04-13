@@ -47,7 +47,7 @@ export default async function AdminConsultantsPage() {
             <tr>
               <th>Consultant</th>
               <th>Titre</th>
-              <th>TJM</th>
+              <th>THM</th>
               <th>Note</th>
               <th>Compétences</th>
               <th>Missions</th>

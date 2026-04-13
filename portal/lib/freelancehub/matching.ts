@@ -122,6 +122,7 @@ export async function findMatches(input: MatchInput): Promise<MatchingResult[]> 
         is_available:     true,
         location:         c.location,
         linkedin_url:     null,
+        youtube_url:      null,
         // Anonymisé : nom/email non exposés
         name:  undefined,
         email: undefined,

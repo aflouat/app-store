@@ -24,6 +24,7 @@ export default function ProfileForm({ userId, consultant, allSkills, consultantS
   const [exp,      setExp]      = useState(String(consultant?.experience_years ?? 0))
   const [location, setLocation] = useState(consultant?.location ?? '')
   const [linkedin, setLinkedin] = useState(consultant?.linkedin_url ?? '')
+  const [youtube,  setYoutube]  = useState(consultant?.youtube_url ?? '')
 
   // skill_id → level (empty string = not selected)
   const [selectedSkills, setSelectedSkills] = useState<Record<number, string>>(() => {
@@ -73,6 +74,7 @@ export default function ProfileForm({ userId, consultant, allSkills, consultantS
         experience_years: exp ? Number(exp) : 0,
         location,
         linkedin_url:     linkedin,
+        youtube_url:      youtube,
         skills,
       }),
     })
@@ -109,12 +111,12 @@ export default function ProfileForm({ userId, consultant, allSkills, consultantS
               required
             />
           </Field>
-          <Field label="TJM (€)">
+          <Field label="THM — Taux Horaire Moyen (€)">
             <input
               type="number"
               value={rate}
               onChange={e => setRate(e.target.value)}
-              placeholder="850"
+              placeholder="85"
               min={0}
             />
           </Field>
@@ -140,6 +142,14 @@ export default function ProfileForm({ userId, consultant, allSkills, consultantS
             value={linkedin}
             onChange={e => setLinkedin(e.target.value)}
             placeholder="https://linkedin.com/in/..."
+          />
+        </Field>
+        <Field label="YouTube — CV vidéo (2-3 min)">
+          <input
+            type="url"
+            value={youtube}
+            onChange={e => setYoutube(e.target.value)}
+            placeholder="https://youtube.com/watch?v=..."
           />
         </Field>
         <Field label="Biographie (visible après révélation)">

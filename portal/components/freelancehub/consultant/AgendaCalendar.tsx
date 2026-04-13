@@ -275,16 +275,16 @@ export default function AgendaCalendar({ consultantId }: Props) {
         /* Slot cells */
         .cal-slot { height: 38px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background .12s; }
         .cal-slot:hover:not(.cal-slot--past):not(.cal-slot--booked) { background: var(--c1-pale); }
-        .cal-slot--avail  { background: #edfaf3; }
-        .cal-slot--avail:hover  { background: #d4f3e5 !important; }
-        .cal-slot--booked { background: #fdf0ef; cursor: not-allowed; }
+        .cal-slot--avail  { background: #d4f3e5; }
+        .cal-slot--avail:hover  { background: #b2ead0 !important; }
+        .cal-slot--booked { background: #2c3e50; cursor: not-allowed; }
         .cal-slot--past   { background: var(--bg); cursor: default; opacity: .5; }
         .cal-slot--busy   { pointer-events: none; }
 
         /* Dots */
         .cal-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
         .cal-dot--avail  { background: #27ae60; }
-        .cal-dot--booked { background: var(--c1); }
+        .cal-dot--booked { background: #2c3e50; }
         .cal-dot--empty  { background: var(--border); border: 1px solid var(--border); }
 
         /* Spinner */
