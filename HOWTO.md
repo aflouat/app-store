@@ -4,6 +4,165 @@
 
 ---
 
+## 0. Mode opératoire — test en local
+
+### 0.1 Pre-flight (avant de tester quoi que ce soit)
+
+```bash
+# 1. Vérifier que .env.local existe
+ls portal/.env.local
+
+# 2. Installer les dépendances si besoin
+cd portal && npm install
+
+# 3. Vérifier la connectivité DB (VPS accessible)
+# Le VPS doit être joignable depuis votre machine — tester :
+ssh -p 2222 abdel@37.59.125.159 'echo OK'
+
+# 4. Lancer le serveur de dev
+cd portal && npm run dev
+# → http://localhost:3000
+```
+
+> Si `DATABASE_URL` pointe sur `37.59.125.159`, le serveur local lit la DB de prod — toute réservation créée est réelle. C'est acceptable en POC avec les comptes demo.
+
+---
+
+### 0.2 Smoke test rapide (5 min)
+
+Objectif : valider que l'environnement local fonctionne end-to-end.
+
+```
+[ ] http://localhost:3000 → page d'accueil charge (pas d'erreur 500)
+[ ] /freelancehub/login → formulaire visible
+[ ] Login admin@perform-learn.fr / demo1234 → redirige /freelancehub/admin
+[ ] /freelancehub/admin/bookings → liste des réservations charge (pas d'erreur DB)
+[ ] Déconnexion → retour /freelancehub/login
+[ ] Login client1@perform-learn.fr / demo1234
+[ ] /freelancehub/client/search → recherche "ERP" → ≤ 5 cartes anonymes
+[ ] Cloche nav → badge ou liste notifications visible
+```
+
+Si une étape échoue → voir 0.5 Diagnostic.
+
+---
+
+### 0.3 Tester le paiement Stripe en local
+
+Les clés `sk_test_` / `pk_test_` suffisent pour créer de vrais PaymentIntents Stripe en mode test.
+
+**Cartes de test Stripe :**
+
+| Carte | Comportement |
+|---|---|
+| `4242 4242 4242 4242` | Paiement réussi |
+| `4000 0000 0000 0002` | Déclin (generic) |
+| `4000 0025 0000 3155` | Authentification 3DS requise |
+
+- Date d'expiration : n'importe quelle date future
+- CVC : n'importe quel nombre à 3 chiffres
+
+**Forwarding webhooks Stripe (optionnel, si webhooks configurés) :**
+
+```bash
+# Installer Stripe CLI si pas déjà fait
+# https://stripe.com/docs/stripe-cli
+
+stripe login
+stripe listen --forward-to http://localhost:3000/api/freelancehub/stripe/webhook
+# → Copier le whsec_... affiché dans .env.local STRIPE_WEBHOOK_SECRET
+```
+
+> En POC actuel, les webhooks Stripe ne sont pas implémentés — le paiement est vérifié via l'API Stripe directement. Le forwarding n'est donc pas nécessaire pour l'instant.
+
+---
+
+### 0.4 Raccourcis SQL pour forcer les états (tests avancés)
+
+Se connecter à la DB depuis le terminal local (la DB est sur le VPS) :
+
+```bash
+# Connexion rapide
+ssh -p 2222 abdel@37.59.125.159 'docker exec -it postgres psql -U appstore -d appstore'
+```
+
+**Forcer une réservation en `completed` (pour tester les évaluations) :**
+
+```sql
+-- Remplacer <uuid> par l'ID de la réservation (visible dans l'URL ou /admin/bookings)
+UPDATE freelancehub.bookings
+SET status = 'completed'
+WHERE id = '<uuid>';
+```
+
+**Forcer la libération des fonds sans évaluation (debug) :**
+
+```sql
+UPDATE freelancehub.payments
+SET status = 'transferred', transferred_at = NOW()
+WHERE booking_id = '<uuid>';
+```
+
+**Réinitialiser une réservation de test :**
+
+```sql
+-- Supprimer reviews + payment + booking (cascade si FK)
+DELETE FROM freelancehub.reviews WHERE booking_id = '<uuid>';
+DELETE FROM freelancehub.payments WHERE booking_id = '<uuid>';
+DELETE FROM freelancehub.notifications WHERE booking_id = '<uuid>';
+DELETE FROM freelancehub.bookings WHERE id = '<uuid>';
+```
+
+**Voir les bookings récents avec emails :**
+
+```sql
+SELECT b.id, uc.email AS client, uc2.email AS consultant,
+       b.status, b.amount_ht/100.0 AS ht_eur, b.revealed_at
+FROM freelancehub.bookings b
+JOIN freelancehub.users uc ON uc.id = b.client_id
+JOIN freelancehub.consultants c ON c.id = b.consultant_id
+JOIN freelancehub.users uc2 ON uc2.id = c.user_id
+ORDER BY b.created_at DESC LIMIT 10;
+```
+
+---
+
+### 0.5 Tester le cron J-1 en local
+
+```bash
+# Déclencher manuellement le cron depuis votre machine (remplacer <CRON_SECRET>)
+curl -X POST http://localhost:3000/api/freelancehub/cron/reminders \
+  -H "Authorization: Bearer <CRON_SECRET>"
+
+# Réponse attendue : {"sent": N} avec N = nombre de rappels envoyés
+# Si 0 : aucune réservation avec slot_date = demain et status confirmed/in_progress
+```
+
+Pour créer un slot de test à J+1 :
+
+```sql
+-- Insérer un slot demain pour consultant1 (récupérer consultant_id d'abord)
+INSERT INTO freelancehub.slots (consultant_id, slot_date, slot_time, is_available)
+SELECT id, CURRENT_DATE + 1, '10:00', true
+FROM freelancehub.consultants
+WHERE user_id = (SELECT id FROM freelancehub.users WHERE email = 'consultant1@perform-learn.fr');
+```
+
+---
+
+### 0.5 Diagnostic — erreurs courantes
+
+| Symptôme | Cause probable | Solution |
+|---|---|---|
+| `ECONNREFUSED` sur DB | VPS inaccessible ou mauvais `DATABASE_URL` | Vérifier SSH VPS + `.env.local` |
+| `NEXTAUTH_SECRET` error | Variable manquante dans `.env.local` | Ajouter une valeur quelconque (32 chars) |
+| Stripe "No such payment_intent" | Mélange clés test/prod | Vérifier `sk_test_` dans `.env.local` |
+| Page blanche après login | Erreur middleware Edge | `npm run build` pour voir les erreurs TypeScript |
+| Notifications absentes | `createNotification` non appelé | Vérifier les logs terminal `npm run dev` |
+| Build échoue | Erreur TypeScript | Lire l'output complet de `npm run build` |
+
+---
+
 ## 1. Installation de l'environnement de développement
 
 ### Prérequis
