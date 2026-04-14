@@ -1,10 +1,10 @@
 # CLAUDE.md — perform-learn.fr · Instructions pour Claude
 
 ## Contexte & propriétaire
-Ce fichier ne contient aucune info liée aux règles de gestion actuelle ou futur, il se focalisé sur l'architecture high level et comment claude delivre avec qualité en conformité avec les priorités de la roadmap tout en analysant, planifiant avant de choisir la meilleur solution technique par rapport au contexte complet.
-le fichier ROADMAP.md contient une liste priorisé des fonctionnalités futures organisées par release cohérente pour le client. les releases  n'ont plus besoin de date mais les releases passées peuvent recevoir une date histo. elles ont juste besoin d'un numéro.
+Ce fichier se focalise sur l'architecture high level et comment claude delivre avec qualité en conformité avec les priorités de la roadmap tout en analysant, planifiant avant de choisir la meilleur solution technique par rapport au contexte complet.
+le fichier ROADMAP.md contient une liste priorisé des fonctionnalités futures organisées par release cohérente pour le client. Le fichier HOWTO.md permet de guider dans l'utilisation du site que ce soit en mode developpeur , en mode testeur ou en mode administrateur
 
-**perform-learn.fr** — Digital Service Hub B2B : connecte freelances experts (DEV,ERP, D365, Data…) avec consultation horaire et entreprises via une marketplace avec matching algorithmique, paiement séquestre et anonymat jusqu'au paiement.
+**perform-learn.fr** — Digital Service Hub B2B : connecte freelances experts  avec consultation horaire et entreprises via une marketplace avec matching algorithmique, paiement séquestre et anonymat jusqu'au paiement.
 
 **Propriétaire** : Abdel — développeur fullstack, PMP-certified, chef de projet.
 
@@ -74,7 +74,7 @@ le fichier ROADMAP.md contient une liste priorisé des fonctionnalités futures 
 ### FreelanceHub — Tables principales
 
 ```
-skills            → 12 compétences (ERP, Data, Tech, Finance, Management)
+skills            → compétences (ERP, Data, Tech, Finance, Management, ...)
 users             → 3 rôles : client | consultant | admin
 consultants       → profil, tarif, rating (lié à users)
 consultant_skills → pivot compétences ↔ consultants
@@ -136,16 +136,7 @@ app-store/
 
 ---
 
-## Algorithme de matching
 
-```
-score = 0.40 × skill_match
-      + 0.30 × rating_score       (rating / 5)
-      + 0.20 × availability_score (slot dispo à la date)
-      + 0.10 × price_score        (1 - tarif_norm / budget_max)
-```
-
-Prix fixe : **85 € TTC** (70,83 € HT). Commission plateforme : **15 %**. Net consultant : **72,12 €** (85 % HT).
 
 ---
 
@@ -164,15 +155,6 @@ Prix fixe : **85 € TTC** (70,83 € HT). Commission plateforme : **15 %**. Net
 
 ---
 
-## Comptes de démonstration (mot de passe : `demo1234`)
-
-| Rôle | Email |
-|---|---|
-| Admin | `admin@perform-learn.fr` |
-| Consultant | `consultant1@perform-learn.fr` |
-| Client | `client1@perform-learn.fr` |
-
----
 
 ## Workflow Claude — Comment travailler sur ce projet
 
@@ -189,9 +171,9 @@ Prix fixe : **85 € TTC** (70,83 € HT). Commission plateforme : **15 %**. Net
 
 ```
 1. Lire les fichiers concernés (Read tool)
-2. Annoncer le plan (liste fichiers + changements)
-3. Obtenir validation si besoin
-4. Modifier les fichiers (Edit/Write tools)
+2. Faire le plan (liste fichiers + changements) étape par étape
+3. Modifier les fichiers (Edit/Write tools) par étape
+4. tester et corriger en cas d'erreur
 5. Tester le build :
    cd portal && npm run build
 6. Commiter en local :
@@ -201,7 +183,9 @@ Prix fixe : **85 € TTC** (70,83 € HT). Commission plateforme : **15 %**. Net
    git push origin main
    → Vercel redéploie automatiquement
 8. Appliquer migration SQL si besoin (voir ci-dessous)
-```
+
+`
+``
 
 ### Appliquer une migration SQL sur le VPS
 

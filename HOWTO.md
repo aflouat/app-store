@@ -2,6 +2,13 @@
 
 > Ce fichier couvre : setup de l'environnement de dev, workflow quotidien, scénarios de test E2E, et règles de gestion (RG) de la plateforme.
 
+## Comptes de démonstration (mot de passe : `demo1234`)
+
+| Rôle | Email |
+|---|---|
+| Admin | `admin@perform-learn.fr` |
+| Consultant | `consultant1@perform-learn.fr` |
+| Client | `client1@perform-learn.fr` |
 ---
 
 ## 0. Mode opératoire — test en local

@@ -7,13 +7,21 @@
 **Version courante** : `v1.2.0`
 
 ---
+## Algorithme de matching
+
+```
+score = 0.40 × skill_match
+      + 0.30 × rating_score       (rating / 5)
+      + 0.20 × availability_score (slot dispo à la date)
+      + 0.10 × price_score        (1 - tarif_norm / budget_max)
+```
 
 ## Modèle économique
 
 | Élément | Détail |
 |---|---|
 | Commission | 15 % (vs 25-40 % agences classiques) |
-| Prix consultation | 40€-100€ |
+| Prix consultation | paramétrable
 | Séquestre | Libéré automatiquement après 2 évaluations croisées |
 | Coût infra | ~6 €/mois (VPS OVH) + Vercel tier gratuit |
 | DEV| Basé sur claude IA 90% avec un peu d'assistance humaine et devra nécessiter le moins d'intervention technique possibles  |
