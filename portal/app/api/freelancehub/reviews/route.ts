@@ -131,7 +131,7 @@ export async function POST(req: NextRequest) {
   } else {
     // Send review request to the other party (fire-and-forget)
     try {
-      const otherUserId  = reviewer_role === 'client' ? booking.consultant_id : booking.client_id
+      const otherUserId  = reviewer_role === 'client' ? booking.consultant_user_id : booking.client_id
       const otherUser = await queryOne<{ id: string; email: string; name: string | null; role: string }>(
         `SELECT u.id, u.email, u.name,
                 CASE WHEN u.id = (SELECT user_id FROM freelancehub.consultants WHERE id = $2)

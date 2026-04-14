@@ -1,25 +1,31 @@
 // lib/freelancehub/matching.ts — SERVER ONLY
 //
-// Tarification : 85 € TTC fixe par consultation (1h)
-//   HT         = 85 / 1.20  = 70.83 €
-//   TVA 20%    = 85 - 70.83 = 14.17 €
-//   Commission = HT × 15%   = 10.62 €
-//   Consultant = HT - comm  = 60.21 €
+// Tarification : paramétrable par consultant (daily_rate = THM en €)
+//   HT (centimes) = daily_rate × 100
+//   TTC (centimes)= HT × 1.20
+//   Commission    = HT × 15%
+//   Consultant net= HT × 85%
 //
 // Score composite :
 //   55 % skill_match   (niveau déclaré par le consultant)
 //   35 % rating_score  (note / 5)
-//   10 % availability_score (prochain slot dans < 7j → 100, sinon dégressif)
+//    5 % availability_score (prochain slot dans < 7j → 100, sinon dégressif)
+//   5 % price_score    (tarif consultant vs budget client)
 
 import { query } from './db'
 import type { MatchingResult } from './types'
 
-// ─── Prix plateforme (centimes) ──────────────────────────────
-export const CONSULTATION_PRICE_TTC  = 8500   // 85,00 € TTC
-export const CONSULTATION_PRICE_HT   = Math.round(CONSULTATION_PRICE_TTC / 1.20) // 7083 c
-export const CONSULTATION_TVA        = CONSULTATION_PRICE_TTC - CONSULTATION_PRICE_HT // 1417 c
-export const PLATFORM_COMMISSION     = Math.round(CONSULTATION_PRICE_HT * 0.15)   // 1062 c
-export const CONSULTANT_NET          = CONSULTATION_PRICE_HT - PLATFORM_COMMISSION  // 6021 c
+// ─── Helpers calcul prix (centimes) ──────────────────────────
+export function computePricing(hourlyRateEur: number) {
+  const htCents   = Math.round(hourlyRateEur * 100)
+  const ttcCents  = Math.round(htCents * 1.20)
+  const commCents = Math.round(htCents * 0.15)
+  const netCents  = htCents - commCents
+  return { htCents, ttcCents, commCents, netCents }
+}
+
+// Tarif par défaut (fallback si daily_rate non renseigné)
+export const DEFAULT_HOURLY_RATE = 85  // euros
 
 interface MatchInput {
   skill_id:      number
@@ -28,11 +34,6 @@ interface MatchInput {
 
 export async function findMatches(input: MatchInput): Promise<MatchingResult[]> {
   const { skill_id, client_budget } = input
-
-  // Budget check : le prix fixe est 85 € TTC
-  if (client_budget !== null && client_budget < CONSULTATION_PRICE_TTC / 100) {
-    return []
-  }
 
   // Trouver les consultants ayant la compétence + leur PROCHAIN créneau dispo
   const candidates = await query<{
@@ -83,7 +84,14 @@ export async function findMatches(input: MatchInput): Promise<MatchingResult[]> 
 
   if (candidates.length === 0) return []
 
-  const results: MatchingResult[] = candidates.map(c => {
+  const results: MatchingResult[] = candidates.flatMap(c => {
+    const hourlyRate = c.daily_rate ?? DEFAULT_HOURLY_RATE
+    const { ttcCents } = computePricing(hourlyRate)
+    const ttcEur = ttcCents / 100
+
+    // Filtre budget : exclure si trop cher pour le client
+    if (client_budget !== null && ttcEur > client_budget) return []
+
     // Skill match (niveau déclaré)
     const LEVEL_SCORE: Record<string, number> = {
       expert:       100,
@@ -102,19 +110,25 @@ export async function findMatches(input: MatchInput): Promise<MatchingResult[]> 
       ? 100
       : Math.max(0, Math.round(100 - ((days - 7) / 23) * 100))
 
-    // Score composite 55 / 35 / 10
+    // Price score : 100 si pas de budget ou si moins de 50% du budget, dégressif
+    const priceScore = client_budget === null
+      ? 100
+      : Math.max(0, Math.round((1 - ttcEur / client_budget) * 100))
+
+    // Score composite 55 / 35 / 5 / 5
     const score =
       0.55 * skillScore +
       0.35 * ratingScore +
-      0.10 * availabilityScore
+      0.05 * availabilityScore +
+      0.05 * priceScore
 
-    return {
+    return [{
       consultant: {
         id:               c.consultant_id,
         user_id:          c.user_id,
         title:            c.title,
         bio:              c.bio,
-        daily_rate:       c.daily_rate,
+        daily_rate:       hourlyRate,
         experience_years: 0,
         rating:           Number(c.rating),
         rating_count:     Number(c.rating_count),
@@ -141,9 +155,9 @@ export async function findMatches(input: MatchInput): Promise<MatchingResult[]> 
         skill_match:        Math.round(skillScore),
         rating_score:       Math.round(ratingScore),
         availability_score: Math.round(availabilityScore),
-        price_score:        100,  // prix fixe plateforme = 85 € pour tous
+        price_score:        Math.round(priceScore),
       },
-    }
+    }]
   })
 
   // Tri par score desc, top 5

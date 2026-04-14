@@ -17,13 +17,14 @@ export default async function ClientReviewPage({
     id: string
     client_id: string
     consultant_id: string
+    consultant_user_id: string
     status: string
     slot_date: string
     skill_name: string | null
     consultant_title: string | null
     already_reviewed: boolean
   }>(
-    `SELECT b.id, b.client_id, b.consultant_id, b.status,
+    `SELECT b.id, b.client_id, b.consultant_id, c.user_id AS consultant_user_id, b.status,
             s.slot_date::text,
             sk.name AS skill_name,
             c.title AS consultant_title,
@@ -70,7 +71,7 @@ export default async function ClientReviewPage({
         bookingId={bookingId}
         reviewerId={session.user.id}
         reviewerRole="client"
-        revieweeId={booking.consultant_id}
+        revieweeId={booking.consultant_user_id}
         redirectTo="/freelancehub/client/reviews"
         consultantTitle={booking.consultant_title}
       />

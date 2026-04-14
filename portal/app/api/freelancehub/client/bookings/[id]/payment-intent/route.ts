@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { queryOne } from '@/lib/freelancehub/db'
-import { CONSULTATION_PRICE_TTC, CONSULTATION_PRICE_HT, CONSULTATION_TVA, PLATFORM_COMMISSION, CONSULTANT_NET } from '@/lib/freelancehub/matching'
+import { computePricing, DEFAULT_HOURLY_RATE } from '@/lib/freelancehub/matching'
 import Stripe from 'stripe'
 
 export async function POST(
@@ -15,8 +15,12 @@ export async function POST(
 
   const { id: bookingId } = await params
 
-  const booking = await queryOne<{ id: string; client_id: string; status: string }>(
-    `SELECT id, client_id, status FROM freelancehub.bookings WHERE id = $1`,
+  // Relire le montant depuis la DB — ne jamais faire confiance au client (règle sécurité)
+  const booking = await queryOne<{
+    id: string; client_id: string; status: string; amount_ht: number | null; consultant_amount: number | null; commission_amount: number | null
+  }>(
+    `SELECT id, client_id, status, amount_ht, consultant_amount, commission_amount
+     FROM freelancehub.bookings WHERE id = $1`,
     [bookingId]
   )
 
@@ -30,23 +34,28 @@ export async function POST(
     return NextResponse.json({ error: 'Cette réservation ne peut plus être payée.' }, { status: 409 })
   }
 
+  // Recalculer TTC depuis HT stocké en DB (fallback : taux par défaut)
+  const htCents  = booking.amount_ht ?? computePricing(DEFAULT_HOURLY_RATE).htCents
+  const ttcCents = Math.round(htCents * 1.20)
+  const commCents = booking.commission_amount ?? Math.round(htCents * 0.15)
+  const netCents  = booking.consultant_amount  ?? (htCents - commCents)
+  const tvaCents  = ttcCents - htCents
+
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
 
   try {
     const paymentIntent = await stripe.paymentIntents.create({
-      // Prix fixe TTC : 85,00 € = 8500 centimes
-      amount: CONSULTATION_PRICE_TTC,
+      amount:   ttcCents,
       currency: 'eur',
       metadata: {
         booking_id:          bookingId,
         client_id:           session.user.id,
         platform:            'perform-learn.fr',
-        // Ventilation (en centimes)
-        amount_ttc:          CONSULTATION_PRICE_TTC,
-        amount_ht:           CONSULTATION_PRICE_HT,
-        tva:                 CONSULTATION_TVA,
-        platform_commission: PLATFORM_COMMISSION,
-        consultant_net:      CONSULTANT_NET,
+        amount_ttc:          ttcCents,
+        amount_ht:           htCents,
+        tva:                 tvaCents,
+        platform_commission: commCents,
+        consultant_net:      netCents,
       },
       description: 'Consultation 1h — perform-learn.fr',
     })

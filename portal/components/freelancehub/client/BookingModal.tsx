@@ -16,17 +16,24 @@ function fmtDate(dateStr: string) {
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
 
-// ─── Tarification plateforme (identique à lib/matching.ts) ───
-const PRICE_TTC       = 85      // € TTC
-const PRICE_HT        = +(85 / 1.20).toFixed(2)   // 70.83 €
-const TVA             = +(PRICE_TTC - PRICE_HT).toFixed(2) // 14.17 €
-const COMMISSION      = +(PRICE_HT * 0.15).toFixed(2)     // 10.62 €
-const CONSULTANT_NET  = +(PRICE_HT - COMMISSION).toFixed(2) // 60.21 €
-// Centimes pour Stripe et DB
-const PRICE_TTC_CENTS = 8500
-const PRICE_HT_CENTS  = Math.round(PRICE_HT * 100)
-const COMMISSION_CENTS = Math.round(COMMISSION * 100)
-const CONSULTANT_CENTS = Math.round(CONSULTANT_NET * 100)
+// ─── Calcul prix depuis le taux horaire consultant ───────────
+function buildPricing(hourlyRateEur: number) {
+  const htCents    = Math.round(hourlyRateEur * 100)
+  const ttcCents   = Math.round(htCents * 1.20)
+  const commCents  = Math.round(htCents * 0.15)
+  const netCents   = htCents - commCents
+  return {
+    priceTTC:       +(ttcCents / 100).toFixed(2),
+    priceHT:        +(htCents  / 100).toFixed(2),
+    tva:            +((ttcCents - htCents) / 100).toFixed(2),
+    commission:     +(commCents / 100).toFixed(2),
+    consultantNet:  +(netCents  / 100).toFixed(2),
+    priceTTCCents:  ttcCents,
+    priceHTCents:   htCents,
+    commissionCents:commCents,
+    consultantCents:netCents,
+  }
+}
 
 interface Props {
   match:    MatchingResult
@@ -39,12 +46,12 @@ interface Props {
 // Sub-component rendered inside <Elements> so useStripe/useElements are available
 function StripeForm({
   bookingId,
-  amountHt,
+  priceTTC,
   onSuccess,
   onBack,
 }: {
   bookingId: string
-  amountHt:  number
+  priceTTC:  number
   onSuccess: () => void
   onBack:    () => void
 }) {
@@ -108,7 +115,7 @@ function StripeForm({
     <>
       <h2 className="modal-title">Paiement sécurisé</h2>
       <div className="modal-payment-info">
-        <p>Montant à régler : <strong>{PRICE_TTC} € TTC</strong></p>
+        <p>Montant à régler : <strong>{priceTTC} € TTC</strong></p>
         <p className="modal-stripe-note">
           Les fonds sont sécurisés sur escrow jusqu&apos;à la fin de la mission.
         </p>
@@ -123,7 +130,7 @@ function StripeForm({
       <div className="modal-actions">
         <button className="modal-btn-ghost" onClick={onBack} disabled={paying}>Retour</button>
         <button className="fh-btn-primary" onClick={handlePay} disabled={paying || !stripe}>
-          {paying ? 'Traitement…' : `Payer ${PRICE_TTC} € TTC`}
+          {paying ? 'Traitement…' : `Payer ${priceTTC} € TTC`}
         </button>
       </div>
     </>
@@ -132,6 +139,9 @@ function StripeForm({
 
 export default function BookingModal({ match, clientId, notes, onClose, onBooked }: Props) {
   const { consultant: c } = match
+
+  // Calcul prix depuis le taux horaire du consultant
+  const pricing = buildPricing(c.daily_rate ?? 85)
 
   const [step,           setStep]           = useState<'slot' | 'confirm' | 'payment' | 'done'>('slot')
   const [selectedSlot,   setSelectedSlot]   = useState(match.slot)
@@ -194,9 +204,9 @@ export default function BookingModal({ match, clientId, notes, onClose, onBooked
         slot_id:        selectedSlot.id,
         matching_score: match.score,
         notes:          notes,
-        amount_ht:      PRICE_HT_CENTS,
-        commission:     COMMISSION_CENTS,
-        consultant_net: CONSULTANT_CENTS,
+        amount_ht:      pricing.priceHTCents,
+        commission:     pricing.commissionCents,
+        consultant_net: pricing.consultantCents,
       }),
     })
 
@@ -301,23 +311,23 @@ export default function BookingModal({ match, clientId, notes, onClose, onBooked
               <hr className="modal-divider" />
               <div className="modal-price-block">
                 <div className="modal-price-line">
-                  <span>Montant HT</span><span>{PRICE_HT} €</span>
+                  <span>Montant HT</span><span>{pricing.priceHT} €</span>
                 </div>
                 <div className="modal-price-line modal-price-tva">
-                  <span>TVA 20%</span><span>+ {TVA} €</span>
+                  <span>TVA 20%</span><span>+ {pricing.tva} €</span>
                 </div>
                 <div className="modal-price-line modal-price-total">
-                  <span>Total TTC</span><span>{PRICE_TTC} €</span>
+                  <span>Total TTC</span><span>{pricing.priceTTC} €</span>
                 </div>
               </div>
               <hr className="modal-divider" />
               <div className="modal-ventil">
                 <p className="modal-ventil-title">Ventilation plateforme</p>
                 <div className="modal-price-line">
-                  <span>CA plateforme (15% HT)</span><span>{COMMISSION} €</span>
+                  <span>CA plateforme (15% HT)</span><span>{pricing.commission} €</span>
                 </div>
                 <div className="modal-price-line">
-                  <span>Honoraire consultant</span><span>{CONSULTANT_NET} €</span>
+                  <span>Honoraire consultant</span><span>{pricing.consultantNet} €</span>
                 </div>
               </div>
             </div>
@@ -347,7 +357,7 @@ export default function BookingModal({ match, clientId, notes, onClose, onBooked
           >
             <StripeForm
               bookingId={bookingId!}
-              amountHt={PRICE_TTC}
+              priceTTC={pricing.priceTTC}
               onSuccess={() => setStep('done')}
               onBack={() => setStep('confirm')}
             />

@@ -1,6 +1,7 @@
 import { auth } from '@/auth'
 import { redirect } from 'next/navigation'
 import { query, queryOne } from '@/lib/freelancehub/db'
+import BookingAction from '@/components/freelancehub/consultant/BookingAction'
 
 export default async function ConsultantBookingsPage() {
   const session = await auth()
@@ -30,6 +31,7 @@ export default async function ConsultantBookingsPage() {
 
   const bookings = await query<{
     id: string
+    booking_number: number | null
     status: string
     created_at: string
     slot_date: string
@@ -40,7 +42,7 @@ export default async function ConsultantBookingsPage() {
     notes: string | null
     revealed_at: string | null
   }>(
-    `SELECT b.id, b.status, b.created_at,
+    `SELECT b.id, b.booking_number, b.status, b.created_at,
             s.slot_date::text, s.slot_time::text,
             sk.name AS skill_name,
             b.amount_ht, b.consultant_amount,
@@ -76,11 +78,13 @@ export default async function ConsultantBookingsPage() {
           <table className="bk-table">
             <thead>
               <tr>
+                <th>#N°</th>
                 <th>Date</th>
                 <th>Heure</th>
                 <th>Expertise</th>
                 <th>Montant (vous)</th>
                 <th>Statut</th>
+                <th>Action</th>
                 <th>Note client</th>
               </tr>
             </thead>
@@ -89,6 +93,11 @@ export default async function ConsultantBookingsPage() {
                 const s = STATUS_MAP[b.status] ?? STATUS_MAP.pending
                 return (
                   <tr key={b.id}>
+                    <td>
+                      <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: '.82rem', color: 'var(--text-mid)' }}>
+                        #{b.booking_number ?? '—'}
+                      </span>
+                    </td>
                     <td>
                       {new Date(b.slot_date + 'T00:00:00').toLocaleDateString('fr-FR', {
                         day: 'numeric', month: 'short', year: 'numeric',
@@ -108,6 +117,9 @@ export default async function ConsultantBookingsPage() {
                       >
                         {s.label}
                       </span>
+                    </td>
+                    <td>
+                      <BookingAction bookingId={b.id} currentStatus={b.status} />
                     </td>
                     <td className="bk-notes">{b.notes || '—'}</td>
                   </tr>

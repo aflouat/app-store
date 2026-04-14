@@ -11,6 +11,7 @@ export default async function ClientBookingsPage() {
 
   const bookings = await query<{
     id: string
+    booking_number: number | null
     status: string
     created_at: string
     slot_date: string
@@ -23,7 +24,7 @@ export default async function ClientBookingsPage() {
     consultant_title: string | null
     consultant_location: string | null
   }>(
-    `SELECT b.id, b.status, b.created_at,
+    `SELECT b.id, b.booking_number, b.status, b.created_at,
             s.slot_date::text, s.slot_time::text,
             sk.name AS skill_name,
             b.amount_ht, b.revealed_at,
@@ -73,6 +74,9 @@ export default async function ClientBookingsPage() {
             return (
               <div key={b.id} className="bk-card">
                 <div className="bk-card-left">
+                  <div className="bk-ref">
+                    {b.booking_number ? `#${b.booking_number}` : ''}
+                  </div>
                   <div className="bk-skill">{b.skill_name ?? 'Expertise'}</div>
                   <div className="bk-date">
                     {new Date(b.slot_date + 'T00:00:00').toLocaleDateString('fr-FR', {
@@ -123,6 +127,7 @@ export default async function ClientBookingsPage() {
         .bk-date { font-size: .85rem; color: var(--text-mid); text-transform: capitalize; }
         .bk-consultant { font-size: .83rem; color: var(--c3); }
         .bk-anon { font-size: .8rem; color: var(--text-light); font-style: italic; }
+        .bk-ref { font-family: monospace; font-size: .78rem; font-weight: 700; color: var(--text-light); }
         .bk-score { font-size: .8rem; color: var(--text-light); }
         .bk-card-right { display: flex; flex-direction: column; align-items: flex-end; gap: .5rem; flex-shrink: 0; }
         .bk-badge { font-size: .78rem; font-weight: 600; padding: .25em .75em; border-radius: 20px; white-space: nowrap; }
