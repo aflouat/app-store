@@ -4,17 +4,19 @@
 > **Positionnement** : Digital Service Hub haut de gamme — automatiser l'intermédiation freelance/entreprise pour libérer le talent de la paperasse.
 > **Entité** : Marketplace d'intermediation entre freelance et client, 
 > **Lancement public** : 30 avril 2026
-**Version courante** : `v1.2.0`
+**Version courante** : `v1.3.0`
 
 ---
 ## Algorithme de matching
 
 ```
-score = 0.40 × skill_match
-      + 0.30 × rating_score       (rating / 5)
-      + 0.20 × availability_score (slot dispo à la date)
-      + 0.10 × price_score        (1 - tarif_norm / budget_max)
+score = 0.55 × skill_match         (niveau déclaré : junior/intermédiaire/senior/expert)
+      + 0.35 × rating_score        (rating / 5)
+      + 0.05 × availability_score  (créneau dans < 7j → 100, linéaire jusqu'à 30j)
+      + 0.05 × price_score         (1 - tarif_consultant / budget_client)
 ```
+
+> Pondération mise à jour v1.3.0 : la compétence et la réputation dominent (90%), la disponibilité et le prix sont des tie-breakers (10%). Les consultants hors budget client sont filtrés en amont.
 
 ## Modèle économique
 
@@ -75,51 +77,68 @@ score = 0.40 × skill_match
 
 ---
 
-### Cycle 3 — FreelanceHub V1.2 🔄
-**Avril 2026 — en cours**
+### Cycle 3 — FreelanceHub V1.2 / V1.3 ✅
+**Avril 2026 — livré**
 
-- Notifications in-app (badge cloche, page dédiée)
-- Cron J-1 rappels automatiques (Vercel Cron 08:00 UTC)
-- Export CSV réservations (admin)
-- Migration SQL 007
+**V1.2** : Notifications in-app · Cron J-1 rappels · Export CSV admin · Migration 007
 
-**Prochaines étapes prioritaires** :
-
-| Priorité | Feature | Valeur |
-|---|---|---|
-| 🔴 | Cron J-1 activer et tester en prod | opérationnel |
-| 🔴 | Onboarding consultant (upload dossier admin KYC/URSSAF) | user_acquisition |
-| 🟠 | Booking récurrent (abonnement 10h/mois) | cost_reduction |
-| 🟠 | Page profil consultant éditable publiquement | ux_improvement |
-| 🟡 | Tableau de bord client : experts favoris | ux_improvement |
+**V1.3** (16 avril 2026) :
+- Bug fix évaluation client (FK violation corrigée)
+- Tarif consultant paramétrable (daily_rate → prix dynamique, recalcul serveur)
+- Numéro de réservation `booking_number` (migration 010)
+- Consultant autonome : boutons "Démarrer" / "Terminer" (confirmed→in_progress→completed)
+- Admin tableau comptable multi-critère (filtres statut/date/montant + totaux HT/TTC/commission)
+- Agenda : couleur terracotta (#e07b54) pour les créneaux pris
 
 ---
 
 ### Cycle 4 — Lancement public 🚀
 **30 avril 2026**
 
-- [ ] Landing page → redirection portail
-- [ ] Offre Early Adopter (commission réduite, badge fondateur)
-- [ ] Onboarding consultant KYC/URSSAF complet
-- [ ] CGU / Politique de confidentialité (RGPD)
-- [ ] Email de lancement aux inscrits waitlist (Brevo)
-- [ ] **Signatures Phase 1** — table `freelancehub.signatures` + checkbox CGU horodatée à l'onboarding (migration 008, provider `checkbox`, légalement suffisant pour CGU/ToS)
-- [ ] **NDA automatique Phase 1** — template PDF NDA généré à la 1ère mission, acceptation checkbox + signature stockée en DB
+Priorités ordonnées par valeur client (confiance → acquisition → rétention) :
+
+**🔴 Bloquants légaux — RGPD Phase 1** *(obligatoire avant tout utilisateur réel)*
+- [ ] **Page CGU** — conditions d'utilisation acceptées à l'inscription (checkbox horodatée → `freelancehub.signatures`, migration 008 déjà en place)
+- [ ] **Politique de confidentialité** — page `/legal/privacy` : responsable traitement, données collectées, durée conservation, droits utilisateurs (accès, rectification, suppression)
+- [ ] **Mentions légales** — page `/legal` : éditeur, hébergeur, SIRET
+- [ ] **Consentement email marketing** — opt-in explicite à l'inscription waitlist/portail (base légale : consentement art. 6.1.a RGPD)
+- [ ] **Droit à l'effacement** — API `DELETE /api/freelancehub/user/me` : anonymisation des données personnelles (name → "Utilisateur supprimé", email haché, conservation des bookings pour obligations comptables 10 ans)
+
+**🔴 Confiance client — Lancement crédible**
+- [ ] **Onboarding consultant KYC** — upload KBIS/URSSAF dans MinIO, validation admin avant activation du profil (badge "Vérifié")
+- [ ] **NDA automatique Phase 1** — checkbox + signature horodatée avant 1ère mission, stockée dans `freelancehub.signatures`
+- [ ] **Offre Early Adopter** — commission 10% (au lieu de 15%) + badge "Fondateur" pour les 20 premiers consultants
+
+**🟠 Acquisition — Signal de lancement**
+- [ ] **Landing page → portail** — redirection / bouton CTA vers `/freelancehub/register`
+- [ ] **Email de lancement** aux inscrits waitlist (Brevo) — J-3 teasing, J-0 go-live
+
+**🟡 Rétention — Post-lancement immédiat**
+- [ ] **Facture PDF** générée automatiquement après paiement (nom client, n° réservation, montant HT/TVA/TTC, mentions légales) → stockée MinIO, accessible depuis "Mes paiements"
 
 ---
 
 ### Cycle 5 — Croissance & récurrence
 **Mai – Juin 2026**
 
-- [ ] Stripe Connect (reversement automatique consultant)
-- [ ] Booking récurrent (abonnement 10h/20h par mois)
-- [ ] Dashboard consultant : revenus, calendrier, statistiques
-- [ ] Dashboard client : historique, factures, experts favoris
-- [ ] 2ème-3ème app métier dans le catalogue (Météo Projet ou Gestion Stock)
-- [ ] Publication régulière LPA (1 article/semaine)
-- [ ] **Agenda Doctolib — CalendarWeek consultant** ✅ implémenté C5 : grille semaine visuelle (clic par case), navigation sem. précédente/suivante, duplication de semaine en 1 clic, migration 008
-- [ ] **Agenda — Slot picker client** ✅ implémenté C5 : étape 0 BookingModal, sélection date + heure parmi les créneaux disponibles du consultant (60 jours)
-- [ ] **Signatures Phase 2 — Yousign** : intégration API Yousign (éditeur français, RGPD), NDA signé électroniquement avant 1ère mission consultant, document stocké MinIO, `provider_signature_id` tracé en DB
+**RGPD Phase 2 — Droits utilisateurs complets**
+- [ ] **Export données** — `GET /api/freelancehub/user/me/export` : ZIP contenant profil, bookings, avis, paiements (format JSON + CSV lisible, délai légal 30 jours)
+- [ ] **Registre des traitements** (art. 30 RGPD) — document interne listant les traitements : booking, paiement, évaluation, emails, analytics Umami
+- [ ] **Signatures Phase 2 — Yousign** : NDA signé électroniquement (éditeur français, certifié eIDAS), document stocké MinIO, `provider_signature_id` tracé en DB
+- [ ] **Sous-traitants** — DPA (Data Processing Agreement) Stripe, Resend, Vercel, OVH documentés
+
+**Valeur client — Récurrence & revenus**
+- [ ] **Stripe Connect** — reversement automatique consultant (supprime la gestion manuelle)
+- [ ] **Booking récurrent** — abonnement 10h/20h/mois avec tarif dégressif (−10%)
+- [ ] **Dashboard consultant** — revenus cumulés, courbe mensuelle, statistiques missions
+- [ ] **Dashboard client** — historique complet, experts favoris, budget consommé/mois
+- [ ] **Factures comptables enrichies** — export multi-période, regroupement par consultant
+
+**Notoriété**
+- [ ] Publication régulière LinkedIn/LPA (1 article/semaine — cible DRH et DSI)
+- [ ] 2ème app métier dans le catalogue (Météo Projet ou Gestion Stock)
+
+> **Déjà livrés en avance (C3)** : Agenda Doctolib ✅ · Slot picker client ✅
 
 **KPIs cibles** : taux récurrence > 30 %, Time-to-Contract < 5 min, 20+ experts Ready-to-book
 
@@ -128,11 +147,18 @@ score = 0.40 × skill_match
 ### Cycle 6 — Monétisation & scaling
 **Juillet – Septembre 2026**
 
+**RGPD Phase 3 — Conformité entreprise (clients B2B)**
+- [ ] **DPA client** — contrat de sous-traitance signable en ligne pour les clients entreprises (art. 28 RGPD obligatoire pour les DPO)
+- [ ] **Politique de rétention automatique** — purge automatique des données après expiration (ex : anonymisation comptes inactifs > 3 ans, purge slots > 1 an)
+- [ ] **Procédure de violation** — runbook documenté : détection, notification CNIL < 72h, communication aux personnes concernées
+- [ ] **Certification ISO 27001 roadmap** — audit préliminaire et plan d'action
+
+**Monétisation**
 - [ ] Commission activée sur transactions réelles (Stripe Connect)
 - [ ] Assurance RC Pro intégrée (partenariat)
-- [ ] Abonnement SaaS « Pro » consultant (19 €/mois — profil boosté)
+- [ ] Abonnement SaaS « Pro » consultant (19 €/mois — profil boosté + badge prioritaire)
 - [ ] Templates/documents premium (50–99 €)
-- [ ] API publique pour intégrations tierces
+- [ ] API publique pour intégrations tierces (RH, ERP)
 
 **KPIs cibles** : MRR > 500 €, volume séquestre > 2 000 €/mois, 5+ apps catalogue
 
@@ -146,8 +172,10 @@ score = 0.40 × skill_match
 | 04/04/2026 | PostgreSQL multi-schéma (pas multi-DB) | Simplicité opérationnelle pour un POC |
 | 04/04/2026 | Waitlist segmentée client/freelance | Mesurer le ratio demande/offre dès le teasing |
 | 16/04/2026 | Anonymat consultant jusqu'au paiement | Différenciation + protection données RGPD |
-| 16/04/2026 | Prix fixe 85 € TTC (pas TJM libre) | Simplicité UX + matching plus juste |
+| 16/04/2026 | Prix paramétrable par consultant (THM) | Attractivité marché + matching prix/budget client |
 | 12/04/2026 | Notifications in-app plutôt que push browser | Moins intrusif, plus simple à implémenter |
+| 16/04/2026 | Données hébergées VPS OVH France | Souveraineté données RGPD — pas de transfert hors UE |
+| 16/04/2026 | Table `signatures` avec horodatage IP/UA | Preuve légale d'acceptation CGU/NDA (art. 7 RGPD) |
 
 ---
 
@@ -166,6 +194,55 @@ score = 0.40 × skill_match
 ---
 
 ## Historique des releases
+
+---
+
+### v1.3.0 — FreelanceHub V1.3
+**16 avril 2026**
+
+**Bug fix critique**
+- Évaluation client : violation FK corrigée (`consultant_user_id` au lieu de `consultant_id` dans `reviews`)
+
+**Tarif consultant paramétrable**
+- `daily_rate` (THM €/h) du consultant utilisé pour calculer le prix de la consultation
+- `BookingModal` : affichage dynamique HT/TVA/TTC/honoraire selon le tarif du consultant
+- `payment-intent` : recalcul serveur depuis la DB (règle sécurité — jamais côté client)
+- Matching : filtre budget par consultant, `price_score` actif (5%)
+
+**Numéro de réservation**
+- Migration 010 : `booking_number SERIAL UNIQUE` sur `freelancehub.bookings`
+- Affiché `#N°` sur les vues consultant, client et admin
+
+**Consultant autonome**
+- API `PATCH /api/freelancehub/consultant/bookings/[id]/status`
+- Transitions autorisées : `confirmed → in_progress → completed`
+- Composant `BookingAction` avec boutons "Démarrer" / "Terminer"
+- Notification client automatique à chaque transition
+
+**Admin tableau comptable**
+- Composant `BookingsTable` client — filtres : statut, date de/à, consultant, client, montant min/max
+- Ligne de totaux : Σ HT, Σ TTC estimé, Σ commission plateforme (sur résultats filtrés)
+- Limite portée à 500 réservations
+
+**UI Agenda**
+- Créneaux réservés : fond terracotta `#e07b54` + libellé "PRIS" blanc (était bleu nuit illisible)
+
+**Fichiers créés/modifiés** :
+```
+migrations/010_booking_number_hourly_rate.sql                       [nouveau]
+portal/app/api/freelancehub/consultant/bookings/[id]/status/route.ts [nouveau]
+portal/components/freelancehub/admin/BookingsTable.tsx              [nouveau]
+portal/components/freelancehub/consultant/BookingAction.tsx         [nouveau]
+portal/lib/freelancehub/matching.ts                                 [modifié — tarif paramétrable]
+portal/components/freelancehub/client/BookingModal.tsx              [modifié — prix dynamique]
+portal/app/api/freelancehub/client/bookings/[id]/payment-intent/route.ts [modifié — recalcul DB]
+portal/app/api/freelancehub/reviews/route.ts                        [modifié — bug fix FK]
+portal/app/freelancehub/(auth)/client/reviews/[bookingId]/page.tsx  [modifié — bug fix FK]
+portal/app/freelancehub/(auth)/admin/bookings/page.tsx              [modifié — délègue BookingsTable]
+portal/app/freelancehub/(auth)/consultant/bookings/page.tsx         [modifié — BookingAction + #N°]
+portal/app/freelancehub/(auth)/client/bookings/page.tsx             [modifié — #N°]
+portal/components/freelancehub/consultant/AgendaCalendar.tsx        [modifié — couleur terracotta]
+```
 
 ---
 
