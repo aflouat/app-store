@@ -98,23 +98,23 @@ score = 0.55 × skill_match         (niveau déclaré : junior/intermédiaire/se
 Priorités ordonnées par valeur client (confiance → acquisition → rétention) :
 
 **🔴 Bloquants légaux — RGPD Phase 1** *(obligatoire avant tout utilisateur réel)*
-- [ ] **Page CGU** — conditions d'utilisation acceptées à l'inscription (checkbox horodatée → `freelancehub.signatures`, migration 008 déjà en place)
-- [ ] **Politique de confidentialité** — page `/legal/privacy` : responsable traitement, données collectées, durée conservation, droits utilisateurs (accès, rectification, suppression)
-- [ ] **Mentions légales** — page `/legal` : éditeur, hébergeur, SIRET
-- [ ] **Consentement email marketing** — opt-in explicite à l'inscription waitlist/portail (base légale : consentement art. 6.1.a RGPD)
-- [ ] **Droit à l'effacement** — API `DELETE /api/freelancehub/user/me` : anonymisation des données personnelles (name → "Utilisateur supprimé", email haché, conservation des bookings pour obligations comptables 10 ans)
+- [ ] **Page CGU** — conditions d'utilisation acceptées à l'inscription (checkbox horodatée → `freelancehub.signatures`, migration 008 déjà en place) · `business_value: 90` · `value_type: strategic_positioning`
+- [ ] **Politique de confidentialité** — page `/legal/privacy` : responsable traitement, données collectées, durée conservation, droits utilisateurs (accès, rectification, suppression) · `business_value: 90` · `value_type: strategic_positioning`
+- [ ] **Mentions légales** — page `/legal` : éditeur, hébergeur, SIRET · `business_value: 85` · `value_type: strategic_positioning`
+- [ ] **Consentement email marketing** — opt-in explicite à l'inscription waitlist/portail (base légale : consentement art. 6.1.a RGPD) · `business_value: 80` · `value_type: user_acquisition`
+- [ ] **Droit à l'effacement** — API `DELETE /api/freelancehub/user/me` : anonymisation des données personnelles (name → "Utilisateur supprimé", email haché, conservation des bookings pour obligations comptables 10 ans) · `business_value: 75` · `value_type: strategic_positioning`
 
 **🔴 Confiance client — Lancement crédible**
-- [ ] **Onboarding consultant KYC** — upload KBIS/URSSAF dans MinIO, validation admin avant activation du profil (badge "Vérifié")
-- [ ] **NDA automatique Phase 1** — checkbox + signature horodatée avant 1ère mission, stockée dans `freelancehub.signatures`
-- [ ] **Offre Early Adopter** — commission 10% (au lieu de 15%) + badge "Fondateur" pour les 20 premiers consultants
+- [ ] **Onboarding consultant KYC** — upload KBIS/URSSAF dans MinIO, validation admin avant activation du profil (badge "Vérifié") · `business_value: 92` · `value_type: user_acquisition`
+- [ ] **NDA automatique Phase 1** — checkbox + signature horodatée avant 1ère mission, stockée dans `freelancehub.signatures` · `business_value: 80` · `value_type: strategic_positioning`
+- [ ] **Offre Early Adopter** — commission 10% (au lieu de 15%) + badge "Fondateur" pour les 20 premiers consultants · `business_value: 88` · `value_type: user_acquisition`
 
 **🟠 Acquisition — Signal de lancement**
-- [ ] **Landing page → portail** — redirection / bouton CTA vers `/freelancehub/register`
-- [ ] **Email de lancement** aux inscrits waitlist (Brevo) — J-3 teasing, J-0 go-live
+- [ ] **Landing page → portail** — redirection / bouton CTA vers `/freelancehub/register` · `business_value: 95` · `value_type: user_acquisition`
+- [ ] **Email de lancement** aux inscrits waitlist (Brevo) — J-3 teasing, J-0 go-live · `business_value: 88` · `value_type: user_acquisition`
 
 **🟡 Rétention — Post-lancement immédiat**
-- [ ] **Facture PDF** générée automatiquement après paiement (nom client, n° réservation, montant HT/TVA/TTC, mentions légales) → stockée MinIO, accessible depuis "Mes paiements"
+- [ ] **Facture PDF** générée automatiquement après paiement (nom client, n° réservation, montant HT/TVA/TTC, mentions légales) → stockée MinIO, accessible depuis "Mes paiements" · `business_value: 76` · `value_type: ux_improvement`
 
 ---
 
@@ -122,21 +122,21 @@ Priorités ordonnées par valeur client (confiance → acquisition → rétentio
 **Mai – Juin 2026**
 
 **RGPD Phase 2 — Droits utilisateurs complets**
-- [ ] **Export données** — `GET /api/freelancehub/user/me/export` : ZIP contenant profil, bookings, avis, paiements (format JSON + CSV lisible, délai légal 30 jours)
-- [ ] **Registre des traitements** (art. 30 RGPD) — document interne listant les traitements : booking, paiement, évaluation, emails, analytics Umami
-- [ ] **Signatures Phase 2 — Yousign** : NDA signé électroniquement (éditeur français, certifié eIDAS), document stocké MinIO, `provider_signature_id` tracé en DB
-- [ ] **Sous-traitants** — DPA (Data Processing Agreement) Stripe, Resend, Vercel, OVH documentés
+- [ ] **Export données** — `GET /api/freelancehub/user/me/export` : ZIP contenant profil, bookings, avis, paiements (format JSON + CSV lisible, délai légal 30 jours) · `business_value: 70` · `value_type: strategic_positioning`
+- [ ] **Registre des traitements** (art. 30 RGPD) — document interne listant les traitements : booking, paiement, évaluation, emails, analytics Umami · `business_value: 65` · `value_type: strategic_positioning`
+- [ ] **Signatures Phase 2 — Yousign** : NDA signé électroniquement (éditeur français, certifié eIDAS), document stocké MinIO, `provider_signature_id` tracé en DB · `business_value: 62` · `value_type: strategic_positioning`
+- [ ] **Sous-traitants** — DPA (Data Processing Agreement) Stripe, Resend, Vercel, OVH documentés · `business_value: 55` · `value_type: strategic_positioning`
 
 **Valeur client — Récurrence & revenus**
-- [ ] **Stripe Connect** — reversement automatique consultant (supprime la gestion manuelle)
-- [ ] **Booking récurrent** — abonnement 10h/20h/mois avec tarif dégressif (−10%)
-- [ ] **Dashboard consultant** — revenus cumulés, courbe mensuelle, statistiques missions
-- [ ] **Dashboard client** — historique complet, experts favoris, budget consommé/mois
-- [ ] **Factures comptables enrichies** — export multi-période, regroupement par consultant
+- [ ] **Stripe Connect** — reversement automatique consultant (supprime la gestion manuelle) · `business_value: 90` · `value_type: cost_reduction`
+- [ ] **Booking récurrent** — abonnement 10h/20h/mois avec tarif dégressif (−10%) · `business_value: 85` · `value_type: user_acquisition`
+- [ ] **Dashboard consultant** — revenus cumulés, courbe mensuelle, statistiques missions · `business_value: 80` · `value_type: ux_improvement`
+- [ ] **Dashboard client** — historique complet, experts favoris, budget consommé/mois · `business_value: 80` · `value_type: ux_improvement`
+- [ ] **Factures comptables enrichies** — export multi-période, regroupement par consultant · `business_value: 70` · `value_type: ux_improvement`
 
 **Notoriété**
-- [ ] Publication régulière LinkedIn/LPA (1 article/semaine — cible DRH et DSI)
-- [ ] 2ème app métier dans le catalogue (Météo Projet ou Gestion Stock)
+- [ ] Publication régulière LinkedIn/LPA (1 article/semaine — cible DRH et DSI) · `business_value: 75` · `value_type: user_acquisition`
+- [ ] 2ème app métier dans le catalogue (Météo Projet ou Gestion Stock) · `business_value: 60` · `value_type: strategic_positioning`
 
 > **Déjà livrés en avance (C3)** : Agenda Doctolib ✅ · Slot picker client ✅
 
@@ -148,17 +148,17 @@ Priorités ordonnées par valeur client (confiance → acquisition → rétentio
 **Juillet – Septembre 2026**
 
 **RGPD Phase 3 — Conformité entreprise (clients B2B)**
-- [ ] **DPA client** — contrat de sous-traitance signable en ligne pour les clients entreprises (art. 28 RGPD obligatoire pour les DPO)
-- [ ] **Politique de rétention automatique** — purge automatique des données après expiration (ex : anonymisation comptes inactifs > 3 ans, purge slots > 1 an)
-- [ ] **Procédure de violation** — runbook documenté : détection, notification CNIL < 72h, communication aux personnes concernées
-- [ ] **Certification ISO 27001 roadmap** — audit préliminaire et plan d'action
+- [ ] **DPA client** — contrat de sous-traitance signable en ligne pour les clients entreprises (art. 28 RGPD obligatoire pour les DPO) · `business_value: 65` · `value_type: strategic_positioning`
+- [ ] **Politique de rétention automatique** — purge automatique des données après expiration (ex : anonymisation comptes inactifs > 3 ans, purge slots > 1 an) · `business_value: 60` · `value_type: technical_debt`
+- [ ] **Procédure de violation** — runbook documenté : détection, notification CNIL < 72h, communication aux personnes concernées · `business_value: 70` · `value_type: strategic_positioning`
+- [ ] **Certification ISO 27001 roadmap** — audit préliminaire et plan d'action · `business_value: 50` · `value_type: strategic_positioning`
 
 **Monétisation**
-- [ ] Commission activée sur transactions réelles (Stripe Connect)
-- [ ] Assurance RC Pro intégrée (partenariat)
-- [ ] Abonnement SaaS « Pro » consultant (19 €/mois — profil boosté + badge prioritaire)
-- [ ] Templates/documents premium (50–99 €)
-- [ ] API publique pour intégrations tierces (RH, ERP)
+- [ ] Commission activée sur transactions réelles (Stripe Connect) · `business_value: 95` · `value_type: cost_reduction`
+- [ ] Assurance RC Pro intégrée (partenariat) · `business_value: 75` · `value_type: strategic_positioning`
+- [ ] Abonnement SaaS « Pro » consultant (19 €/mois — profil boosté + badge prioritaire) · `business_value: 85` · `value_type: user_acquisition`
+- [ ] Templates/documents premium (50–99 €) · `business_value: 65` · `value_type: user_acquisition`
+- [ ] API publique pour intégrations tierces (RH, ERP) · `business_value: 70` · `value_type: strategic_positioning`
 
 **KPIs cibles** : MRR > 500 €, volume séquestre > 2 000 €/mois, 5+ apps catalogue
 

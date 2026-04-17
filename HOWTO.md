@@ -43,7 +43,10 @@ Objectif : valider que l'environnement local fonctionne end-to-end.
 [ ] http://localhost:3000 → page d'accueil charge (pas d'erreur 500)
 [ ] /freelancehub/login → formulaire visible
 [ ] Login admin@perform-learn.fr / demo1234 → redirige /freelancehub/admin
-[ ] /freelancehub/admin/bookings → liste des réservations charge (pas d'erreur DB)
+[ ] /freelancehub/admin/bookings → tableau "Transactions comptables" charge (filtres + totaux visibles)
+[ ] Déconnexion → retour /freelancehub/login
+[ ] Login consultant1@perform-learn.fr / demo1234
+[ ] /freelancehub/consultant/bookings → tableau avec colonnes #N° et Action
 [ ] Déconnexion → retour /freelancehub/login
 [ ] Login client1@perform-learn.fr / demo1234
 [ ] /freelancehub/client/search → recherche "ERP" → ≤ 5 cartes anonymes
@@ -123,13 +126,16 @@ DELETE FROM freelancehub.bookings WHERE id = '<uuid>';
 **Voir les bookings récents avec emails :**
 
 ```sql
-SELECT b.id, uc.email AS client, uc2.email AS consultant,
+SELECT b.booking_number, b.id, uc.email AS client, uc2.email AS consultant,
        b.status, b.amount_ht/100.0 AS ht_eur, b.revealed_at
 FROM freelancehub.bookings b
 JOIN freelancehub.users uc ON uc.id = b.client_id
 JOIN freelancehub.consultants c ON c.id = b.consultant_id
 JOIN freelancehub.users uc2 ON uc2.id = c.user_id
 ORDER BY b.created_at DESC LIMIT 10;
+
+-- Vérifier la séquence booking_number
+SELECT last_value FROM freelancehub.bookings_booking_number_seq;
 ```
 
 ---
@@ -328,19 +334,31 @@ ssh -p 2222 abdel@37.59.125.159 'cd /appli/app-store && docker compose up -d --b
    ✓ Étape "done" : NOM et EMAIL du consultant révélés
    ✓ Notification in-app créée (cloche avec badge)
 5. /freelancehub/client/bookings
-   ✓ Réservation apparaît (status: confirmed)
+   ✓ Réservation apparaît avec son #N° (status: confirmed)
 ```
 
 ### Scénario 4 — Vue consultant
 
 ```
 1. Login consultant1 → /freelancehub/consultant/bookings
-   ✓ La réservation du scénario 3 apparaît
+   ✓ La réservation du scénario 3 apparaît avec son #N°
    ✓ Notification "Nouvelle mission" visible dans /freelancehub/notifications
-2. /freelancehub/consultant/agenda
-   ✓ Ajout/suppression de créneaux fonctionne
-3. /freelancehub/consultant/profile
-   ✓ Modification bio/tarif sauvegarde correctement
+   ✓ Colonne "Action" : bouton "Démarrer" visible si statut = confirmed
+2. Cliquer "Démarrer"
+   ✓ Statut passe à in_progress
+   ✓ Bouton devient "Terminer"
+   ✓ Notification envoyée au client
+3. Cliquer "Terminer"
+   ✓ Statut passe à completed
+   ✓ Bouton disparaît (plus d'action possible)
+   ✓ Page /client/reviews débloquée pour le client
+4. /freelancehub/consultant/agenda
+   ✓ Créneaux disponibles : fond vert
+   ✓ Créneaux pris : fond terracotta avec libellé "PRIS"
+   ✓ Bouton "Dupliquer →" copie la semaine vers la suivante
+5. /freelancehub/consultant/profile
+   ✓ Modifier le THM (ex: 90) → sauvegarde
+   ✓ Prochain booking utilise le nouveau tarif
 ```
 
 ### Scénario 5 — Évaluations et libération des fonds
@@ -371,7 +389,10 @@ Prérequis : passer booking en status 'completed' (admin ou SQL direct)
 1. Login admin → /freelancehub/admin/users
    ✓ Liste tous les utilisateurs avec rôles
 2. /freelancehub/admin/bookings
-   ✓ Toutes les réservations (client + consultant visibles)
+   ✓ Tableau "Transactions comptables" : #N°, date, client, consultant, montant HT, commission, statut
+   ✓ Filtres actifs : statut, date de/à, consultant (texte), client (texte), montant HT min/max
+   ✓ Totaux filtrés : Σ HT, Σ TTC estimé, Σ commission — recalculés instantanément
+   ✓ Bouton "✕ Réinitialiser" efface tous les filtres
    ✓ Bouton "↓ Export CSV" télécharge le fichier
 3. /freelancehub/admin/payments
    ✓ Paiements avec statuts
@@ -390,6 +411,63 @@ Prérequis : passer booking en status 'completed' (admin ou SQL direct)
    ✓ Passe en "lu", point rouge disparaît
 4. Bouton "Tout marquer comme lu"
    ✓ Badge cloche disparaît
+```
+
+### Scénario 8 — Inscription d'un nouveau compte
+
+```
+1. /freelancehub/register
+   ✓ Formulaire avec choix de rôle : Client ou Consultant
+2. Sélectionner "Consultant" + remplir nom, email, mot de passe
+3. Valider
+   ✓ Compte créé dans freelancehub.users (mot de passe bcrypt)
+   ✓ Auto-login → redirige vers /freelancehub/consultant
+4. /freelancehub/consultant/profile
+   ✓ Compléter : titre, bio, compétences, THM (ex: 90 €/h)
+   ✓ Sauvegarder → is_available = false par défaut (en attente validation admin)
+5. Login admin → /freelancehub/admin/consultants
+   ✓ Nouveau consultant visible
+   ✓ Activer → is_available = true → consultant apparaît dans la recherche client
+```
+
+### Scénario 9 — Gestion autonome du cycle de consultation (consultant)
+
+```
+Prérequis : avoir une réservation en status 'confirmed' (cf. Scénario 3)
+
+1. Login consultant1 → /freelancehub/consultant/bookings
+   ✓ Colonne "Action" : bouton bleu "Démarrer" sur la ligne confirmed
+2. Cliquer "Démarrer"
+   ✓ PATCH /api/freelancehub/consultant/bookings/[id]/status → {status: 'in_progress'}
+   ✓ Statut passe à "En cours"
+   ✓ Bouton devient vert "Terminer"
+   ✓ Cloche cliente : notification "Consultation démarrée"
+3. Cliquer "Terminer"
+   ✓ Statut passe à "Terminée"
+   ✓ Bouton disparaît (aucune action possible en terminal)
+   ✓ /freelancehub/client/reviews/[id] débloqué pour le client
+4. Vérifier qu'il est impossible de régresser depuis l'interface
+   ✓ Aucun bouton "Annuler" — seul l'admin peut forcer un statut via BookingStatusAction
+```
+
+### Scénario 10 — Tableau comptable admin (filtres & totaux)
+
+```
+1. Login admin → /freelancehub/admin/bookings
+   ✓ Titre "Transactions comptables", jusqu'à 500 lignes
+2. Filtre "Statut = Terminée"
+   ✓ Seules les réservations completed apparaissent
+   ✓ Totaux recalculés (Σ HT, Σ TTC, Σ commission)
+3. Ajouter filtre "Date de = 2026-04-01" + "Date à = 2026-04-30"
+   ✓ Résultats restreints à la période
+4. Saisir un nom de consultant dans le champ "Consultant"
+   ✓ Filtre texte actif, seules les lignes correspondantes
+5. Saisir un montant HT min (ex: 80 €)
+   ✓ Seules les réservations ≥ 80 € HT apparaissent
+6. Cliquer "✕ Réinitialiser"
+   ✓ Tous les filtres effacés, toutes les réservations réapparaissent
+7. Cliquer "↓ Export CSV"
+   ✓ Fichier téléchargé : colonnes #N°, date, client, consultant, montant HT, commission, statut
 ```
 
 ### Commandes de diagnostic rapide
@@ -437,10 +515,12 @@ Le client ne voit jamais le nom, l'email, le bio ni le lien LinkedIn d'un consul
 
 ### RG-02 — Tarification
 
-- Prix de la consultation : plage **40 €–100 €** selon la mission (pas de prix fixe unique)
-- Structure : montant HT + TVA 20 % = montant TTC
-- Le montant est calculé **côté serveur** uniquement — jamais côté client
-- Le PaymentIntent Stripe est créé avec le montant recalculé depuis la DB (`bookings.amount_ht`)
+- Le consultant fixe son **Taux Horaire Moyen (THM)** dans son profil (`consultants.daily_rate`, en €)
+- Une consultation = 1 heure = `daily_rate` HT
+- Structure : `HT × 1,20 = TTC` · `HT × 0,15 = commission` · `HT × 0,85 = honoraire consultant`
+- Le montant est calculé **côté serveur** uniquement — jamais côté client (règle de sécurité immuable)
+- Le `PaymentIntent` Stripe est créé depuis `bookings.amount_ht` en DB, pas depuis le client
+- Fallback si `daily_rate` non renseigné : 85 €/h
 
 ### RG-03 — Commission plateforme
 
@@ -478,18 +558,19 @@ pending → authorized → captured → transferred → (refunded)
 
 ### RG-06 — Algorithme de matching
 
-Score composite sur 100 points :
+Score composite sur 100 points (pondération v1.3) :
 
 ```
-score = 0.40 × skill_match        (compétence exacte = 1, sinon 0)
-      + 0.30 × rating_score       (rating du consultant / 5)
-      + 0.20 × availability_score (prochain slot dispo dans < 7j = 1.0, linéaire jusqu'à 30j)
-      + 0.10 × price_score        (1 - tarif_normalisé / budget_max)
+score = 0.55 × skill_match         (niveau : expert=100, senior=80, intermédiaire=60, junior=40)
+      + 0.35 × rating_score        (rating consultant / 5 × 100)
+      + 0.05 × availability_score  (créneau dans < 7j → 100, linéaire jusqu'à 30j → 0)
+      + 0.05 × price_score         (1 - tarif_consultant_TTC / budget_client) × 100
 ```
 
 - Top **5 consultants** retournés, triés par score décroissant
-- Si `price_score` ne peut pas être calculé (budget non renseigné) : score basé sur les 3 autres critères renormalisés
-- Un consultant sans slot disponible peut apparaître mais avec `availability_score = 0`
+- Un consultant dont le tarif TTC > budget client est **filtré avant calcul**
+- Si `client_budget` est null : `price_score = 100` (pas de contrainte prix)
+- Seuls les consultants avec `is_available = true` et au moins 1 slot futur disponible sont candidats
 
 ### RG-07 — Notifications in-app
 
@@ -524,6 +605,8 @@ Les notifications sont créées automatiquement aux événements suivants :
 
 ### RG-10 — Edge Runtime (Next.js middleware)
 
+
+
 Le middleware s'exécute sur Edge Runtime — incompatible avec certains modules Node.js :
 
 | Module | Compat Edge | Usage |
@@ -535,3 +618,63 @@ Le middleware s'exécute sur Edge Runtime — incompatible avec certains modules
 Pattern obligatoire :
 - `auth.config.ts` → config JWT/callbacks, sans providers → importé par `middleware.ts`
 - `auth.ts` → étend authConfig + Credentials + bcrypt → jamais importé dans le middleware
+
+### RG-11 — Numéro de réservation
+
+- Chaque réservation a un `booking_number` (SERIAL, entier auto-incrémenté, unique)
+- Affiché sous la forme `#N°` dans toutes les vues : consultant, client, admin
+- Permet d'identifier une réservation sans exposer l'UUID interne (support, comptabilité)
+- Les réservations antérieures à la migration 010 ont reçu leurs numéros automatiquement via la séquence
+
+```sql
+-- Trouver une réservation par son numéro
+SELECT * FROM freelancehub.bookings WHERE booking_number = 42;
+```
+
+### RG-12 — Autonomie consultant (gestion du cycle de consultation)
+
+À partir de la confirmation du paiement client, le consultant gère lui-même l'avancement :
+
+| Statut actuel | Action consultant | Nouveau statut | Déclencheur |
+|---|---|---|---|
+| `confirmed` | Bouton **"Démarrer"** | `in_progress` | Début de la consultation |
+| `in_progress` | Bouton **"Terminer"** | `completed` | Fin de la consultation |
+
+- L'admin garde la possibilité de toutes les transitions
+- Le client est notifié automatiquement à chaque transition (notification in-app)
+- Une fois `completed`, les évaluations sont débloquées (RG-04)
+- **Route** : `PATCH /api/freelancehub/consultant/bookings/[id]/status`
+- Aucun retour arrière possible depuis `in_progress` ou `completed`
+
+### RG-13 — Inscription utilisateur
+
+- Page `/freelancehub/register` : choix du rôle (consultant ou client) + formulaire
+- Création de compte dans `freelancehub.users` (bcrypt hash du mot de passe)
+- Auto-login après inscription → redirection vers le dashboard du rôle
+- Le consultant doit compléter son profil avant de pouvoir apparaître dans le matching (`is_available = false` par défaut)
+- L'admin valide le dossier KYC pour passer `is_verified = true`
+
+### RG-14 — Agenda visuel consultant
+
+- Grille semaine (lundi → dimanche, 08h–20h, pas de 1h)
+- **Vert** `#d4f3e5` : créneau disponible (clic = suppression)
+- **Terracotta** `#e07b54` + libellé "PRIS" : créneau réservé par un client (non modifiable)
+- **Grisé** : date passée (non cliquable)
+- Navigation semaine précédente / suivante
+- Bouton "Dupliquer →" : copie tous les créneaux disponibles de la semaine en cours vers la semaine suivante
+
+### RG-15 — Tableau comptable admin
+
+Le tableau `/freelancehub/admin/bookings` permet une analyse multi-critères des transactions :
+
+| Filtre | Type | Description |
+|---|---|---|
+| Statut | Sélecteur | pending / confirmed / in_progress / completed / cancelled / disputed |
+| Date de | Date | Filtre sur `slot_date ≥` |
+| Date à | Date | Filtre sur `slot_date ≤` |
+| Consultant | Texte libre | Recherche sur nom ou titre |
+| Client | Texte libre | Recherche sur nom ou email |
+| Montant HT min/max | Nombre (€) | Filtre sur `amount_ht` (centimes en DB) |
+
+- Ligne de totaux : **Σ HT**, **Σ TTC estimé**, **Σ commission plateforme** sur les résultats filtrés
+- Export CSV : toutes les réservations (bouton `↓ Export CSV`, route `GET /api/freelancehub/admin/export-csv`)
