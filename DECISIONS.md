@@ -64,6 +64,17 @@
 
 ---
 
+### 2026-04-19 — Notifications email tâches agents humains
+
+- **Décision** : GO
+- **Contexte** : Chaque tâche assignée à un agent humain (Abdel / Mme Aminetou) doit déclencher un email structuré avec numéro, description, durée, outil et deadline. L'agent tech administre Resend directement (API REST) sans dépendre d'une action humaine.
+- **Validé par** : Abdel
+- **Budget engagé** : 0 € (Resend tier gratuit, domaine déjà vérifié)
+- **Statut** : ✅ Livré — email reçu par Abdel (aflouat@gmail.com) confirmé le 19/04/2026
+- **Résultat** : `POST /api/govern/tasks/notify` opérationnel. Expéditeur `noreply@perform-learn.fr`. Domaine `perform-learn.fr` vérifié dans Resend.
+
+---
+
 ## Décisions en attente de feedback
 
 | Réf. | Feature | En attente de |
