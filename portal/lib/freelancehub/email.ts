@@ -11,7 +11,7 @@ function getResend(): Resend {
 }
 
 const FROM       = 'FreelanceHub <noreply@perform-learn.fr>'
-const FROM_DG    = 'Agent DG · perform-learn.fr <contact@perform-learn.fr>'
+const FROM_DG    = 'Agent DG · perform-learn.fr <noreply@perform-learn.fr>'
 const BASE  = process.env.NEXTAUTH_URL ?? 'https://portal.perform-learn.fr'
 
 // ─── Types ────────────────────────────────────────────────────
