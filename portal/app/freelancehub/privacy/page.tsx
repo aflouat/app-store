@@ -11,7 +11,8 @@ export default function PrivacyPage() {
           <h2>1. Responsable du traitement</h2>
           <p>
             <strong>EMMAEINNA Aminetou</strong> — SIRET : 103 082 673<br />
-            Adresse : [ADRESSE]<br />
+            Adresse : 78330 Fontenay le fleury <br />
+            France <br />
             Email : <a href="mailto:contact@perform-learn.fr">contact@perform-learn.fr</a>
           </p>
         </section>

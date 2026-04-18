@@ -80,11 +80,16 @@ export default function CguPage() {
           <ul>
             <li>
               La commission standard prélevée par FreelanceHub est de <strong>15 %</strong> du montant HT
-              de chaque consultation.
+              de chaque consultation. ces frais inclusent les coûts de fonctionnement de la plateforme, le support client,
+               la gestion du KYC et du séquestre, ainsi que les frais de transaction Stripe.
             </li>
             <li>
               Les consultants <strong>Early Adopter</strong> (20 premiers inscrits et validés) bénéficient
               d'une commission réduite à <strong>10 %</strong> et du badge "Fondateur".
+            </li>
+            <li>
+              Les avantages sont : un cadre contractuel sécurisé, gestion du KYC (vérification administrative), 
+              assurance contre l'impayé grâce au séquestre en option, et gain de temps sur le sourcing.
             </li>
             <li>Le prix de la consultation est fixé librement par le consultant (tarif horaire en €/h).</li>
             <li>La TVA applicable est de 20 % sur le montant HT.</li>
@@ -97,7 +102,10 @@ export default function CguPage() {
             Le paiement est effectué par le client via Stripe au moment de la réservation. Les fonds sont
             conservés en séquestre jusqu'à la réalisation de la mission et la soumission des évaluations
             par les deux parties. La libération des fonds est automatique après réception des deux
-            évaluations. Les obligations comptables imposent la conservation des données de paiement
+            évaluations.
+            À défaut d'évaluation ou de signalement de litige sous 48h après la mission, les fonds sont libérés 
+            automatiquement au consultant" pour garantir sa trésorerie.
+             Les obligations comptables imposent la conservation des données de paiement
             pendant 10 ans.
           </p>
         </section>
@@ -109,6 +117,8 @@ export default function CguPage() {
             dans les résultats de recherche et ne sont révélées au client qu'après confirmation du
             paiement. Cette mesure protège à la fois les données personnelles du consultant et garantit
             l'engagement du client.
+            Toutefois, il faut noter que même si l'identité du consultantest masquée, les compétences, certifications et avis vérifiés sont, eux,
+             totalement transparents et détaillés pour garantir la qualité avant l'achat.
           </p>
         </section>
 
