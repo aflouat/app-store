@@ -14,6 +14,12 @@ export default async function ConsultantBookingsPage() {
     [userId]
   )
 
+  const ndaSigned = !!(await queryOne(
+    `SELECT id FROM freelancehub.signatures
+     WHERE user_id = $1 AND document_type = 'NDA' LIMIT 1`,
+    [userId]
+  ))
+
   if (!consultant) {
     return (
       <div className="fh-page">
@@ -70,6 +76,13 @@ export default async function ConsultantBookingsPage() {
         <h1 className="fh-page-title">Réservations</h1>
         <p className="fh-page-sub">{bookings.length} réservation{bookings.length !== 1 ? 's' : ''} au total</p>
       </header>
+
+      {!ndaSigned && (
+        <div className="nda-banner">
+          <span>⚠ Vous devez signer le NDA avant de pouvoir démarrer une mission.</span>
+          <a href="/freelancehub/consultant/nda" className="nda-banner-cta">Lire et signer le NDA →</a>
+        </div>
+      )}
 
       {bookings.length === 0 ? (
         <p className="fh-empty">Aucune réservation pour le moment. Assurez-vous d&apos;avoir des créneaux disponibles.</p>
@@ -144,6 +157,9 @@ export default async function ConsultantBookingsPage() {
         .bk-table tbody tr:hover { background: var(--bg); }
         .bk-badge { font-size: .78rem; font-weight: 600; padding: .25em .7em; border-radius: 20px; white-space: nowrap; }
         .bk-notes { max-width: 200px; font-size: .82rem; color: var(--text-mid); white-space: pre-wrap; word-break: break-word; }
+        .nda-banner { display: flex; align-items: center; gap: 1rem; padding: .75rem 1rem; background: #fffbeb; border: 1px solid #fde68a; border-radius: var(--radius-sm); font-size: .88rem; color: #d97706; font-weight: 500; flex-wrap: wrap; }
+        .nda-banner-cta { font-weight: 700; color: #d97706; text-decoration: none; white-space: nowrap; }
+        .nda-banner-cta:hover { text-decoration: underline; }
       `}</style>
     </div>
   )
