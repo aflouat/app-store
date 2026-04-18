@@ -176,6 +176,127 @@ WHERE user_id = (SELECT id FROM freelancehub.users WHERE email = 'consultant1@pe
 
 ---
 
+## 0.6 Test itération C4 — Légal + KYC + NDA (sur portal.perform-learn.fr)
+
+> Pas besoin d'environnement local. Tout se teste directement sur le site de production.
+> Durée estimée : 15 minutes.
+
+### Scénario 1 — Pages légales (2 min)
+
+```
+Ouvrir un navigateur en navigation privée (pour ne pas être connecté).
+
+[ ] Aller sur https://portal.perform-learn.fr/freelancehub/cgu
+    → La page s'affiche avec le texte des CGU
+    → Nom "EMMAEINNA Aminetou" et "SIREN 103 082 673" visibles
+
+[ ] Aller sur https://portal.perform-learn.fr/freelancehub/privacy
+    → Politique de confidentialité affichée (tableaux sous-traitants, droits RGPD)
+
+[ ] Aller sur https://portal.perform-learn.fr/legal
+    → Mentions légales affichées
+```
+
+---
+
+### Scénario 2 — Inscription avec consentement (3 min)
+
+```
+Toujours en navigation privée.
+
+[ ] Aller sur https://portal.perform-learn.fr/freelancehub/register
+[ ] Cliquer sur le panneau "Consultant Expert"
+[ ] Remplir le formulaire (email test : testkyc@test.fr, mdp : test1234)
+[ ] Vérifier que le bouton "Créer mon compte" est GRISÉ tant que la
+    checkbox CGU n'est pas cochée
+[ ] Cocher "J'accepte les CGU..." → le bouton devient actif
+[ ] Soumettre → redirection vers /freelancehub/consultant
+
+✅ Attendu : compte créé, connecté, dashboard consultant visible
+```
+
+Vérification DB (optionnel) :
+```bash
+ssh -p 2222 abdel@37.59.125.159 \
+  'docker exec postgres psql -U appstore -d appstore -c "
+    SELECT u.email, s.document_type, s.signed_at, s.ip_address
+    FROM freelancehub.signatures s
+    JOIN freelancehub.users u ON u.id = s.user_id
+    WHERE u.email = '"'"'testkyc@test.fr'"'"';"'
+```
+
+---
+
+### Scénario 3 — KYC Consultant (5 min)
+
+```
+Connecté en tant que consultant (testkyc@test.fr / test1234).
+
+[ ] Dans la sidebar gauche, cliquer "Mon KYC"
+    → URL : /freelancehub/consultant/kyc
+    → Statut affiché "○ Non soumis"
+    → Formulaire visible avec select (Kbis / Attestation URSSAF) + input fichier
+
+[ ] Choisir "Kbis" dans le select
+[ ] Sélectionner n'importe quel fichier PDF ou image (< 5 Mo)
+    (un screenshot, une facture PDF, peu importe — c'est un test)
+[ ] Cliquer "Envoyer le document"
+    → Message vert "Document envoyé avec succès"
+    → Statut change en "⏳ En cours de validation"
+```
+
+Puis en tant qu'**admin** :
+```
+[ ] Se déconnecter
+[ ] Se connecter : admin@perform-learn.fr / demo1234
+[ ] Aller sur /freelancehub/admin/consultants
+    → Le consultant testkyc@test.fr apparaît avec KYC "⚡ En attente"
+    → Colonne KYC visible avec lien "Voir document"
+[ ] Cliquer "Valider KYC"
+    → Le badge passe à "✓ Validé"
+    → Le consultant passe en "✓ Vérifié"
+
+[ ] Se déconnecter, se reconnecter en tant que testkyc@test.fr
+[ ] Aller sur /freelancehub/consultant/kyc
+    → Statut "✓ KYC validé — profil actif"
+[ ] Aller sur le dashboard /freelancehub/consultant
+    → Le banner orange KYC a disparu
+```
+
+---
+
+### Scénario 4 — NDA Consultant (3 min)
+
+```
+Connecté en tant que testkyc@test.fr.
+
+[ ] Cliquer "Réservations" dans la sidebar
+    → Banner orange visible : "⚠ Vous devez signer le NDA..."
+    → Lien "Lire et signer le NDA →" cliquable
+
+[ ] Cliquer sur le lien → URL : /freelancehub/consultant/nda
+    → Page NDA affichée avec 8 articles
+    → Zone de scroll sur le texte
+
+[ ] Cocher la checkbox "J'ai lu et j'accepte..."
+    → Bouton "Signer le NDA" devient actif
+
+[ ] Cliquer "Signer le NDA"
+    → Message vert "Vous avez signé ce NDA. Redirection..."
+    → Retour automatique sur /freelancehub/consultant/bookings
+    → Le banner orange a disparu
+```
+
+---
+
+### Rapport de feedback attendu
+
+Pour chaque scénario, noter :
+- ✅ OK / ❌ KO
+- En cas de KO : copier le message d'erreur affiché
+
+---
+
 ## 1. Installation de l'environnement de développement
 
 ### Prérequis
