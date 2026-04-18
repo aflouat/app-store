@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
   if (!file || !document_type) {
     return NextResponse.json({ error: 'Fichier et type de document requis.' }, { status: 400 })
   }
-  if (!['KBIS', 'URSSAF'].includes(document_type)) {
+  if (!['KBIS', 'URSSAF', 'SIRENE'].includes(document_type)) {
     return NextResponse.json({ error: 'Type de document invalide.' }, { status: 400 })
   }
   if (file.size > MAX_BYTES) {

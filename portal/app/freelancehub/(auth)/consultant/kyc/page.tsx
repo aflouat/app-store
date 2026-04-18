@@ -19,7 +19,7 @@ const STATUS_CONFIG = {
 
 export default function ConsultantKycPage() {
   const [status,       setStatus]       = useState<KycStatus | null>(null)
-  const [docType,      setDocType]      = useState<'KBIS' | 'URSSAF'>('KBIS')
+  const [docType,      setDocType]      = useState<'KBIS' | 'URSSAF' | 'SIRENE'>('URSSAF')
   const [file,         setFile]         = useState<File | null>(null)
   const [uploading,    setUploading]    = useState(false)
   const [progress,     setProgress]     = useState(0)
@@ -111,8 +111,9 @@ export default function ConsultantKycPage() {
           <div className="kyc-info">
             <p>Documents acceptés :</p>
             <ul>
-              <li><strong>Kbis</strong> — extrait d'immatriculation au RCS (moins de 3 mois)</li>
-              <li><strong>Attestation URSSAF</strong> — attestation de vigilance en cours de validité</li>
+              <li><strong>Attestation de vigilance URSSAF</strong> — pour les auto-entrepreneurs et micro-entreprises (disponible sur urssaf.fr en 2 min) ✅ recommandé</li>
+              <li><strong>Kbis</strong> — extrait d'immatriculation au RCS, pour les sociétés (SARL, SAS…) uniquement</li>
+              <li><strong>Avis de situation SIRENE</strong> — alternative pour les auto-entrepreneurs</li>
             </ul>
             <p>Formats : PDF, JPG, PNG · Taille max : 5 Mo</p>
           </div>
@@ -128,9 +129,10 @@ export default function ConsultantKycPage() {
           <form onSubmit={handleSubmit} className="kyc-form">
             <div className="kyc-field">
               <label>Type de document</label>
-              <select value={docType} onChange={e => setDocType(e.target.value as 'KBIS' | 'URSSAF')}>
-                <option value="KBIS">Kbis</option>
-                <option value="URSSAF">Attestation URSSAF</option>
+              <select value={docType} onChange={e => setDocType(e.target.value as 'KBIS' | 'URSSAF' | 'SIRENE')}>
+                <option value="URSSAF">Attestation de vigilance URSSAF (auto-entrepreneur)</option>
+                <option value="SIRENE">Avis de situation SIRENE (auto-entrepreneur)</option>
+                <option value="KBIS">Kbis (société — SARL, SAS…)</option>
               </select>
             </div>
 
