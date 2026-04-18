@@ -10,7 +10,8 @@ function getResend(): Resend {
   return new Resend(key)
 }
 
-const FROM  = 'FreelanceHub <noreply@perform-learn.fr>'
+const FROM       = 'FreelanceHub <noreply@perform-learn.fr>'
+const FROM_DG    = 'Agent DG · perform-learn.fr <contact@perform-learn.fr>'
 const BASE  = process.env.NEXTAUTH_URL ?? 'https://portal.perform-learn.fr'
 
 // ─── Types ────────────────────────────────────────────────────
@@ -102,6 +103,96 @@ export async function sendFundRelease(
     subject: `FreelanceHub — Paiement versé : ${(amount / 100).toFixed(0)} €`,
     html:    buildFundReleaseEmail({ consultantName, amount, bookingId }),
   })
+}
+
+// ─── Agent DG — Task notification ────────────────────────────
+
+export interface AgentTask {
+  id:          string   // ex: "T-001"
+  title:       string
+  description: string
+  duration:    string   // ex: "15 min"
+  tool?:       string   // ex: "Brevo", "Navigateur"
+  deadline?:   string   // ex: "avant le 27/04"
+  actionUrl?:  string   // lien direct si applicable
+}
+
+const AGENT_EMAILS: Record<string, { name: string; email: string }> = {
+  abdel:    { name: 'Abdel',            email: 'aflouat@gmail.com' },
+  aminetou: { name: 'Mme Aminetou',     email: 'minetou1987@gmail.com' },
+}
+
+export async function sendTaskNotifications(
+  assignee: 'abdel' | 'aminetou',
+  tasks:    AgentTask[],
+  sprintLabel: string   // ex: "Sprint 19-25 avril 2026"
+) {
+  const agent = AGENT_EMAILS[assignee]
+  if (!agent) throw new Error(`Assignee inconnu : ${assignee}`)
+
+  await getResend().emails.send({
+    from:    FROM_DG,
+    to:      agent.email,
+    subject: `[perform-learn.fr] ${tasks.length} tâche${tasks.length > 1 ? 's' : ''} — ${sprintLabel}`,
+    html:    buildTaskEmail({ agentName: agent.name, tasks, sprintLabel }),
+  })
+}
+
+function buildTaskEmail(d: {
+  agentName:   string
+  tasks:       AgentTask[]
+  sprintLabel: string
+}): string {
+  const taskRows = d.tasks.map(t => `
+    <div class="task-card">
+      <div class="task-id">${t.id}</div>
+      <div class="task-title">${t.title}</div>
+      <p class="task-desc">${t.description}</p>
+      <div class="task-meta">
+        <span>⏱ ${t.duration}</span>
+        ${t.tool    ? `<span>🛠 ${t.tool}</span>` : ''}
+        ${t.deadline ? `<span>📅 ${t.deadline}</span>` : ''}
+      </div>
+      ${t.actionUrl ? `<a href="${t.actionUrl}" class="task-link">Accéder →</a>` : ''}
+    </div>
+  `).join('')
+
+  return `<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body { font-family: 'Helvetica Neue', Arial, sans-serif; background: #f7f5f3; margin: 0; padding: 20px; }
+    .card { background: #fff; border-radius: 12px; max-width: 540px; margin: 0 auto; padding: 32px; border: 1px solid #e2deda; }
+    .logo { font-size: 13px; font-weight: 700; color: #B9958D; margin-bottom: 8px; letter-spacing: .03em; }
+    .sprint { font-size: 11px; color: #968e89; margin-bottom: 24px; }
+    h1 { font-size: 18px; font-weight: 700; color: #22201e; margin: 0 0 6px; }
+    .intro { font-size: 13px; color: #5c5956; line-height: 1.6; margin-bottom: 20px; }
+    .task-card { background: #faf4f2; border-radius: 8px; padding: 14px 16px; margin-bottom: 12px; border-left: 3px solid #B9958D; }
+    .task-id { font-size: 10px; font-weight: 700; color: #B9958D; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 4px; }
+    .task-title { font-size: 14px; font-weight: 700; color: #22201e; margin-bottom: 6px; }
+    .task-desc { font-size: 13px; color: #5c5956; line-height: 1.55; margin: 0 0 8px; }
+    .task-meta { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; color: #968e89; }
+    .task-link { display: inline-block; margin-top: 8px; font-size: 12px; font-weight: 600; color: #B9958D; text-decoration: none; }
+    .footer { text-align: center; font-size: 11px; color: #968e89; margin-top: 24px; border-top: 1px solid #e2deda; padding-top: 16px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">perform-learn.fr · Agent DG</div>
+    <div class="sprint">${d.sprintLabel}</div>
+    <h1>Bonjour ${d.agentName},</h1>
+    <p class="intro">
+      Voici vos tâches préparées pour ce sprint. Chaque tâche est prête à 90% —
+      votre action est clairement identifiée.
+    </p>
+    ${taskRows}
+    <div class="footer">
+      perform-learn.fr · <a href="mailto:contact@perform-learn.fr" style="color:#B9958D">Répondre à l'Agent DG</a>
+    </div>
+  </div>
+</body>
+</html>`
 }
 
 // ─── HTML templates ───────────────────────────────────────────
