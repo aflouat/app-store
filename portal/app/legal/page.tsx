@@ -9,8 +9,8 @@ export default function LegalPage() {
         <section>
           <h2>Éditeur du site</h2>
           <p>
-            <strong>[NOM_COMMERCIAL]</strong><br />
-            Micro-entreprise — SIRET : [SIRET]<br />
+            <strong>EMMAEINNA Aminetou</strong><br />
+            Micro-entreprise — SIREN : 103 082 673<br />
             Adresse : [ADRESSE]<br />
             Email : <a href="mailto:contact@perform-learn.fr">contact@perform-learn.fr</a><br />
             Directeur de la publication : Abdel Flouat
@@ -33,7 +33,7 @@ export default function LegalPage() {
           <h2>Propriété intellectuelle</h2>
           <p>
             L'ensemble des contenus présents sur perform-learn.fr (textes, images, logos, algorithmes,
-            code source) sont la propriété exclusive de [NOM_COMMERCIAL] et protégés par les lois
+            code source) sont la propriété exclusive de EMMAEINNA Aminetou et protégés par les lois
             françaises et internationales relatives à la propriété intellectuelle. Toute reproduction,
             même partielle, est strictement interdite sans autorisation écrite préalable.
           </p>

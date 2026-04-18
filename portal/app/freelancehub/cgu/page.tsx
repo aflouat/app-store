@@ -12,7 +12,7 @@ export default function CguPage() {
           <p>
             Les présentes Conditions Générales d'Utilisation (CGU) régissent l'accès et l'utilisation de la
             plateforme FreelanceHub, accessible via <strong>portal.perform-learn.fr</strong>, éditée par
-            [NOM_COMMERCIAL] (SIRET : [SIRET]).
+            EMMAEINNA Aminetou (SIREN : 103 082 673).
           </p>
           <p>
             FreelanceHub est une place de marché B2B d'intermédiation entre des consultants experts
@@ -137,7 +137,7 @@ export default function CguPage() {
           <h2>12. Propriété intellectuelle</h2>
           <p>
             L'ensemble des éléments de la plateforme (interface, algorithmes, marques, contenus) sont la
-            propriété exclusive de [NOM_COMMERCIAL] et sont protégés par le droit de la propriété
+            propriété exclusive de EMMAEINNA Aminetou et sont protégés par le droit de la propriété
             intellectuelle. Toute reproduction est interdite sans autorisation écrite préalable.
           </p>
         </section>
@@ -165,7 +165,7 @@ export default function CguPage() {
           <p>
             Les présentes CGU sont soumises au droit français. En cas de litige, les parties s'engagent à
             rechercher une solution amiable avant tout recours judiciaire. À défaut, les tribunaux compétents
-            sont ceux du ressort du siège social de [NOM_COMMERCIAL].
+            sont ceux du ressort du siège social de EMMAEINNA Aminetou.
           </p>
         </section>
 

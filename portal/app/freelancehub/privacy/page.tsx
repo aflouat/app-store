@@ -10,7 +10,7 @@ export default function PrivacyPage() {
         <section>
           <h2>1. Responsable du traitement</h2>
           <p>
-            <strong>[NOM_COMMERCIAL]</strong> — SIRET : [SIRET]<br />
+            <strong>EMMAEINNA Aminetou</strong> — SIRET : 103 082 673<br />
             Adresse : [ADRESSE]<br />
             Email : <a href="mailto:contact@perform-learn.fr">contact@perform-learn.fr</a>
           </p>
