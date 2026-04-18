@@ -11,7 +11,7 @@ function getResend(): Resend {
 }
 
 const FROM       = 'FreelanceHub <noreply@perform-learn.fr>'
-const FROM_DG    = 'Agent DG · perform-learn.fr <noreply@perform-learn.fr>'
+const FROM_DG    = 'Agent DG perform-learn.fr <noreply@perform-learn.fr>'
 const BASE  = process.env.NEXTAUTH_URL ?? 'https://portal.perform-learn.fr'
 
 // ─── Types ────────────────────────────────────────────────────
@@ -130,12 +130,13 @@ export async function sendTaskNotifications(
   const agent = AGENT_EMAILS[assignee]
   if (!agent) throw new Error(`Assignee inconnu : ${assignee}`)
 
-  await getResend().emails.send({
+  const result = await getResend().emails.send({
     from:    FROM_DG,
     to:      agent.email,
-    subject: `[perform-learn.fr] ${tasks.length} tâche${tasks.length > 1 ? 's' : ''} — ${sprintLabel}`,
+    subject: `[perform-learn.fr] ${tasks.length} tache${tasks.length > 1 ? 's' : ''} - ${sprintLabel}`,
     html:    buildTaskEmail({ agentName: agent.name, tasks, sprintLabel }),
   })
+  if (result.error) throw new Error(`Resend error: ${JSON.stringify(result.error)}`)
 }
 
 function buildTaskEmail(d: {

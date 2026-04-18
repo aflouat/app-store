@@ -20,7 +20,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'assignee et tasks requis.' }, { status: 400 })
   }
 
-  await sendTaskNotifications(assignee, tasks, sprint ?? 'Sprint en cours')
+  try {
+    await sendTaskNotifications(assignee, tasks, sprint ?? 'Sprint en cours')
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    return NextResponse.json({ success: false, error: msg }, { status: 500 })
+  }
 
   return NextResponse.json({ success: true, sent_to: assignee, task_count: tasks.length })
 }
