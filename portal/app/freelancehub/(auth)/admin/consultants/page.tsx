@@ -23,15 +23,19 @@ export default async function AdminConsultantsPage() {
     created_at: string
     skills_count: number
     bookings_count: number
+    kyc_status: string
+    kyc_document_url: string | null
+    kyc_document_name: string | null
   }>(
     `SELECT c.id, c.user_id, u.name, u.email, c.title,
             c.daily_rate, c.experience_years, c.rating, c.rating_count,
             c.is_verified, c.is_available, c.location, u.created_at,
+            c.kyc_status, c.kyc_document_url, c.kyc_document_name,
             (SELECT COUNT(*) FROM freelancehub.consultant_skills cs WHERE cs.consultant_id = c.id)::int AS skills_count,
             (SELECT COUNT(*) FROM freelancehub.bookings b WHERE b.consultant_id = c.id)::int AS bookings_count
      FROM freelancehub.consultants c
      JOIN freelancehub.users u ON u.id = c.user_id
-     ORDER BY u.created_at DESC`
+     ORDER BY c.kyc_status = 'submitted' DESC, u.created_at DESC`
   )
 
   return (
@@ -51,6 +55,7 @@ export default async function AdminConsultantsPage() {
               <th>Note</th>
               <th>Compétences</th>
               <th>Missions</th>
+              <th>KYC</th>
               <th>Statut</th>
               <th>Actions</th>
             </tr>
@@ -73,6 +78,9 @@ export default async function AdminConsultantsPage() {
                 <td>{c.skills_count}</td>
                 <td>{c.bookings_count}</td>
                 <td>
+                  <KycBadge status={c.kyc_status} docUrl={c.kyc_document_url} docName={c.kyc_document_name} />
+                </td>
+                <td>
                   <div className="adm-status-badges">
                     <span className={`adm-badge ${c.is_verified ? 'verified' : 'unverified'}`}>
                       {c.is_verified ? '✓ Vérifié' : '○ Non vérifié'}
@@ -87,6 +95,8 @@ export default async function AdminConsultantsPage() {
                     consultantId={c.id}
                     isVerified={c.is_verified}
                     isAvailable={c.is_available}
+                    kycStatus={c.kyc_status}
+                    kycDocumentUrl={c.kyc_document_url}
                   />
                 </td>
               </tr>
@@ -122,7 +132,33 @@ export default async function AdminConsultantsPage() {
         .adm-badge.available   { background: var(--c4-pale); color: var(--c4); }
         .adm-badge.unavailable { background: #f5f5f5; color: #999; }
         .adm-empty-row { text-align: center; color: var(--text-light); padding: 2rem; }
+        .adm-kyc-badge { font-size: .73rem; font-weight: 600; padding: .2em .55em; border-radius: 10px; white-space: nowrap; display: inline-block; }
+        .adm-kyc-none      { background: #f5f5f5; color: #999; }
+        .adm-kyc-submitted { background: #fffbeb; color: #d97706; }
+        .adm-kyc-validated { background: var(--c3-pale); color: var(--c3); }
+        .adm-kyc-rejected  { background: #fdf0ef; color: #c0392b; }
+        .adm-kyc-doc-link  { font-size: .72rem; color: var(--c1); text-decoration: none; display: block; margin-top: .2rem; }
+        .adm-kyc-doc-link:hover { text-decoration: underline; }
       `}</style>
+    </div>
+  )
+}
+
+function KycBadge({ status, docUrl, docName }: { status: string; docUrl: string | null; docName: string | null }) {
+  const labels: Record<string, string> = {
+    none: '○ Non soumis',
+    submitted: '⚡ En attente',
+    validated: '✓ Validé',
+    rejected: '✗ Refusé',
+  }
+  return (
+    <div>
+      <span className={`adm-kyc-badge adm-kyc-${status}`}>{labels[status] ?? status}</span>
+      {docUrl && docName && (
+        <a href={docUrl} target="_blank" rel="noreferrer" className="adm-kyc-doc-link">
+          Voir document
+        </a>
+      )}
     </div>
   )
 }

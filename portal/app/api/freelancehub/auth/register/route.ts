@@ -5,10 +5,13 @@ import { queryOne } from '@/lib/freelancehub/db'
 // POST /api/freelancehub/auth/register
 // Body: { name, email, password, role: 'consultant' | 'client' }
 export async function POST(req: NextRequest) {
-  const { name, email, password, role } = await req.json()
+  const { name, email, password, role, cgu_accepted, marketing_consent } = await req.json()
 
   if (!email || !password || !role) {
     return NextResponse.json({ error: 'Champs obligatoires manquants.' }, { status: 400 })
+  }
+  if (!cgu_accepted) {
+    return NextResponse.json({ error: 'L\'acceptation des CGU est obligatoire.' }, { status: 400 })
   }
   if (!['consultant', 'client'].includes(role)) {
     return NextResponse.json({ error: 'Rôle invalide.' }, { status: 400 })
@@ -32,15 +35,23 @@ export async function POST(req: NextRequest) {
   const hash = await bcrypt.hash(password, 12)
 
   const user = await queryOne<{ id: string; email: string; role: string }>(
-    `INSERT INTO freelancehub.users (email, name, role, password_hash)
-     VALUES ($1, $2, $3, $4)
+    `INSERT INTO freelancehub.users (email, name, role, password_hash, marketing_consent, marketing_consent_at)
+     VALUES ($1, $2, $3, $4, $5, CASE WHEN $5 THEN NOW() ELSE NULL END)
      RETURNING id, email, role`,
-    [email.toLowerCase().trim(), name?.trim() || null, role, hash]
+    [email.toLowerCase().trim(), name?.trim() || null, role, hash, !!marketing_consent]
   )
 
   if (!user) {
     return NextResponse.json({ error: 'Erreur lors de la création du compte.' }, { status: 500 })
   }
+
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null
+  const ua = req.headers.get('user-agent') ?? null
+  await queryOne(
+    `INSERT INTO freelancehub.signatures (user_id, document_type, document_version, ip_address, user_agent, provider)
+     VALUES ($1, 'CGU', '1.0', $2, $3, 'checkbox')`,
+    [user.id, ip, ua]
+  )
 
   return NextResponse.json({ success: true, role: user.role }, { status: 201 })
 }

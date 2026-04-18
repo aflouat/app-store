@@ -8,6 +8,8 @@ export type NotifType =
   | 'fund_released'
   | 'reminder'
   | 'booking_cancelled'
+  | 'kyc_validated'
+  | 'kyc_rejected'
 
 export interface Notification {
   id:         string

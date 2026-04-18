@@ -17,6 +17,7 @@ const CONSULTANT_NAV: NavItem[] = [
   { label: 'Réservations',    href: '/freelancehub/consultant/bookings',  icon: '◈' },
   { label: 'Mes gains',       href: '/freelancehub/consultant/earnings',  icon: '◇' },
   { label: 'Mon CV',          href: '/freelancehub/consultant/cv',        icon: '◻' },
+  { label: 'Mon KYC',         href: '/freelancehub/consultant/kyc',       icon: '◑' },
 ]
 
 const CLIENT_NAV: NavItem[] = [

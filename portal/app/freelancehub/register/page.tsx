@@ -12,8 +12,10 @@ export default function RegisterPage() {
   const [name,       setName]       = useState('')
   const [email,      setEmail]      = useState('')
   const [password,   setPassword]   = useState('')
-  const [loading,    setLoading]    = useState(false)
-  const [error,      setError]      = useState('')
+  const [loading,         setLoading]         = useState(false)
+  const [error,           setError]           = useState('')
+  const [cguAccepted,     setCguAccepted]     = useState(false)
+  const [marketingConsent, setMarketingConsent] = useState(false)
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -24,7 +26,7 @@ export default function RegisterPage() {
     const res = await fetch('/api/freelancehub/auth/register', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ name, email, password, role: activeRole }),
+      body:    JSON.stringify({ name, email, password, role: activeRole, cgu_accepted: true, marketing_consent: marketingConsent }),
     })
 
     if (!res.ok) {
@@ -141,15 +143,34 @@ export default function RegisterPage() {
 
             {error && <p className="reg-error">{error}</p>}
 
-            <button type="submit" className="reg-submit-btn" disabled={loading}>
+            <div className="reg-consents">
+              <label className="reg-consent-row">
+                <input
+                  type="checkbox"
+                  checked={cguAccepted}
+                  onChange={e => setCguAccepted(e.target.checked)}
+                  required
+                />
+                <span>
+                  J'accepte les{' '}
+                  <a href="/freelancehub/cgu" target="_blank">CGU</a> et la{' '}
+                  <a href="/freelancehub/privacy" target="_blank">politique de confidentialité</a>
+                  {' '}<span className="req">*</span>
+                </span>
+              </label>
+              <label className="reg-consent-row">
+                <input
+                  type="checkbox"
+                  checked={marketingConsent}
+                  onChange={e => setMarketingConsent(e.target.checked)}
+                />
+                <span>J'accepte de recevoir des communications et actualités de perform-learn.fr (optionnel)</span>
+              </label>
+            </div>
+
+            <button type="submit" className="reg-submit-btn" disabled={loading || !cguAccepted}>
               {loading ? 'Création du compte…' : 'Créer mon compte et accéder à la plateforme'}
             </button>
-
-            <p className="reg-cgu">
-              En créant un compte, vous acceptez les{' '}
-              <a href="/freelancehub/cgu" target="_blank">CGU</a> et la{' '}
-              <a href="/freelancehub/privacy" target="_blank">politique de confidentialité</a>.
-            </p>
           </form>
         )}
 
@@ -196,9 +217,12 @@ export default function RegisterPage() {
         .reg-submit-btn { padding: .78rem 1.5rem; background: var(--c1); color: #fff; border: none; border-radius: var(--radius-sm); font-size: .95rem; font-weight: 600; cursor: pointer; transition: background .15s; margin-top: .3rem; }
         .reg-submit-btn:hover:not(:disabled) { background: var(--c1-light); }
         .reg-submit-btn:disabled { opacity: .6; cursor: not-allowed; }
-        .reg-cgu { font-size: .75rem; color: var(--text-light); text-align: center; line-height: 1.6; }
-        .reg-cgu a { color: var(--c1); text-decoration: none; }
-        .reg-cgu a:hover { text-decoration: underline; }
+        .reg-consents { display: flex; flex-direction: column; gap: .6rem; padding: .8rem; background: var(--bg); border-radius: var(--radius-sm); border: 1px solid var(--border); }
+        .reg-consent-row { display: flex; align-items: flex-start; gap: .6rem; cursor: pointer; }
+        .reg-consent-row input[type="checkbox"] { margin-top: .15rem; flex-shrink: 0; accent-color: var(--c1); width: 15px; height: 15px; }
+        .reg-consent-row span { font-size: .83rem; color: var(--text); line-height: 1.5; }
+        .reg-consent-row a { color: var(--c1); text-decoration: none; }
+        .reg-consent-row a:hover { text-decoration: underline; }
 
         .reg-login-link { text-align: center; font-size: .88rem; color: var(--text-mid); }
         .reg-login-link a { color: var(--c1); font-weight: 600; text-decoration: none; }

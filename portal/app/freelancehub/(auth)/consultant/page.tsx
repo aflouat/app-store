@@ -15,8 +15,9 @@ export default async function ConsultantDashboard() {
     rating: number
     rating_count: number
     is_verified: boolean
+    kyc_status: string
   }>(
-    `SELECT c.title, c.daily_rate, c.rating, c.rating_count, c.is_verified
+    `SELECT c.title, c.daily_rate, c.rating, c.rating_count, c.is_verified, c.kyc_status
      FROM freelancehub.consultants c
      WHERE c.user_id = $1`,
     [userId]
@@ -76,6 +77,11 @@ export default async function ConsultantDashboard() {
           <div className="fh-rate-chip">TJM : {profile.daily_rate} €</div>
         )}
       </header>
+
+      {/* KYC Banner */}
+      {profile && profile.kyc_status !== 'validated' && (
+        <KycBanner status={profile.kyc_status} />
+      )}
 
       {/* KPI Cards */}
       <div className="fh-kpi-grid">
@@ -140,6 +146,32 @@ export default async function ConsultantDashboard() {
         .fh-slot-available .fh-slot-status { background: var(--c3-pale); color: var(--c3); }
         .fh-slot-booked .fh-slot-status { background: var(--c1-pale); color: var(--c1); }
         .fh-slot-cancelled .fh-slot-status { background: var(--c4-pale); color: var(--text-light); }
+      `}</style>
+    </div>
+  )
+}
+
+function KycBanner({ status }: { status: string }) {
+  const config = {
+    none:     { bg: '#fffbeb', color: '#d97706', border: '#fde68a', msg: '⚠ Complétez votre KYC pour apparaître dans les résultats de recherche.', cta: 'Soumettre mon KYC →' },
+    submitted:{ bg: '#f0f9ff', color: '#0369a1', border: '#bae6fd', msg: '⏳ Votre dossier KYC est en cours de validation (24-48h ouvrées).', cta: null },
+    rejected: { bg: '#fdf0ef', color: '#c0392b', border: '#fca5a5', msg: '✗ Votre KYC a été refusé. Consultez les détails et soumettez un nouveau document.', cta: 'Voir les détails →' },
+  }[status] ?? null
+
+  if (!config) return null
+
+  return (
+    <div className="kyc-banner" style={{ background: config.bg, borderColor: config.border, color: config.color }}>
+      <span>{config.msg}</span>
+      {config.cta && (
+        <a href="/freelancehub/consultant/kyc" className="kyc-banner-link" style={{ color: config.color }}>
+          {config.cta}
+        </a>
+      )}
+      <style>{`
+        .kyc-banner { display: flex; align-items: center; gap: 1rem; padding: .75rem 1rem; border: 1px solid; border-radius: var(--radius-sm); font-size: .88rem; font-weight: 500; flex-wrap: wrap; }
+        .kyc-banner-link { font-weight: 700; text-decoration: none; white-space: nowrap; }
+        .kyc-banner-link:hover { text-decoration: underline; }
       `}</style>
     </div>
   )
