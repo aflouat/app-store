@@ -13,7 +13,7 @@ export default function LegalPage() {
             Micro-entreprise — SIREN : 103 082 673<br />
             Adresse : [ADRESSE]<br />
             Email : <a href="mailto:contact@perform-learn.fr">contact@perform-learn.fr</a><br />
-            Directeur de la publication : Abdel Flouat
+            Directeur de la publication : EMMAEINNA Aminetou
           </p>
         </section>
 
