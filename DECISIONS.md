@@ -75,14 +75,36 @@
 
 ---
 
+### 2026-04-20 — Landing page CTA → FreelanceHub
+
+- **Décision** : GO
+- **Contexte** : KPI acquisition C4 — la landing perform-learn.fr n'avait pas de CTA vers FreelanceHub. Bloquant pour la conversion des visiteurs organiques.
+- **Validé par** : Agent DG
+- **Budget engagé** : ~0,1 € tokens
+- **Statut** : ✅ Livré
+- **Résultat** : Section dark "Trouvez l'expert B2B" ajoutée entre "Comment ça marche" et le CTA band. Bouton primaire → /freelancehub/register. Pills : KYC vérifié, Paiement séquestre, Anonymat, Matching. Responsive mobile.
+
+---
+
+### 2026-04-20 — Early Adopter (badge Fondateur + commission 10%)
+
+- **Décision** : GO
+- **Contexte** : Levier d'acquisition des 20 premiers consultants. Commission réduite (10% vs 15%) + badge Fondateur visible. Attribution automatique lors de la validation KYC si < 20 consultants déjà validés.
+- **Validé par** : Agent DG
+- **Budget engagé** : ~0,2 € tokens
+- **Statut** : ✅ Livré
+- **Résultat** : Migration 012. KYC validation : auto-attribution si < 20 validés. Admin : toggle manuel + badge ★ Fondateur. Dashboard consultant : badge + taux affiché.
+
+---
+
 ## Décisions en attente de feedback
 
 | Réf. | Feature | En attente de |
 |---|---|---|
 | 2026-04-19 NDA | Test parcours consultant complet | Feedback Abdel / Mme Aminetou |
-| — | Landing page CTA → /register | GO Agent DG sprint suivant |
-| — | Offre Early Adopter (commission 10% + badge) | GO Agent DG sprint suivant |
-| — | Email lancement waitlist J-3 (27/04) | Accès Brevo + validation copie |
+| 2026-04-20 Landing CTA | Test visuel sur portal.perform-learn.fr | Feedback Abdel |
+| 2026-04-20 Early Adopter | Critères manuels vs auto (T-011 Abdel) | Réponse Abdel (deadline 22/04) |
+| — | Email waitlist Brevo (J-3 lancement) | Validation copie email (T-009 Mme Aminetou) |
 
 ---
 
