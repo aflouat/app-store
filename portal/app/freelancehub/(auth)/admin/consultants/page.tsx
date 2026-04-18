@@ -26,11 +26,14 @@ export default async function AdminConsultantsPage() {
     kyc_status: string
     kyc_document_url: string | null
     kyc_document_name: string | null
+    is_early_adopter: boolean
+    commission_rate: number
   }>(
     `SELECT c.id, c.user_id, u.name, u.email, c.title,
             c.daily_rate, c.experience_years, c.rating, c.rating_count,
             c.is_verified, c.is_available, c.location, u.created_at,
             c.kyc_status, c.kyc_document_url, c.kyc_document_name,
+            c.is_early_adopter, c.commission_rate,
             (SELECT COUNT(*) FROM freelancehub.consultant_skills cs WHERE cs.consultant_id = c.id)::int AS skills_count,
             (SELECT COUNT(*) FROM freelancehub.bookings b WHERE b.consultant_id = c.id)::int AS bookings_count
      FROM freelancehub.consultants c
@@ -82,6 +85,9 @@ export default async function AdminConsultantsPage() {
                 </td>
                 <td>
                   <div className="adm-status-badges">
+                    {c.is_early_adopter && (
+                      <span className="adm-badge early-adopter">★ Fondateur</span>
+                    )}
                     <span className={`adm-badge ${c.is_verified ? 'verified' : 'unverified'}`}>
                       {c.is_verified ? '✓ Vérifié' : '○ Non vérifié'}
                     </span>
@@ -95,6 +101,7 @@ export default async function AdminConsultantsPage() {
                     consultantId={c.id}
                     isVerified={c.is_verified}
                     isAvailable={c.is_available}
+                    isEarlyAdopter={c.is_early_adopter}
                     kycStatus={c.kyc_status}
                     kycDocumentUrl={c.kyc_document_url}
                   />
@@ -129,8 +136,9 @@ export default async function AdminConsultantsPage() {
         .adm-badge { font-size: .73rem; font-weight: 600; padding: .2em .55em; border-radius: 10px; white-space: nowrap; }
         .adm-badge.verified    { background: var(--c3-pale); color: var(--c3); }
         .adm-badge.unverified  { background: var(--c2-pale); color: var(--text-mid); }
-        .adm-badge.available   { background: var(--c4-pale); color: var(--c4); }
-        .adm-badge.unavailable { background: #f5f5f5; color: #999; }
+        .adm-badge.available      { background: var(--c4-pale); color: var(--c4); }
+        .adm-badge.unavailable    { background: #f5f5f5; color: #999; }
+        .adm-badge.early-adopter  { background: #fef9ec; color: #b45309; border: 1px solid #fde68a; }
         .adm-empty-row { text-align: center; color: var(--text-light); padding: 2rem; }
         .adm-kyc-badge { font-size: .73rem; font-weight: 600; padding: .2em .55em; border-radius: 10px; white-space: nowrap; display: inline-block; }
         .adm-kyc-none      { background: #f5f5f5; color: #999; }

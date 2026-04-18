@@ -4,20 +4,21 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 
 interface Props {
-  consultantId:   string
-  isVerified:     boolean
-  isAvailable:    boolean
-  kycStatus?:     string
+  consultantId:    string
+  isVerified:      boolean
+  isAvailable:     boolean
+  isEarlyAdopter?: boolean
+  kycStatus?:      string
   kycDocumentUrl?: string | null
 }
 
-export default function ConsultantActions({ consultantId, isVerified, isAvailable, kycStatus, kycDocumentUrl }: Props) {
+export default function ConsultantActions({ consultantId, isVerified, isAvailable, isEarlyAdopter, kycStatus, kycDocumentUrl }: Props) {
   const router      = useRouter()
   const [loading,   setLoading]   = useState(false)
   const [rejectMode, setRejectMode] = useState(false)
   const [notes,     setNotes]     = useState('')
 
-  async function toggle(field: 'is_verified' | 'is_available', value: boolean) {
+  async function toggle(field: 'is_verified' | 'is_available' | 'is_early_adopter', value: boolean) {
     setLoading(true)
     await fetch(`/api/freelancehub/admin/consultants/${consultantId}`, {
       method:  'PATCH',
@@ -74,6 +75,14 @@ export default function ConsultantActions({ consultantId, isVerified, isAvailabl
         </div>
       )}
       <button
+        className={`ca-btn ${isEarlyAdopter ? 'ca-unset' : 'ca-early'}`}
+        onClick={() => toggle('is_early_adopter', !isEarlyAdopter)}
+        disabled={loading}
+        title={isEarlyAdopter ? 'Retirer badge Fondateur (commission repasse à 15%)' : 'Attribuer badge Fondateur (commission 10%)'}
+      >
+        {isEarlyAdopter ? '★ Retirer Fondateur' : '★ Badge Fondateur'}
+      </button>
+      <button
         className={`ca-btn ${isVerified ? 'ca-unset' : 'ca-set'}`}
         onClick={() => toggle('is_verified', !isVerified)}
         disabled={loading}
@@ -98,6 +107,8 @@ export default function ConsultantActions({ consultantId, isVerified, isAvailabl
         .ca-unset:hover { background: #c0392b; color: #fff; }
         .ca-warn    { background: #fffbeb; color: #d97706; }
         .ca-warn:hover { background: #d97706; color: #fff; }
+        .ca-early   { background: #fef9ec; color: #b45309; }
+        .ca-early:hover { background: #b45309; color: #fff; }
         .ca-neutral { background: var(--bg); color: var(--text-mid); border: 1px solid var(--border); }
         .ca-reject-form { display: flex; flex-direction: column; gap: .3rem; }
         .ca-reject-textarea { font-size: .78rem; padding: .35rem .5rem; border: 1.5px solid var(--border); border-radius: 6px; resize: vertical; font-family: inherit; color: var(--text); width: 100%; }

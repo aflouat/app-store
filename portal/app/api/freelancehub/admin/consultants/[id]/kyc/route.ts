@@ -3,6 +3,9 @@ import { auth } from '@/auth'
 import { queryOne } from '@/lib/freelancehub/db'
 import { createNotification } from '@/lib/freelancehub/notifications'
 
+const EARLY_ADOPTER_LIMIT     = 20
+const EARLY_ADOPTER_COMMISSION = 10.00
+
 // PATCH /api/freelancehub/admin/consultants/[id]/kyc
 // body: { action: 'validate' | 'reject', notes?: string }
 export async function PATCH(
@@ -36,17 +39,28 @@ export async function PATCH(
   }
 
   if (action === 'validate') {
+    const countRow = await queryOne<{ cnt: string }>(
+      `SELECT COUNT(*) AS cnt FROM freelancehub.consultants WHERE kyc_status = 'validated'`,
+      []
+    )
+    const validatedCount = parseInt(countRow?.cnt ?? '0', 10)
+    const isEarlyAdopter  = validatedCount < EARLY_ADOPTER_LIMIT
+
     await queryOne(
       `UPDATE freelancehub.consultants
-       SET kyc_status = 'validated', is_verified = TRUE, kyc_validated_at = NOW(), kyc_notes = NULL
+       SET kyc_status = 'validated', is_verified = TRUE, kyc_validated_at = NOW(), kyc_notes = NULL,
+           is_early_adopter = $2, commission_rate = $3
        WHERE id = $1`,
-      [id]
+      [id, isEarlyAdopter, isEarlyAdopter ? EARLY_ADOPTER_COMMISSION : 15.00]
     )
+    const notifBody = isEarlyAdopter
+      ? 'Votre dossier KYC a été validé. 🎉 Vous êtes parmi les Early Adopters FreelanceHub — commission 10% et badge Fondateur attribués !'
+      : 'Votre dossier KYC a été validé. Votre profil est maintenant actif et visible dans les résultats.'
     await createNotification(
       consultant.user_id,
       'kyc_validated',
       'KYC validé — profil activé',
-      'Votre dossier KYC a été validé. Votre profil est maintenant actif et visible dans les résultats.'
+      notifBody
     )
   } else {
     await queryOne(

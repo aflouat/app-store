@@ -14,7 +14,7 @@ export async function PATCH(
   const { id } = await params
   const body   = await req.json()
 
-  const allowed = ['is_verified', 'is_available']
+  const allowed = ['is_verified', 'is_available', 'is_early_adopter']
   const sets    = Object.entries(body)
     .filter(([k]) => allowed.includes(k))
 

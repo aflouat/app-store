@@ -16,8 +16,11 @@ export default async function ConsultantDashboard() {
     rating_count: number
     is_verified: boolean
     kyc_status: string
+    is_early_adopter: boolean
+    commission_rate: number
   }>(
-    `SELECT c.title, c.daily_rate, c.rating, c.rating_count, c.is_verified, c.kyc_status
+    `SELECT c.title, c.daily_rate, c.rating, c.rating_count, c.is_verified, c.kyc_status,
+            c.is_early_adopter, c.commission_rate
      FROM freelancehub.consultants c
      WHERE c.user_id = $1`,
     [userId]
@@ -70,6 +73,9 @@ export default async function ConsultantDashboard() {
             {profile?.title ?? 'Complétez votre profil pour attirer des clients'}
             {profile?.is_verified && (
               <span className="fh-verified-badge">✓ Vérifié</span>
+            )}
+            {profile?.is_early_adopter && (
+              <span className="fh-founder-badge">★ Fondateur · 10%</span>
             )}
           </p>
         </div>
@@ -130,6 +136,7 @@ export default async function ConsultantDashboard() {
         .fh-page-title { font-family: 'Fraunces', serif; font-size: 1.7rem; font-weight: 700; color: var(--dark); }
         .fh-page-sub { color: var(--text-mid); font-size: .95rem; margin-top: .3rem; display: flex; align-items: center; gap: .5rem; }
         .fh-verified-badge { background: var(--c3-pale); color: var(--c3); font-size: .75rem; font-weight: 600; padding: .2em .6em; border-radius: 20px; }
+        .fh-founder-badge { background: #fef9ec; color: #b45309; border: 1px solid #fde68a; font-size: .75rem; font-weight: 700; padding: .2em .6em; border-radius: 20px; }
         .fh-rate-chip { background: var(--c1-pale); color: var(--c1); font-size: .88rem; font-weight: 600; padding: .4em 1em; border-radius: 20px; white-space: nowrap; }
         .fh-kpi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1rem; }
         .fh-section { display: flex; flex-direction: column; gap: .8rem; }
