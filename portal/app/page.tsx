@@ -113,6 +113,46 @@ export default async function Home() {
         </div>
       </section>
 
+      {/* FREELANCEHUB CTA */}
+      <section className={styles.fhSection}>
+        <div className={styles.fhContent}>
+          <div className={styles.fhBadge}>Nouveau · Lancement 30 avril</div>
+          <h2 className={styles.fhTitle}>
+            Trouvez l&apos;expert B2B<br />qu&apos;il vous faut.
+          </h2>
+          <p className={styles.fhSub}>
+            FreelanceHub connecte consultants experts vérifiés et entreprises via un matching algorithmique,
+            un paiement sécurisé par séquestre et un anonymat total jusqu&apos;à la confirmation.
+          </p>
+          <div className={styles.fhPills}>
+            <span className={styles.fhPill}>✓ KYC vérifié</span>
+            <span className={styles.fhPill}>✓ Paiement séquestre</span>
+            <span className={styles.fhPill}>✓ Anonymat</span>
+            <span className={styles.fhPill}>✓ Matching algorithmique</span>
+          </div>
+          <div className={styles.fhCtas}>
+            <a href="/freelancehub/register" className={styles.fhBtn1}>Rejoindre FreelanceHub</a>
+            <a href="/freelancehub/login" className={styles.fhBtn2}>Se connecter</a>
+          </div>
+        </div>
+        <div className={styles.fhIllus} aria-hidden="true">
+          <div className={styles.fhCard}>
+            <div className={styles.fhCardTop}>
+              <div className={styles.fhAvatar}>◈</div>
+              <div>
+                <div className={styles.fhCardName}>Expert vérifié</div>
+                <div className={styles.fhCardRole}>Consultant ERP · 8 ans</div>
+              </div>
+              <span className={styles.fhVerified}>✓</span>
+            </div>
+            <div className={styles.fhSkills}>
+              <span>D365 F&O</span><span>SAP</span><span>Data</span>
+            </div>
+            <div className={styles.fhRate}>À partir de <strong>120 €/h</strong></div>
+          </div>
+        </div>
+      </section>
+
       {/* CTA BAND */}
       <div className={styles.ctaBand}>
         <h2>Prêt à transformer votre façon de travailler ?</h2>

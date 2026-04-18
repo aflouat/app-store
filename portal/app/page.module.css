@@ -323,6 +323,195 @@
 
 .btnCta2:hover { background: rgba(255, 255, 255, 0.22); }
 
+/* FREELANCEHUB CTA SECTION */
+.fhSection {
+  padding: 80px 40px;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 64px;
+}
+
+.fhContent {
+  max-width: 520px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.fhBadge {
+  display: inline-block;
+  background: rgba(185, 149, 141, 0.2);
+  border: 1px solid rgba(185, 149, 141, 0.4);
+  color: #e8c4be;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 5px 14px;
+  border-radius: 20px;
+  letter-spacing: 0.03em;
+  width: fit-content;
+}
+
+.fhTitle {
+  font-family: 'Fraunces', serif;
+  font-size: clamp(2rem, 3.5vw, 3rem);
+  font-weight: 900;
+  color: #fff;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  margin: 0;
+}
+
+.fhSub {
+  font-size: 0.93rem;
+  color: rgba(255, 255, 255, 0.65);
+  line-height: 1.65;
+  font-weight: 300;
+  margin: 0;
+}
+
+.fhPills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.fhPill {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.8rem;
+  padding: 5px 12px;
+  border-radius: 20px;
+}
+
+.fhCtas {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.fhBtn1 {
+  background: var(--rose);
+  color: #fff;
+  border: none;
+  border-radius: 24px;
+  padding: 13px 28px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  font-family: 'DM Sans', sans-serif;
+  text-decoration: none;
+  transition: transform 0.15s, box-shadow 0.2s, background 0.15s;
+  display: inline-block;
+}
+
+.fhBtn1:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(185, 149, 141, 0.4);
+  background: var(--rose-light);
+}
+
+.fhBtn2 {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.8);
+  border: 1.5px solid rgba(255, 255, 255, 0.25);
+  border-radius: 24px;
+  padding: 13px 28px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  font-family: 'DM Sans', sans-serif;
+  text-decoration: none;
+  transition: background 0.2s;
+  display: inline-block;
+}
+
+.fhBtn2:hover { background: rgba(255, 255, 255, 0.15); }
+
+.fhIllus {
+  flex-shrink: 0;
+}
+
+.fhCard {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  padding: 24px;
+  width: 260px;
+  backdrop-filter: blur(12px);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.fhCardTop {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.fhAvatar {
+  width: 44px;
+  height: 44px;
+  background: rgba(185, 149, 141, 0.2);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+  color: #e8c4be;
+  flex-shrink: 0;
+}
+
+.fhCardName {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #fff;
+}
+
+.fhCardRole {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.5);
+  margin-top: 2px;
+}
+
+.fhVerified {
+  margin-left: auto;
+  background: rgba(150, 174, 170, 0.25);
+  color: #96AEAA;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 8px;
+}
+
+.fhSkills {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.fhSkills span {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.75rem;
+  padding: 3px 10px;
+  border-radius: 6px;
+}
+
+.fhRate {
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.5);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 12px;
+}
+
+.fhRate strong {
+  color: #e8c4be;
+  font-weight: 700;
+}
+
 /* RESPONSIVE */
 @media (max-width: 1023px) {
   .catGrid { grid-template-columns: repeat(3, 1fr); }
@@ -344,6 +533,10 @@
   .searchWrap { flex-direction: column; border-radius: 14px; padding: 12px; gap: 8px; }
   .searchInput { width: 100%; }
   .btnSearch { width: 100%; border-radius: 10px; }
+  .fhSection { flex-direction: column; padding: 56px 20px; gap: 36px; }
+  .fhIllus { display: none; }
+  .fhCtas { flex-direction: column; }
+  .fhBtn1, .fhBtn2 { text-align: center; }
 }
 
 @media (max-width: 479px) {
