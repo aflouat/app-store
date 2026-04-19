@@ -54,6 +54,12 @@ Priorités ordonnées par valeur client (confiance → acquisition → rétentio
 - [ ] **Landing page → portail** — bouton CTA vers `/freelancehub/register` sur perform-learn.fr · `business_value: 95` · `value_type: user_acquisition`
 - [ ] **Email de lancement** aux inscrits waitlist (Brevo) — J-3 teasing, J-0 go-live · `business_value: 88` · `value_type: user_acquisition`
 
+**🔴 Sécurité — Correctifs avant lancement** *(identifiés analyse refacto.md 2026-04-19)*
+- [ ] **Fix CRON_SECRET query param** — supprimer fallback `searchParams.get('secret')` dans `cron/reminders/route.ts` · `business_value: 85` · `value_type: strategic_positioning`
+- [ ] **Fix Multiple PaymentIntents** — vérifier PI existant avant création Stripe dans `payment-intent/route.ts` · `business_value: 90` · `value_type: strategic_positioning`
+- [ ] **Fix exposition erreur KYC** — message générique en réponse 500 (`kyc/route.ts`) · `business_value: 75` · `value_type: strategic_positioning`
+- [ ] **Health Check endpoint** — `GET /api/freelancehub/health` (SELECT 1 DB) · `business_value: 70` · `value_type: technical_debt`
+
 **🟡 Rétention — Post-lancement immédiat**
 - [ ] **Facture PDF** générée automatiquement après paiement (nom client, n° réservation, montant HT/TVA/TTC, mentions légales) → stockée MinIO, accessible depuis "Mes paiements" · `business_value: 76` · `value_type: ux_improvement`
 
@@ -69,6 +75,15 @@ Priorités ordonnées par valeur client (confiance → acquisition → rétentio
 - [ ] **Registre des traitements** (art. 30 RGPD) — document interne listant les traitements : booking, paiement, évaluation, emails, analytics Umami · `business_value: 65` · `value_type: strategic_positioning`
 - [ ] **Signatures Phase 2 — Yousign** : NDA signé électroniquement (éditeur français, certifié eIDAS), document stocké MinIO, `provider_signature_id` tracé en DB · `business_value: 62` · `value_type: strategic_positioning`
 - [ ] **Sous-traitants** — DPA (Data Processing Agreement) Stripe, Resend, Vercel, OVH documentés · `business_value: 55` · `value_type: strategic_positioning`
+
+**Dette technique — Performance & Sécurité**
+- [ ] **Rate limiting** — middleware sur `/api/freelancehub/auth/*` (Upstash ou in-memory) · `business_value: 80` · `value_type: strategic_positioning`
+- [ ] **Stripe singleton** — `lib/freelancehub/stripe.ts` partagé (évite réinstanciation par requête) · `business_value: 60` · `value_type: technical_debt`
+- [ ] **CSP Headers** — `next.config.ts` avec `Content-Security-Policy`, `X-Frame-Options` · `business_value: 72` · `value_type: strategic_positioning`
+- [ ] **Pool connexions PostgreSQL** — `max: 2` immédiat + PgBouncer C6 (évite saturation 100 conx) · `business_value: 78` · `value_type: technical_debt`
+- [ ] **Tests automatisés** — Vitest (unit: computePricing, matching) + Playwright (E2E booking flow) · `business_value: 85` · `value_type: technical_debt`
+- [ ] **Fix timezone dates** — remplacer `'T00:00:00'` par `'T00:00:00Z'` dans email.ts et cron · `business_value: 65` · `value_type: technical_debt`
+- [ ] **Skills sync transactionnel** — batch INSERT `unnest` dans `consultant/profile/route.ts` · `business_value: 60` · `value_type: technical_debt`
 
 **Valeur client — Récurrence & revenus**
 - [ ] **Stripe Connect** — reversement automatique consultant (supprime la gestion manuelle) · `business_value: 90` · `value_type: cost_reduction`

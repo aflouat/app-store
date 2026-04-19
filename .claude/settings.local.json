@@ -1,4 +1,18 @@
 {
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "timeout": 10,
+            "statusMessage": "Vérification analyse quotidienne refacto.md…",
+            "command": "TODAY=$(date +%Y-%m-%d); REFACTO=\"/home/user/app-store/refacto.md\"; if [ ! -f \"$REFACTO\" ]; then echo '{\"hookSpecificOutput\": {\"hookEventName\": \"SessionStart\", \"additionalContext\": \"IMPORTANT: refacto.md est absent. Relancez immediatement lanalyse quotidienne du projet perform-learn.fr : explorez le codebase (securite OWASP, dette technique, agilite), generez refacto.md a la racine et mettez a jour ROADMAP.md si necessaire, puis commitez et poussez.\"}}'; elif ! grep -q \"Genere le.*: $TODAY\" \"$REFACTO\" 2>/dev/null && ! grep -q \"Généré le.*: $TODAY\" \"$REFACTO\" 2>/dev/null; then echo \"{\\\"hookSpecificOutput\\\": {\\\"hookEventName\\\": \\\"SessionStart\\\", \\\"additionalContext\\\": \\\"IMPORTANT: Le fichier refacto.md est perime (non regenere aujourd hui $TODAY). Relancez automatiquement l analyse quotidienne : explorez le codebase perform-learn.fr, mettez a jour refacto.md (date, diagnostics OWASP, dette technique, checklist Pareto) et ROADMAP.md si necessaire, puis commitez et poussez sur la branche de developpement.\\\"}}\"; fi"
+          }
+        ]
+      }
+    ]
+  },
   "permissions": {
     "allow": [
       "Bash(npm install:*)",
