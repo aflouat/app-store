@@ -18,17 +18,25 @@ const TIME_SLOTS = ['08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:
 const DAYS_FR    = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim']
 const MONTHS_FR  = ['jan','fév','mar','avr','mai','jun','jul','aoû','sep','oct','nov','déc']
 
+// Formatte une Date en YYYY-MM-DD en heure locale (évite le décalage UTC toISOString)
+function toLocalISO(d: Date): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
 function toMonday(date: Date): string {
   const d = new Date(date)
   const day = d.getDay()
   d.setDate(d.getDate() + (day === 0 ? -6 : 1 - day))
-  return d.toISOString().split('T')[0]
+  return toLocalISO(d)
 }
 
 function addDays(dateStr: string, n: number): string {
-  const d = new Date(dateStr + 'T00:00:00')
-  d.setDate(d.getDate() + n)
-  return d.toISOString().split('T')[0]
+  const [y, mo, da] = dateStr.split('-').map(Number)
+  const d = new Date(y, mo - 1, da + n) // constructeur local, sans ambiguïté UTC
+  return toLocalISO(d)
 }
 
 function fmt(dateStr: string): string {
@@ -138,7 +146,7 @@ export default function AgendaCalendar({ consultantId }: Props) {
   }
 
   const availableCount = slots.filter(s => s.status === 'available').length
-  const today = new Date().toISOString().split('T')[0]
+  const today = toLocalISO(new Date())
 
   // Week label
   const weekLabel = `${fmt(weekStart)} – ${fmt(addDays(weekStart, 6))} ${new Date(weekStart + 'T00:00:00').getFullYear()}`
@@ -215,7 +223,7 @@ export default function AgendaCalendar({ consultantId }: Props) {
                     }
                   >
                     {isBusy   && <span className="cal-spinner" />}
-                    {isAvail  && !isBusy && <span className="cal-dot cal-dot--avail" />}
+                    {isAvail  && !isBusy && <span className="cal-avail-label">✓</span>}
                     {isBooked && <span className="cal-booked-label">Pris</span>}
                   </div>
                 )
@@ -233,7 +241,7 @@ export default function AgendaCalendar({ consultantId }: Props) {
 
       {/* Legend */}
       <div className="cal-legend">
-        <span className="cal-legend-item"><span className="cal-dot cal-dot--avail" /> Disponible (cliquer pour supprimer)</span>
+        <span className="cal-legend-item"><span style={{ background:'#16a34a', color:'#fff', padding:'1px 6px', borderRadius:3, fontSize:'.72rem', fontWeight:700 }}>✓</span> Disponible (cliquer pour supprimer)</span>
         <span className="cal-legend-item"><span className="cal-booked-label" style={{ background: '#e07b54', padding: '1px 5px', borderRadius: 3 }}>Pris</span> Réservé par un client</span>
         <span className="cal-legend-item"><span className="cal-dot cal-dot--empty" /> Vide (cliquer pour ajouter)</span>
       </div>
@@ -275,16 +283,17 @@ export default function AgendaCalendar({ consultantId }: Props) {
         /* Slot cells */
         .cal-slot { height: 38px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background .12s; }
         .cal-slot:hover:not(.cal-slot--past):not(.cal-slot--booked) { background: var(--c1-pale); }
-        .cal-slot--avail  { background: #d4f3e5; }
-        .cal-slot--avail:hover  { background: #b2ead0 !important; }
+        .cal-slot--avail  { background: #16a34a; }
+        .cal-slot--avail:hover  { background: #15803d !important; }
         .cal-slot--booked { background: #e07b54; cursor: not-allowed; }
         .cal-slot--past   { background: var(--bg); cursor: default; opacity: .5; }
         .cal-slot--busy   { pointer-events: none; }
 
-        /* Dots */
+        /* Dots & labels */
         .cal-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
         .cal-dot--avail  { background: #27ae60; }
         .cal-dot--booked { background: #e07b54; }
+        .cal-avail-label { font-size: .8rem; font-weight: 700; color: #fff; }
         .cal-booked-label { font-size: .65rem; font-weight: 700; color: #fff; letter-spacing: .03em; text-transform: uppercase; }
         .cal-dot--empty  { background: var(--border); border: 1px solid var(--border); }
 
