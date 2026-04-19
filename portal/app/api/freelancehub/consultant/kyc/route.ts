@@ -13,7 +13,7 @@ const s3 = new S3Client({
   },
 })
 
-const BUCKET    = process.env.MINIO_BUCKET_KYC ?? 'kyc-documents'
+const BUCKET    = process.env.MINIO_BUCKET_KYC || 'kyc-documents'
 const MAX_BYTES = 5 * 1024 * 1024 // 5 Mo
 const ALLOWED   = new Set(['application/pdf', 'image/jpeg', 'image/png', 'image/webp'])
 
@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
     const key    = `kyc/${consultant.id}/${Date.now()}_${document_type.toLowerCase()}.${ext}`
     const buffer = Buffer.from(await file.arrayBuffer())
 
-    console.log(`[kyc] uploading to ${BUCKET}/${key} (${buffer.length} bytes, ${resolvedMime})`)
+    console.log(`[kyc] bucket="${BUCKET}" key="${key}" size=${buffer.length} mime=${resolvedMime}`)
     await s3.send(new PutObjectCommand({
       Bucket:      BUCKET,
       Key:         key,
