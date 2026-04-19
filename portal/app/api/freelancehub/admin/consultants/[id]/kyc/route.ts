@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { queryOne } from '@/lib/freelancehub/db'
 import { createNotification } from '@/lib/freelancehub/notifications'
+import { sendKycValidated, sendKycRejected } from '@/lib/freelancehub/email'
 
 const EARLY_ADOPTER_LIMIT     = 20
 const EARLY_ADOPTER_COMMISSION = 10.00
@@ -27,8 +28,11 @@ export async function PATCH(
     return NextResponse.json({ error: 'Une raison de refus est obligatoire.' }, { status: 400 })
   }
 
-  const consultant = await queryOne<{ id: string; user_id: string; kyc_status: string }>(
-    `SELECT id, user_id, kyc_status FROM freelancehub.consultants WHERE id = $1`,
+  const consultant = await queryOne<{ id: string; user_id: string; kyc_status: string; email: string; name: string | null }>(
+    `SELECT c.id, c.user_id, c.kyc_status, u.email, u.name
+     FROM freelancehub.consultants c
+     JOIN freelancehub.users u ON u.id = c.user_id
+     WHERE c.id = $1`,
     [id]
   )
   if (!consultant) {
@@ -62,6 +66,7 @@ export async function PATCH(
       'KYC validé — profil activé',
       notifBody
     )
+    sendKycValidated(consultant.email, consultant.name ?? '', isEarlyAdopter).catch(() => null)
   } else {
     await queryOne(
       `UPDATE freelancehub.consultants
@@ -75,6 +80,7 @@ export async function PATCH(
       'KYC refusé — action requise',
       `Votre dossier KYC a été refusé. Motif : ${notes.trim()}. Veuillez soumettre un nouveau document.`
     )
+    sendKycRejected(consultant.email, consultant.name ?? '', notes.trim()).catch(() => null)
   }
 
   return NextResponse.json({ success: true, action })

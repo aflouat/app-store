@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { queryOne } from '@/lib/freelancehub/db'
+import { sendWelcomeConsultant } from '@/lib/freelancehub/email'
 
 // POST /api/freelancehub/auth/register
 // Body: { name, email, password, role: 'consultant' | 'client' }
@@ -52,6 +53,10 @@ export async function POST(req: NextRequest) {
      VALUES ($1, 'CGU', '1.0', $2, $3, 'checkbox')`,
     [user.id, ip, ua]
   )
+
+  if (role === 'consultant') {
+    sendWelcomeConsultant(user.email, name?.trim() || '').catch(() => null)
+  }
 
   return NextResponse.json({ success: true, role: user.role }, { status: 201 })
 }

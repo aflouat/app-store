@@ -10,7 +10,9 @@ export default async function ConsultantDashboard() {
 
   // Fetch consultant summary stats
   const [profile] = await query<{
+    id: string
     title: string | null
+    bio: string | null
     daily_rate: number | null
     rating: number
     rating_count: number
@@ -18,9 +20,13 @@ export default async function ConsultantDashboard() {
     kyc_status: string
     is_early_adopter: boolean
     commission_rate: number
+    skills_count: number
+    slots_count: number
   }>(
-    `SELECT c.title, c.daily_rate, c.rating, c.rating_count, c.is_verified, c.kyc_status,
-            c.is_early_adopter, c.commission_rate
+    `SELECT c.id, c.title, c.bio, c.daily_rate, c.rating, c.rating_count, c.is_verified, c.kyc_status,
+            c.is_early_adopter, c.commission_rate,
+            (SELECT COUNT(*) FROM freelancehub.consultant_skills cs WHERE cs.consultant_id = c.id)::int AS skills_count,
+            (SELECT COUNT(*) FROM freelancehub.slots s WHERE s.consultant_id = c.id AND s.slot_date >= CURRENT_DATE AND s.status = 'available')::int AS slots_count
      FROM freelancehub.consultants c
      WHERE c.user_id = $1`,
     [userId]
@@ -89,6 +95,17 @@ export default async function ConsultantDashboard() {
         <KycBanner status={profile.kyc_status} />
       )}
 
+      {/* Onboarding checklist */}
+      {profile && (
+        <OnboardingChecklist
+          hasTitle={!!profile.title}
+          hasBio={(profile.bio?.trim().split(/\s+/).length ?? 0) >= 30}
+          hasSkills={profile.skills_count >= 3}
+          kycStatus={profile.kyc_status}
+          hasSlots={profile.slots_count > 0}
+        />
+      )}
+
       {/* KPI Cards */}
       <div className="fh-kpi-grid">
         <KpiCard label="Réservations totales" value={String(stats?.total ?? 0)} color="var(--c3)" />
@@ -155,6 +172,49 @@ export default async function ConsultantDashboard() {
         .fh-slot-cancelled .fh-slot-status { background: var(--c4-pale); color: var(--text-light); }
       `}</style>
     </div>
+  )
+}
+
+function OnboardingChecklist({
+  hasTitle, hasBio, hasSkills, kycStatus, hasSlots,
+}: {
+  hasTitle: boolean; hasBio: boolean; hasSkills: boolean; kycStatus: string; hasSlots: boolean;
+}) {
+  const steps = [
+    { label: 'Titre de consultant renseigné', done: hasTitle, href: '/freelancehub/consultant/profile' },
+    { label: 'Bio complète (30 mots min.)', done: hasBio, href: '/freelancehub/consultant/profile' },
+    { label: 'Au moins 3 compétences ajoutées', done: hasSkills, href: '/freelancehub/consultant/profile' },
+    { label: 'Document KYC soumis', done: kycStatus !== 'none', href: '/freelancehub/consultant/kyc' },
+    { label: 'KYC validé — profil visible', done: kycStatus === 'validated', href: '/freelancehub/consultant/kyc' },
+    { label: 'Premier créneau disponible ajouté', done: hasSlots, href: '/freelancehub/consultant/agenda' },
+  ]
+  const completed = steps.filter(s => s.done).length
+  if (completed === steps.length) return null
+  const pct = Math.round((completed / steps.length) * 100)
+
+  return (
+    <section style={{ background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: '1.2rem 1.4rem', display: 'flex', flexDirection: 'column', gap: '.9rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
+        <span style={{ fontSize: '.95rem', fontWeight: 600, color: 'var(--dark)' }}>Profil — {pct}% complet</span>
+        <span style={{ fontSize: '.8rem', color: 'var(--text-light)' }}>{completed}/{steps.length} étapes</span>
+      </div>
+      <div style={{ height: '6px', background: 'var(--border)', borderRadius: '10px', overflow: 'hidden' }}>
+        <div style={{ height: '100%', width: `${pct}%`, background: pct === 100 ? 'var(--c3)' : 'var(--c1)', borderRadius: '10px', transition: 'width .3s' }} />
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '.45rem' }}>
+        {steps.map((s, i) => (
+          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '.7rem', fontSize: '.88rem' }}>
+            <span style={{ width: '18px', height: '18px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: '.7rem', fontWeight: 700, background: s.done ? 'var(--c3)' : 'var(--border)', color: s.done ? '#fff' : 'var(--text-light)' }}>
+              {s.done ? '✓' : i + 1}
+            </span>
+            {s.done
+              ? <span style={{ color: 'var(--text-mid)', textDecoration: 'line-through' }}>{s.label}</span>
+              : <a href={s.href} style={{ color: 'var(--c1)', textDecoration: 'none', fontWeight: 500 }}>{s.label} →</a>
+            }
+          </div>
+        ))}
+      </div>
+    </section>
   )
 }
 

@@ -23,6 +23,7 @@ export interface Consultant {
   rating_count: number
   is_verified: boolean
   is_available: boolean
+  is_early_adopter?: boolean
   location: string | null
   linkedin_url: string | null
   youtube_url:  string | null

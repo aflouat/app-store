@@ -312,7 +312,11 @@ function AnonymousCard({ result, rank, onBook }: { result: MatchingResult; rank:
             <p className="ac-title">{c.title ?? 'Consultant Expert'}</p>
             <div className="ac-meta">
               {c.location && <span>📍 {c.location}</span>}
-              {c.is_verified && <span className="ac-verified">✓ Vérifié</span>}
+            </div>
+            <div className="ac-trust-badges">
+              {c.is_verified && <span className="ac-trust-pill ac-trust-verified">✓ KYC vérifié</span>}
+              <span className="ac-trust-pill ac-trust-escrow">🔒 Paiement séquestre</span>
+              {c.is_early_adopter && <span className="ac-trust-pill ac-trust-founder">★ Fondateur</span>}
             </div>
             <div className="ac-rating">
               {'★'.repeat(Math.round(c.rating))}{'☆'.repeat(5 - Math.round(c.rating))}
@@ -367,6 +371,11 @@ function AnonymousCard({ result, rank, onBook }: { result: MatchingResult; rank:
         .ac-price-tag { font-weight: 700; color: var(--c3); background: var(--c3-pale); padding: .2em .6em; border-radius: 10px; font-size: .82rem; }
         .ac-book-btn { padding: .65rem 1.3rem; background: var(--c1); color: #fff; border: none; border-radius: var(--radius-sm); font-size: .9rem; font-weight: 600; cursor: pointer; align-self: flex-end; transition: background .15s; }
         .ac-book-btn:hover { background: var(--c1-light); }
+        .ac-trust-badges { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .1rem; }
+        .ac-trust-pill { font-size: .68rem; font-weight: 600; padding: .18em .55em; border-radius: 20px; white-space: nowrap; }
+        .ac-trust-verified { background: var(--c3-pale); color: var(--c3); }
+        .ac-trust-escrow   { background: var(--c1-pale); color: var(--c1); }
+        .ac-trust-founder  { background: #fef9ec; color: #b45309; border: 1px solid #fde68a; }
       `}</style>
     </div>
   )

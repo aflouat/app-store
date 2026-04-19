@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import type { Notification } from '@/lib/freelancehub/notifications'
 
 const TYPE_META: Record<string, { icon: string; color: string }> = {
@@ -13,6 +14,7 @@ const TYPE_META: Record<string, { icon: string; color: string }> = {
 }
 
 export default function NotificationsPage() {
+  const router                = useRouter()
   const [items,   setItems]   = useState<Notification[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -35,6 +37,7 @@ export default function NotificationsPage() {
       body: JSON.stringify({ all: true }),
     })
     setItems(prev => prev.map(n => ({ ...n, is_read: true })))
+    router.refresh()
   }
 
   async function markOneRead(id: string) {
@@ -44,6 +47,7 @@ export default function NotificationsPage() {
       body: JSON.stringify({ id }),
     })
     setItems(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n))
+    router.refresh()
   }
 
   const unread = items.filter(n => !n.is_read).length

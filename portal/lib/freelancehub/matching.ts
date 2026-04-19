@@ -44,9 +44,10 @@ export async function findMatches(input: MatchInput): Promise<MatchingResult[]> 
     daily_rate:    number | null
     rating:        number
     rating_count:  number
-    is_verified:   boolean
-    location:      string | null
-    skill_level:   string
+    is_verified:      boolean
+    is_early_adopter: boolean
+    location:         string | null
+    skill_level:      string
     slot_id:       string
     slot_date:     string
     slot_time:     string
@@ -62,6 +63,7 @@ export async function findMatches(input: MatchInput): Promise<MatchingResult[]> 
        c.rating,
        c.rating_count,
        c.is_verified,
+       c.is_early_adopter,
        c.location,
        cs.level      AS skill_level,
        s.id          AS slot_id,
@@ -134,6 +136,7 @@ export async function findMatches(input: MatchInput): Promise<MatchingResult[]> 
         rating_count:     Number(c.rating_count),
         is_verified:      c.is_verified,
         is_available:     true,
+        is_early_adopter: c.is_early_adopter,
         location:         c.location,
         linkedin_url:     null,
         youtube_url:      null,

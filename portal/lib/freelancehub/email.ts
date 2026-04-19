@@ -196,6 +196,35 @@ function buildTaskEmail(d: {
 </html>`
 }
 
+// ─── Welcome + KYC emails ─────────────────────────────────────
+
+export async function sendWelcomeConsultant(email: string, name: string) {
+  await getResend().emails.send({
+    from:    FROM,
+    to:      email,
+    subject: `Bienvenue sur FreelanceHub, ${name || 'Expert'} !`,
+    html:    buildWelcomeConsultantEmail({ name: name || 'Expert' }),
+  })
+}
+
+export async function sendKycValidated(email: string, name: string, isEarlyAdopter: boolean) {
+  await getResend().emails.send({
+    from:    FROM,
+    to:      email,
+    subject: '✓ KYC validé — vous êtes maintenant visible sur FreelanceHub',
+    html:    buildKycValidatedEmail({ name: name || 'Consultant', isEarlyAdopter }),
+  })
+}
+
+export async function sendKycRejected(email: string, name: string, notes: string) {
+  await getResend().emails.send({
+    from:    FROM,
+    to:      email,
+    subject: 'KYC refusé — action requise sur FreelanceHub',
+    html:    buildKycRejectedEmail({ name: name || 'Consultant', notes }),
+  })
+}
+
 // ─── HTML templates ───────────────────────────────────────────
 
 function baseTemplate(title: string, body: string): string {
@@ -308,5 +337,49 @@ function buildFundReleaseEmail(d: {
       <div class="info-row"><span>Référence mission</span><span>${d.bookingId.slice(0,8).toUpperCase()}</span></div>
     </div>
     <a href="${BASE}/freelancehub/consultant/earnings" class="cta">Voir mes gains</a>
+  `)
+}
+
+function buildWelcomeConsultantEmail(d: { name: string }): string {
+  return baseTemplate('Bienvenue sur FreelanceHub', `
+    <h1>Bienvenue, ${d.name} !</h1>
+    <p>Votre compte consultant FreelanceHub est créé. Vous êtes à 3 étapes d'apparaître dans les résultats et de recevoir vos premières missions.</p>
+    <div class="info-box">
+      <div class="info-row"><span>Étape 1</span><span>Complétez votre profil</span></div>
+      <div class="info-row"><span>Étape 2</span><span>Soumettez votre KYC (KBIS ou URSSAF)</span></div>
+      <div class="info-row"><span>Étape 3</span><span>Ajoutez vos créneaux disponibles</span></div>
+    </div>
+    <p style="font-size:12px;color:#b45309;font-weight:600">Les 20 premiers consultants validés KYC obtiennent le badge Fondateur et une commission réduite à 10%.</p>
+    <a href="${BASE}/freelancehub/consultant/kyc" class="cta">Soumettre mon KYC →</a>
+  `)
+}
+
+function buildKycValidatedEmail(d: { name: string; isEarlyAdopter: boolean }): string {
+  const earlyBlock = d.isEarlyAdopter
+    ? `<div class="info-box" style="border-left:3px solid #b45309">
+        <p style="font-size:13px;font-weight:700;color:#b45309;margin:0">★ Vous êtes Early Adopter — Fondateur</p>
+        <p style="font-size:12px;color:#5c5956;margin:6px 0 0">Commission réduite à 10% sur toutes vos missions. Badge Fondateur affiché sur votre profil.</p>
+      </div>`
+    : ''
+  return baseTemplate('KYC validé', `
+    <h1>KYC validé ✓</h1>
+    <p>Bonjour ${d.name},</p>
+    <p>Votre dossier KYC a été vérifié et validé. Votre profil est maintenant <strong>actif et visible</strong> dans les résultats de recherche FreelanceHub.</p>
+    ${earlyBlock}
+    <p>Ajoutez dès maintenant vos créneaux disponibles pour recevoir vos premières réservations.</p>
+    <a href="${BASE}/freelancehub/consultant/agenda" class="cta">Gérer mon agenda →</a>
+  `)
+}
+
+function buildKycRejectedEmail(d: { name: string; notes: string }): string {
+  return baseTemplate('KYC refusé', `
+    <h1>KYC refusé — action requise</h1>
+    <p>Bonjour ${d.name},</p>
+    <p>Votre dossier KYC n'a pas pu être validé pour la raison suivante :</p>
+    <div class="info-box" style="border-left:3px solid #c0392b">
+      <p style="font-size:13px;color:#c0392b;margin:0">${d.notes}</p>
+    </div>
+    <p>Soumettez un nouveau document depuis votre espace consultant.</p>
+    <a href="${BASE}/freelancehub/consultant/kyc" class="cta">Re-soumettre mon KYC →</a>
   `)
 }

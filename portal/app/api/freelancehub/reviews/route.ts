@@ -93,7 +93,8 @@ export async function POST(req: NextRequest) {
   if ((reviewCount?.count ?? 0) >= 2) {
     await query(
       `UPDATE freelancehub.payments
-       SET status = 'transferred', transferred_at = NOW(), updated_at = NOW()
+       SET status = 'transferred', transferred_at = NOW(), updated_at = NOW(),
+           notes = COALESCE(notes, 'payout_pending_manual')
        WHERE booking_id = $1 AND status = 'captured'`,
       [booking_id]
     )
