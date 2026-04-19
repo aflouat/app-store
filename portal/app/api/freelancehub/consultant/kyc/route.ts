@@ -13,7 +13,7 @@ const s3 = new S3Client({
   },
 })
 
-const BUCKET    = process.env.MINIO_BUCKET_KYC || 'kyc-documents'
+const BUCKET    = (process.env.MINIO_BUCKET_KYC ?? '').trim() || 'kyc-documents'
 const MAX_BYTES = 5 * 1024 * 1024 // 5 Mo
 const ALLOWED   = new Set(['application/pdf', 'image/jpeg', 'image/png', 'image/webp'])
 
