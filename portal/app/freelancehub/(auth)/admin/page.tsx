@@ -1,6 +1,7 @@
 import { auth } from '@/auth'
 import { redirect } from 'next/navigation'
 import { query } from '@/lib/freelancehub/db'
+import AdminGovPanel from '@/components/freelancehub/admin/AdminGovPanel'
 
 export default async function AdminDashboard() {
   const session = await auth()
@@ -46,6 +47,10 @@ export default async function AdminDashboard() {
      LIMIT 8`
   )
 
+  const [kycPending] = await query<{ cnt: string }>(
+    `SELECT COUNT(*)::int AS cnt FROM freelancehub.consultants WHERE kyc_status = 'submitted'`
+  )
+
   const revenue = ((platform?.total_revenue_ht ?? 0) as number) / 100
   const commission = ((platform?.platform_commission ?? 0) as number) / 100
 
@@ -58,6 +63,12 @@ export default async function AdminDashboard() {
         </div>
       </header>
 
+      {Number(kycPending?.cnt) > 0 && (
+        <a href="/freelancehub/admin/consultants" className="kyc-alert">
+          ⚡ {kycPending?.cnt} dossier{Number(kycPending?.cnt) > 1 ? 's' : ''} KYC en attente de validation → Voir les consultants
+        </a>
+      )}
+
       {/* KPI Grid */}
       <div className="fh-kpi-grid-admin">
         <KpiCard label="Consultants"         value={String(platform?.total_consultants ?? 0)}  sub={`${platform?.verified_consultants ?? 0} vérifiés`} color="var(--c3)" />
@@ -65,6 +76,8 @@ export default async function AdminDashboard() {
         <KpiCard label="Réservations"        value={String(platform?.total_bookings ?? 0)}      sub={`${platform?.pending_bookings ?? 0} en attente`}   color="var(--c2)" />
         <KpiCard label="CA total (HT)"       value={`${revenue.toFixed(0)} €`}                  sub={`Commission : ${commission.toFixed(0)} €`}          color="var(--c4)" />
       </div>
+
+      <AdminGovPanel />
 
       {/* Recent bookings */}
       <section className="fh-section">
@@ -115,6 +128,8 @@ export default async function AdminDashboard() {
         .fh-admin-table tr:last-child td { border-bottom: none; }
         .fh-admin-table tbody tr:hover { background: var(--bg); }
         .fh-id { font-size: .78rem; color: var(--text-light); }
+        .kyc-alert { display: block; background: #fffbeb; border: 1px solid #fde68a; color: #b45309; font-size: .88rem; font-weight: 600; padding: .75rem 1.1rem; border-radius: var(--radius-sm); text-decoration: none; }
+        .kyc-alert:hover { background: #fef3c7; }
       `}</style>
     </div>
   )

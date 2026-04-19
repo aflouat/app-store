@@ -1,13 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { sendTaskNotifications, AgentTask } from '@/lib/freelancehub/email'
+import { auth } from '@/auth'
 
 // POST /api/govern/tasks/notify
-// Auth : Authorization: Bearer <CRON_SECRET>
+// Auth : Bearer <CRON_SECRET>  OU  session admin
 // Body : { assignee: 'abdel' | 'aminetou', sprint: string, tasks: AgentTask[] }
 export async function POST(req: NextRequest) {
-  const secret = process.env.CRON_SECRET
-  if (!secret || req.headers.get('authorization') !== `Bearer ${secret}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const secret     = process.env.CRON_SECRET
+  const bearer     = req.headers.get('authorization')
+  const cronOk     = secret && bearer === `Bearer ${secret}`
+
+  if (!cronOk) {
+    const session = await auth()
+    if (!session?.user || session.user.role !== 'admin') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
   }
 
   const { assignee, sprint, tasks } = await req.json() as {

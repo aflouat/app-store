@@ -163,8 +163,13 @@ function KycBadge({ status, docUrl, docName }: { status: string; docUrl: string 
     <div>
       <span className={`adm-kyc-badge adm-kyc-${status}`}>{labels[status] ?? status}</span>
       {docUrl && docName && (
-        <a href={docUrl} target="_blank" rel="noreferrer" className="adm-kyc-doc-link">
-          Voir document
+        <a
+          href={`/api/freelancehub/admin/kyc-presign?docUrl=${encodeURIComponent(docUrl)}`}
+          target="_blank"
+          rel="noreferrer"
+          className="adm-kyc-doc-link"
+        >
+          Voir document ↗
         </a>
       )}
     </div>
