@@ -42,6 +42,15 @@ const TASKS_AMINETOU = [
     deadline: '2026-04-25',
     actionUrl: 'https://portal.perform-learn.fr',
   },
+  {
+    id: 'T-012',
+    title: 'Configurer STRIPE_WEBHOOK_SECRET dans Vercel',
+    description: "Récupérer le secret de webhook Stripe et l'ajouter dans les variables d'environnement Vercel. Étapes : (1) Aller sur dashboard.stripe.com/webhooks → Add endpoint → URL : https://portal.perform-learn.fr/api/webhooks/stripe → Événements : payment_intent.succeeded, payment_intent.payment_failed, charge.refunded → Cliquer Add endpoint. (2) Copier le Signing secret (whsec_xxx...). (3) Aller sur Vercel → projet portal → Settings → Environment Variables → ajouter STRIPE_WEBHOOK_SECRET = whsec_xxx → Save → Redéployer. Cette variable est indispensable pour que les paiements Stripe soient confirmés automatiquement.",
+    duration: '15 min',
+    tool: 'dashboard.stripe.com + vercel.com',
+    deadline: '2026-04-25',
+    actionUrl: 'https://dashboard.stripe.com/webhooks',
+  },
 ]
 
 export default function AdminGovPanel() {
@@ -77,8 +86,8 @@ export default function AdminGovPanel() {
           </button>
         </div>
         <div className="gov-agent">
-          <div className="gov-agent-label">Mme Aminetou · T-008, T-009</div>
-          <div className="gov-agent-tasks">Liste consultants · Email waitlist</div>
+          <div className="gov-agent-label">Mme Aminetou · T-008, T-009, T-012</div>
+          <div className="gov-agent-tasks">Liste consultants · Email waitlist · Stripe webhook</div>
           <button
             className="gov-btn"
             onClick={() => send('aminetou')}
