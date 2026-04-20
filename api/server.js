@@ -1,4 +1,5 @@
 const http = require('http');
+const https = require('https');
 const { Pool } = require('pg');
 
 const pool = new Pool({
@@ -33,6 +34,103 @@ function readBody(req) {
     req.on('data', chunk => { body += chunk; });
     req.on('end', () => resolve(body));
     req.on('error', reject);
+  });
+}
+
+function sendWaitlistEmail(email, user_type) {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) return Promise.resolve();
+
+  const isFreelance = user_type === 'freelance';
+  const subject = isFreelance
+    ? 'Vous êtes sur la liste — FreelanceHub vous ouvre bientôt ses portes'
+    : 'Votre accès FreelanceHub est réservé — lancement le 30 avril';
+
+  const html = isFreelance ? `
+<!DOCTYPE html><html><body style="margin:0;font-family:Inter,Arial,sans-serif;background:#f8f9fa">
+<div style="max-width:560px;margin:40px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.08)">
+  <div style="background:#1a1a2e;padding:28px 36px">
+    <span style="font-size:1.3rem;font-weight:700;color:#fff;letter-spacing:-.02em">perform<span style="color:#6366f1">-learn</span></span>
+  </div>
+  <div style="padding:36px">
+    <h1 style="margin:0 0 12px;font-size:1.4rem;color:#111;font-weight:700">Bienvenue, consultant !</h1>
+    <p style="color:#444;line-height:1.7;margin:0 0 20px">Vous êtes inscrit sur la liste d'attente <strong>FreelanceHub</strong> — la marketplace B2B qui connecte consultants experts et entreprises via un matching algorithmique, un paiement sécurisé par séquestre et un <strong>anonymat total jusqu'au paiement</strong>.</p>
+    <div style="background:#f0f0ff;border-radius:8px;padding:20px;margin:0 0 24px">
+      <p style="margin:0 0 8px;font-weight:700;color:#1a1a2e">Ce qui vous attend :</p>
+      <ul style="margin:0;padding-left:18px;color:#444;line-height:2">
+        <li>Profil vérifié (KYC) — crédibilité garantie</li>
+        <li>Agenda en ligne — gérez vos disponibilités</li>
+        <li>Paiement automatique à chaque séance</li>
+        <li>Accès prioritaire early adopter (20 places)</li>
+      </ul>
+    </div>
+    <div style="background:#1a1a2e;border-radius:8px;padding:16px 20px;text-align:center;margin:0 0 24px">
+      <span style="color:#a5b4fc;font-size:.85rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase">Lancement</span>
+      <div style="color:#fff;font-size:1.5rem;font-weight:800;margin-top:4px">30 avril 2026</div>
+    </div>
+    <p style="color:#666;font-size:.88rem;line-height:1.6;margin:0">Nous vous contacterons dès l'ouverture pour finaliser votre profil. En attendant, si vous avez des questions, répondez simplement à cet email.</p>
+  </div>
+  <div style="padding:20px 36px;border-top:1px solid #f0f0f0;text-align:center">
+    <p style="margin:0;font-size:.78rem;color:#999">perform-learn.fr · <a href="https://portal.perform-learn.fr/freelancehub/privacy" style="color:#6366f1;text-decoration:none">Politique de confidentialité</a></p>
+  </div>
+</div>
+</body></html>` : `
+<!DOCTYPE html><html><body style="margin:0;font-family:Inter,Arial,sans-serif;background:#f8f9fa">
+<div style="max-width:560px;margin:40px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.08)">
+  <div style="background:#1a1a2e;padding:28px 36px">
+    <span style="font-size:1.3rem;font-weight:700;color:#fff;letter-spacing:-.02em">perform<span style="color:#6366f1">-learn</span></span>
+  </div>
+  <div style="padding:36px">
+    <h1 style="margin:0 0 12px;font-size:1.4rem;color:#111;font-weight:700">Votre accès est réservé</h1>
+    <p style="color:#444;line-height:1.7;margin:0 0 20px">Vous êtes inscrit sur la liste d'attente <strong>FreelanceHub</strong> — trouvez l'expert B2B qu'il vous faut, sans effort ni intermédiaire.</p>
+    <div style="background:#f0f0ff;border-radius:8px;padding:20px;margin:0 0 24px">
+      <p style="margin:0 0 8px;font-weight:700;color:#1a1a2e">Pourquoi FreelanceHub :</p>
+      <ul style="margin:0;padding-left:18px;color:#444;line-height:2">
+        <li>Consultants KYC vérifiés — zéro risque profil fictif</li>
+        <li>Anonymat jusqu'au paiement — confidentialité totale</li>
+        <li>Paiement séquestre — libéré après la séance</li>
+        <li>Matching algorithmique — le bon expert en 2 min</li>
+      </ul>
+    </div>
+    <div style="background:#1a1a2e;border-radius:8px;padding:16px 20px;text-align:center;margin:0 0 24px">
+      <span style="color:#a5b4fc;font-size:.85rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase">Lancement</span>
+      <div style="color:#fff;font-size:1.5rem;font-weight:800;margin-top:4px">30 avril 2026</div>
+    </div>
+    <p style="color:#666;font-size:.88rem;line-height:1.6;margin:0">Nous vous contacterons dès l'ouverture pour vous donner accès à la plateforme. En attendant, si vous avez des questions, répondez simplement à cet email.</p>
+  </div>
+  <div style="padding:20px 36px;border-top:1px solid #f0f0f0;text-align:center">
+    <p style="margin:0;font-size:.78rem;color:#999">perform-learn.fr · <a href="https://portal.perform-learn.fr/freelancehub/privacy" style="color:#6366f1;text-decoration:none">Politique de confidentialité</a></p>
+  </div>
+</div>
+</body></html>`;
+
+  const payload = JSON.stringify({
+    from: 'FreelanceHub <noreply@perform-learn.fr>',
+    to: [email],
+    subject,
+    html,
+  });
+
+  return new Promise((resolve) => {
+    const req = https.request({
+      hostname: 'api.resend.com',
+      path: '/emails',
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(payload),
+      },
+    }, (res) => {
+      res.resume();
+      res.on('end', resolve);
+    });
+    req.on('error', (err) => {
+      console.error('[waitlist] email error:', err.message);
+      resolve();
+    });
+    req.write(payload);
+    req.end();
   });
 }
 
@@ -85,12 +183,13 @@ const server = http.createServer(async (req, res) => {
     }
 
     try {
-      await pool.query(
+      const result = await pool.query(
         `INSERT INTO store.waitlist (email, user_type, marketing_consent, marketing_consent_at, source)
          VALUES ($1, $2, $3, $4, $5)
          ON CONFLICT (email) DO UPDATE SET
            marketing_consent = EXCLUDED.marketing_consent,
-           marketing_consent_at = EXCLUDED.marketing_consent_at`,
+           marketing_consent_at = EXCLUDED.marketing_consent_at
+         RETURNING (xmax = 0) AS is_new`,
         [
           email,
           user_type,
@@ -100,6 +199,9 @@ const server = http.createServer(async (req, res) => {
         ]
       );
       send(res, 201, { success: true });
+      if (result.rows[0]?.is_new) {
+        sendWaitlistEmail(email, user_type).catch(() => {});
+      }
     } catch (err) {
       console.error('DB error:', err.message);
       send(res, 500, { error: 'Server error' });
