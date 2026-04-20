@@ -57,8 +57,13 @@ function StripeForm({
 }) {
   const stripe   = useStripe()
   const elements = useElements()
-  const [paying, setPaying] = useState(false)
-  const [error,  setError]  = useState('')
+  const [paying,         setPaying]         = useState(false)
+  const [error,          setError]          = useState('')
+  const [stripeReady,    setStripeReady]    = useState(false)
+
+  useEffect(() => {
+    if (stripe) setStripeReady(true)
+  }, [stripe])
 
   async function handlePay() {
     if (!stripe || !elements) return
@@ -122,15 +127,12 @@ function StripeForm({
         <div className="modal-stripe-elements">
           <PaymentElement options={{ layout: 'tabs' }} />
         </div>
-        <p className="stripe-test-note">
-          Mode test — utilisez la carte <strong>4242 4242 4242 4242</strong>, date future, CVC quelconque.
-        </p>
       </div>
       {error && <p className="modal-error">{error}</p>}
       <div className="modal-actions">
         <button className="modal-btn-ghost" onClick={onBack} disabled={paying}>Retour</button>
-        <button className="fh-btn-primary" onClick={handlePay} disabled={paying || !stripe}>
-          {paying ? 'Traitement…' : `Payer ${priceTTC} € TTC`}
+        <button className="fh-btn-primary" onClick={handlePay} disabled={paying || !stripeReady}>
+          {paying ? 'Traitement…' : !stripeReady ? 'Chargement…' : `Payer ${priceTTC} € TTC`}
         </button>
       </div>
     </>
