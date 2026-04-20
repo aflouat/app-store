@@ -2,6 +2,8 @@ import { getApps, getWaitlistStats } from '@/lib/api'
 import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
 import AppCatalog from '@/components/AppCatalog'
+import CtaBand from '@/components/CtaBand'
+import HeroSearch from '@/components/HeroSearch'
 import styles from './page.module.css'
 
 const CATEGORIES = [
@@ -36,15 +38,7 @@ export default async function Home() {
           Découvrez et accédez aux applications perform-learn pour piloter vos projets ERP et gérer votre activité de consulting.
         </p>
 
-        <div className={styles.searchWrap}>
-          <input
-            type="search"
-            className={styles.searchInput}
-            placeholder="Rechercher une application…"
-            readOnly
-          />
-          <button className={styles.btnSearch}>Rechercher</button>
-        </div>
+        <HeroSearch />
 
         <div className={styles.tags}>
           <span className={styles.tagLabel}>Populaires :</span>
@@ -92,7 +86,9 @@ export default async function Home() {
       </section>
 
       {/* CATALOGUE */}
-      <AppCatalog apps={apps} />
+      <div id="catalogue">
+        <AppCatalog apps={apps} />
+      </div>
 
       {/* HOW IT WORKS */}
       <section className={`${styles.section} ${styles.sectionAlt}`}>
@@ -154,14 +150,7 @@ export default async function Home() {
       </section>
 
       {/* CTA BAND */}
-      <div className={styles.ctaBand}>
-        <h2>Prêt à transformer votre façon de travailler ?</h2>
-        <p>Rejoignez la liste d&apos;attente et soyez parmi les premiers à accéder à la plateforme.</p>
-        <div className={styles.ctaBtns}>
-          <button className={styles.btnCta1}>Rejoindre la waitlist</button>
-          <button className={styles.btnCta2}>En savoir plus</button>
-        </div>
-      </div>
+      <CtaBand />
 
       <Footer />
     </div>

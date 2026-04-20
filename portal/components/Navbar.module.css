@@ -95,6 +95,8 @@
   color: var(--text);
   font-family: 'DM Sans', sans-serif;
   transition: all 0.2s;
+  text-decoration: none;
+  display: inline-block;
 }
 
 .btnSm:hover {

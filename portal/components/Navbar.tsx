@@ -33,8 +33,8 @@ export default function Navbar() {
       </div>
 
       <div className={styles.navRight}>
-        <button className={styles.btnSm}>Connexion</button>
-        <button className={`${styles.btnSm} ${styles.btnPrimary}`}>Rejoindre</button>
+        <Link href="/freelancehub/login" className={styles.btnSm}>Connexion</Link>
+        <Link href="/freelancehub/register" className={`${styles.btnSm} ${styles.btnPrimary}`}>Rejoindre</Link>
       </div>
     </nav>
   )
