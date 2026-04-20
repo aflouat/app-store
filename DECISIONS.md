@@ -108,6 +108,22 @@
 
 ---
 
+### 2026-04-20 — Plan acquisition leads C4
+
+- **Décision** : GO — campagne acquisition manuelle avant lancement 30/04
+- **Contexte** : 0 lead externe confirmé après audit BDD VPS. Waitlist = 7 entrées toutes internes. Pipeline vide à J-10.
+- **Validé par** : Abdel
+- **Budget engagé** : 0 € (LinkedIn gratuit, Malt scraping manuel, Brevo tier gratuit)
+- **Statut** : ⏳ En cours
+- **Actions** :
+  - Post LinkedIn Abdel #1 le 23/04 (J-7)
+  - Post LinkedIn Abdel #2 le 27/04 (J-3)
+  - Batch Aminetou : 10 contacts Malt/jour × 10 jours
+  - WaitlistModal corrigé + consentement RGPD opérationnel
+- **KPI** : 10 consultants inscrits + 5 clients waitlist avant 30/04
+
+---
+
 ## Décisions en attente de feedback
 
 | Réf. | Feature | En attente de |

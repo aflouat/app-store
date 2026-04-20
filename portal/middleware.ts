@@ -18,6 +18,9 @@ export default auth((req: NextRequest & { auth: { user?: { role?: string } } | n
   // Only protect /freelancehub/** routes (except login & api/auth)
   if (!pathname.startsWith('/freelancehub') ||
        pathname.startsWith('/freelancehub/login') ||
+       pathname.startsWith('/freelancehub/register') ||
+       pathname.startsWith('/freelancehub/cgu') ||
+       pathname.startsWith('/freelancehub/privacy') ||
        pathname.startsWith('/api/auth')) {
     return NextResponse.next()
   }
