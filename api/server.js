@@ -12,6 +12,7 @@ const pool = new Pool({
 const ALLOWED_ORIGINS = [
   'https://perform-learn.fr',
   'https://www.perform-learn.fr',
+  'https://portal.perform-learn.fr',
 ];
 
 function setCorsHeaders(req, res) {
