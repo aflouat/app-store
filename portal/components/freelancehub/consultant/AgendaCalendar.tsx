@@ -65,7 +65,7 @@ export default function AgendaCalendar({ consultantId }: Props) {
       const res = await fetch(`/api/freelancehub/consultant/slots?week=${monday}`)
       if (!res.ok) throw new Error()
       const data = await res.json()
-      setSlots(data.slots ?? [])
+      setSlots((data.slots ?? []).map((s: Slot) => ({ ...s, slot_time: s.slot_time.slice(0, 5) })))
     } catch {
       setError('Impossible de charger les créneaux.')
     } finally {
@@ -105,7 +105,7 @@ export default function AgendaCalendar({ consultantId }: Props) {
       })
       if (res.ok) {
         const { slot } = await res.json()
-        setSlots(prev => [...prev, slot])
+        setSlots(prev => [...prev, { ...slot, slot_time: slot.slot_time.slice(0, 5) }])
       } else {
         const d = await res.json().catch(() => ({}))
         setError(d.error ?? 'Impossible de créer ce créneau.')
