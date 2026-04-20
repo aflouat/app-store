@@ -91,9 +91,7 @@ export default function AppCard({ app }: { app: App }) {
       <WaitlistModal
         isOpen={waitlistOpen}
         onClose={() => setWaitlistOpen(false)}
-        targetType="app"
-        targetSlug={app.slug}
-        targetLabel={app.name}
+        source={`app-${app.slug}`}
       />
       <ToastContainer toasts={toasts} />
     </>

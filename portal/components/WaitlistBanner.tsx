@@ -37,9 +37,7 @@ export default function WaitlistBanner() {
       <WaitlistModal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
-        targetType="service"
-        targetSlug="platform"
-        targetLabel="Perform-Learn"
+        source="banner"
       />
     </>
   )

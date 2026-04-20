@@ -104,9 +104,9 @@ export async function getApp(slug: string): Promise<App | null> {
 
 export async function postWaitlist(payload: {
   email: string
-  target_type: 'app' | 'service' | 'skill' | 'consultant'
-  target_slug: string
-  target_label: string
+  user_type: 'client' | 'freelance'
+  marketing_consent: boolean
+  source?: string
 }): Promise<{ success: boolean; message?: string }> {
   const base = process.env.NEXT_PUBLIC_API_URL
   if (!base) {
@@ -121,7 +121,7 @@ export async function postWaitlist(payload: {
     })
     if (!res.ok) {
       const err = await res.json().catch(() => ({}))
-      return { success: false, message: (err as { message?: string }).message ?? 'Erreur serveur' }
+      return { success: false, message: (err as { error?: string }).error ?? 'Erreur serveur' }
     }
     return { success: true }
   } catch {

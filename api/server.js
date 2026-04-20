@@ -73,7 +73,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    const { email, user_type } = body;
+    const { email, user_type, marketing_consent, source } = body;
     if (!email || !user_type) {
       send(res, 400, { error: 'email and user_type are required' });
       return;
@@ -85,8 +85,18 @@ const server = http.createServer(async (req, res) => {
 
     try {
       await pool.query(
-        'INSERT INTO store.waitlist (email, user_type) VALUES ($1, $2) ON CONFLICT (email) DO NOTHING',
-        [email, user_type]
+        `INSERT INTO store.waitlist (email, user_type, marketing_consent, marketing_consent_at, source)
+         VALUES ($1, $2, $3, $4, $5)
+         ON CONFLICT (email) DO UPDATE SET
+           marketing_consent = EXCLUDED.marketing_consent,
+           marketing_consent_at = EXCLUDED.marketing_consent_at`,
+        [
+          email,
+          user_type,
+          !!marketing_consent,
+          marketing_consent ? new Date() : null,
+          source || 'landing',
+        ]
       );
       send(res, 201, { success: true });
     } catch (err) {
