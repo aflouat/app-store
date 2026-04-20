@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
         const pi = event.data.object as Stripe.PaymentIntent
         await queryOne(
           `UPDATE freelancehub.payments SET status = 'failed', updated_at = NOW()
-           WHERE stripe_payment_intent_id = $1 AND status = 'pending'`,
+           WHERE stripe_payment_id = $1 AND status = 'pending'`,
           [pi.id]
         )
         console.warn('[stripe-webhook] payment_intent.payment_failed:', pi.id)
