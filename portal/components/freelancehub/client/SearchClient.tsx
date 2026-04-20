@@ -11,8 +11,9 @@ interface Props {
   clientId: string
 }
 
-// Prix fixe plateforme
-const PRICE_TTC = 85
+function priceTTC(dailyRate: number | null | undefined): number {
+  return Math.round((dailyRate ?? 85) * 1.20)
+}
 
 export default function SearchClient({ skills, clientId }: Props) {
   const [skillId,     setSkillId]     = useState('')
@@ -57,7 +58,10 @@ export default function SearchClient({ skills, clientId }: Props) {
     byCategory[cat].push(s)
   })
 
-  const budgetInsuffisant = budget && Number(budget) < PRICE_TTC
+  const minPriceTTC = results && results.length > 0
+    ? Math.min(...results.map(r => priceTTC(r.consultant.daily_rate)))
+    : priceTTC(null)
+  const budgetInsuffisant = budget && results && Number(budget) < minPriceTTC
 
   const today = new Date()
   const filteredResults = results?.filter(r => {
@@ -73,7 +77,7 @@ export default function SearchClient({ skills, clientId }: Props) {
       <div className="srch-form-card">
         <div className="srch-form-header">
           <h2 className="srch-form-title">Trouver un expert</h2>
-          <span className="srch-price-badge">💶 {PRICE_TTC} € TTC / consultation (1h)</span>
+          <span className="srch-price-badge">💶 Tarif personnalisé / consultation 1h</span>
         </div>
 
         <div className="srch-form-grid">
@@ -97,12 +101,12 @@ export default function SearchClient({ skills, clientId }: Props) {
               type="number"
               value={budget}
               onChange={e => setBudget(e.target.value)}
-              placeholder={`Min. ${PRICE_TTC} €`}
+              placeholder="Min. 100 €"
               min={0}
             />
             {budgetInsuffisant && (
               <span className="srch-budget-warn">
-                Le tarif minimum est {PRICE_TTC} € TTC
+                Le tarif minimum est {minPriceTTC} € TTC
               </span>
             )}
           </div>
@@ -147,7 +151,7 @@ export default function SearchClient({ skills, clientId }: Props) {
                     {results.length} expert{results.length > 1 ? 's' : ''} disponible{results.length > 1 ? 's' : ''}
                   </h2>
                   <p className="srch-results-sub">
-                    Identité anonyme jusqu&apos;au paiement · Consultation 1h à <strong>{PRICE_TTC} € TTC</strong>
+                    Identité anonyme jusqu&apos;au paiement · À partir de <strong>{minPriceTTC} € TTC</strong>
                   </p>
                 </div>
                 {/* Availability filter */}
@@ -337,7 +341,7 @@ function AnonymousCard({ result, rank, onBook }: { result: MatchingResult; rank:
 
         <div className="ac-slot-info">
           <span>📅 Prochaine dispo : <strong>{nextDate}</strong> à {slot.slot_time.slice(0, 5)}</span>
-          <span className="ac-price-tag">💶 85 € TTC</span>
+          <span className="ac-price-tag">💶 {priceTTC(c.daily_rate)} € TTC</span>
         </div>
 
         {/* Mini-agenda 7 jours */}
@@ -348,7 +352,7 @@ function AnonymousCard({ result, rank, onBook }: { result: MatchingResult; rank:
       </div>
 
       <button className="ac-book-btn" onClick={onBook}>
-        Réserver · 85 € →
+        Réserver · {priceTTC(c.daily_rate)} € →
       </button>
 
       <style>{`
