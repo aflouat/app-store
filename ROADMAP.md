@@ -68,7 +68,7 @@ Priorités ordonnées par valeur client (confiance → acquisition → rétentio
 - [ ] **`pricing.ts`** — déplacer `computePricing()` depuis `matching.ts`, supprimer `buildPricing()` de `BookingModal`, unifier le calcul dans `payment-intent/route.ts`, ajouter `fmtEur(cents)` (élimine 19+ conversions inline `cents/100`) · `business_value: 65` · `value_type: technical_debt`
 - [ ] **Centraliser `types.ts`** — déplacer `BookingRow`, `PaymentRow`, `AvailableSlot` depuis les composants vers `lib/freelancehub/types.ts` · `business_value: 60` · `value_type: technical_debt`
 
-**KPIs cibles** : 20+ experts Ready-to-book, 10+ clients inscrits, 1ère transaction réelle
+**KPIs cibles** : 3+ experts Ready-to-book au 30/04 · 5+ clients inscrits · **100€ CA au 31/05** (7 sessions × 15% commission)
 
 ---
 

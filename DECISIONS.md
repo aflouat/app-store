@@ -124,6 +124,22 @@
 
 ---
 
+### 2026-04-20 — Plan 100€ CA avant 31 mai 2026
+
+- **Décision** : GO — plan validé, ressources engagées
+- **Contexte** : 0 lead externe au 20/04. Stripe live opérationnel ce jour. 41 jours pour atteindre 100€ CA (= 7 sessions × 100€ HT × 15% commission). Plan en 4 sprints : acquisition urgence (20-29/04), lancement (30/04), conversion (1-15/05), objectif (16-31/05).
+- **Validé par** : Agent DG — Abdel
+- **Budget engagé** : < 5 € (Stripe fees uniquement — tout le reste est 0€)
+- **Statut** : ⏳ En cours
+- **KPI go/no-go** : 3 consultants KYC soumis au 29/04 · 3 sessions complétées au 15/05 · 100€ CA au 31/05
+- **Actions humaines critiques** :
+  - Abdel : sk_live dans Vercel + test vrai paiement (aujourd'hui)
+  - Abdel : 5 consultants réseau contactés (aujourd'hui)
+  - Aminetou : batch Malt 10/jour dès le 21/04
+  - Aminetou : email blast waitlist lancement rédigé avant 27/04
+
+---
+
 ## Décisions en attente de feedback
 
 | Réf. | Feature | En attente de |
