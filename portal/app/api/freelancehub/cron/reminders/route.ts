@@ -26,7 +26,7 @@ interface ReminderRow {
 export async function POST(req: NextRequest) {
   // Verify CRON_SECRET — Vercel sends: Authorization: Bearer <CRON_SECRET>
   const authHeader = req.headers.get('authorization')
-  const secret = authHeader?.replace('Bearer ', '') ?? req.nextUrl.searchParams.get('secret')
+  const secret = authHeader?.replace('Bearer ', '')
   if (!process.env.CRON_SECRET || secret !== process.env.CRON_SECRET) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
@@ -80,7 +80,7 @@ export async function POST(req: NextRequest) {
 
       // In-app notifications
       const skill    = b.skill_name ?? 'votre mission'
-      const dateStr  = new Date(b.slot_date + 'T00:00:00')
+      const dateStr  = new Date(b.slot_date + 'T00:00:00Z')
         .toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
       const timeStr  = b.slot_time.slice(0, 5)
 

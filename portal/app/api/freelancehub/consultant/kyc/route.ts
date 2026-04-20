@@ -113,7 +113,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, kyc_status: 'submitted' })
   } catch (err) {
     console.error('[kyc] POST error:', err)
-    const msg = err instanceof Error ? err.message : String(err)
-    return NextResponse.json({ error: `Erreur serveur: ${msg}` }, { status: 500 })
+    console.error('[kyc] POST error detail:', err instanceof Error ? err.message : String(err))
+    return NextResponse.json({ error: 'Erreur lors du traitement du document.' }, { status: 500 })
   }
 }

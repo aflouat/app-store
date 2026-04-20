@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
   // Compute Monday of the requested week
   const weekParam = new URL(req.url).searchParams.get('week')
   const ref = weekParam && /^\d{4}-\d{2}-\d{2}$/.test(weekParam)
-    ? new Date(weekParam + 'T00:00:00')
+    ? new Date(weekParam + 'T00:00:00Z')
     : new Date()
   const dayOfWeek = ref.getDay()
   const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek

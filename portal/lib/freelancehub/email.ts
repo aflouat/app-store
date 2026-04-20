@@ -32,7 +32,7 @@ interface BookingInfo {
 
 export async function sendBookingConfirmation(info: BookingInfo) {
   const amount = (info.amountHt / 100).toFixed(0)
-  const dateStr = new Date(info.slotDate + 'T00:00:00').toLocaleDateString('fr-FR', {
+  const dateStr = new Date(info.slotDate + 'T00:00:00Z').toLocaleDateString('fr-FR', {
     weekday: 'long', day: 'numeric', month: 'long',
   })
 
@@ -54,7 +54,7 @@ export async function sendBookingConfirmation(info: BookingInfo) {
 }
 
 export async function sendBookingReminder(info: BookingInfo) {
-  const dateStr = new Date(info.slotDate + 'T00:00:00').toLocaleDateString('fr-FR', {
+  const dateStr = new Date(info.slotDate + 'T00:00:00Z').toLocaleDateString('fr-FR', {
     weekday: 'long', day: 'numeric', month: 'long',
   })
 

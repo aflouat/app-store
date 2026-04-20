@@ -127,7 +127,7 @@ export async function POST(
     )
     if (p) {
       const skill   = p.skill_name ?? 'Expertise'
-      const dateStr = new Date(p.slot_date + 'T00:00:00')
+      const dateStr = new Date(p.slot_date + 'T00:00:00Z')
         .toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })
       const timeStr = p.slot_time.slice(0, 5)
 

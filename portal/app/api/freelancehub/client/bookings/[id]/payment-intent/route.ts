@@ -43,6 +43,22 @@ export async function POST(
 
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
 
+  // Return existing PI if one is already pending for this booking (avoid double-charge)
+  const existingPi = await queryOne<{ stripe_payment_id: string }>(
+    `SELECT stripe_payment_id FROM freelancehub.payments
+     WHERE booking_id = $1 AND status IN ('pending', 'authorized')
+     LIMIT 1`,
+    [bookingId]
+  )
+  if (existingPi?.stripe_payment_id) {
+    try {
+      const pi = await stripe.paymentIntents.retrieve(existingPi.stripe_payment_id)
+      if (pi.status === 'requires_payment_method' || pi.status === 'requires_confirmation') {
+        return NextResponse.json({ client_secret: pi.client_secret })
+      }
+    } catch { /* PI expired or not found — fall through to create a new one */ }
+  }
+
   try {
     const paymentIntent = await stripe.paymentIntents.create({
       amount:   ttcCents,

@@ -97,6 +97,17 @@
 
 ---
 
+### 2026-04-20 — Correctifs sécurité high (Agent Tech — GO DG)
+
+- **Décision** : GO — permission explicite Agent DG
+- **Contexte** : 5 vulnérabilités identifiées dans refacto.md v1.3.0. 3 actives avant prod (CRON_SECRET, PaymentIntents multiples, exposition KYC). 2 complémentaires (timezone + health check). Risque réel sur la 1ère transaction réelle.
+- **Validé par** : Agent DG (Abdel — 20/04/2026)
+- **Budget engagé** : ~0,2 € tokens
+- **Statut** : ✅ Livré
+- **Résultat** : Fix CRON_SECRET (header only), Fix Multiple PI (lookup DB), Fix KYC generic error, Fix timezone UTC (`T00:00:00Z`), Health check `/api/freelancehub/health`. Tests E2E non-régression délégués à agent indépendant.
+
+---
+
 ## Décisions en attente de feedback
 
 | Réf. | Feature | En attente de |
