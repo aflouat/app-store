@@ -63,6 +63,11 @@ Priorités ordonnées par valeur client (confiance → acquisition → rétentio
 **🟡 Rétention — Post-lancement immédiat**
 - [ ] **Facture PDF** générée automatiquement après paiement (nom client, n° réservation, montant HT/TVA/TTC, mentions légales) → stockée MinIO, accessible depuis "Mes paiements" · `business_value: 76` · `value_type: ux_improvement`
 
+**🔵 Refactoring technique — Fondations avant scaling**
+- [ ] **`constants.ts`** — centraliser `BOOKING_STATUS_MAP`, `PAYMENT_STATUS_MAP`, `BOOKING_TRANSITIONS`, types `BookingStatus`/`PaymentStatus`, constantes rôles (élimine 5+ duplications de STATUS_MAP) · `business_value: 70` · `value_type: technical_debt`
+- [ ] **`pricing.ts`** — déplacer `computePricing()` depuis `matching.ts`, supprimer `buildPricing()` de `BookingModal`, unifier le calcul dans `payment-intent/route.ts`, ajouter `fmtEur(cents)` (élimine 19+ conversions inline `cents/100`) · `business_value: 65` · `value_type: technical_debt`
+- [ ] **Centraliser `types.ts`** — déplacer `BookingRow`, `PaymentRow`, `AvailableSlot` depuis les composants vers `lib/freelancehub/types.ts` · `business_value: 60` · `value_type: technical_debt`
+
 **KPIs cibles** : 20+ experts Ready-to-book, 10+ clients inscrits, 1ère transaction réelle
 
 ---
@@ -96,6 +101,10 @@ Priorités ordonnées par valeur client (confiance → acquisition → rétentio
 - [ ] Publication régulière LinkedIn (1 article/semaine — cible DRH et DSI) · `business_value: 75` · `value_type: user_acquisition`
 - [ ] 2ème app métier dans le catalogue (Météo Projet ou Gestion Stock) · `business_value: 60` · `value_type: strategic_positioning`
 
+**🔵 Refactoring technique — Composants réutilisables**
+- [ ] **`KpiCard` + `StatusBadge` + `PageHeader`** — extraire 3 composants UI partagés (6 dashboards redéfinissent `KpiCard` inline, 5+ endroits copient `StatusBadge`) dans `components/freelancehub/ui/` · `business_value: 55` · `value_type: technical_debt`
+- [ ] **`globals-fh.css`** — centraliser les classes de layout répétées dans 15+ fichiers (`.fh-page`, `.fh-page-title`, `.adm-table*`, `.adm-badge`) dans un CSS global importé par le layout · `business_value: 50` · `value_type: technical_debt`
+
 **KPIs cibles** : taux récurrence > 30 %, Time-to-Contract < 5 min, 20+ experts Ready-to-book
 
 ---
@@ -115,6 +124,12 @@ Priorités ordonnées par valeur client (confiance → acquisition → rétentio
 - [ ] **Abonnement SaaS « Pro » consultant** (19 €/mois — profil boosté + badge prioritaire) · `business_value: 85` · `value_type: user_acquisition`
 - [ ] **Templates/documents premium** (50–99 €) · `business_value: 65` · `value_type: user_acquisition`
 - [ ] **API publique** pour intégrations tierces (RH, ERP) · `business_value: 70` · `value_type: strategic_positioning`
+
+**🔵 Refactoring technique — Découpage des gros composants**
+- [ ] **Découper `BookingModal.tsx`** (458 lignes) — extraire `<SlotPicker>`, `<PriceSummary>`, `<StripePaymentStep>` ; BookingModal reste un orchestrateur d'étapes · `business_value: 45` · `value_type: technical_debt`
+- [ ] **Découper `SearchClient.tsx`** (385 lignes) — extraire `<SearchForm>` (compétence + budget + submit) · `business_value: 40` · `value_type: technical_debt`
+- [ ] **Découper `BookingsTable.tsx`** (293 lignes) — extraire `<BookingsFilters>` et `<BookingsTotals>` ; BookingsTable ne garde que le rendu tableau · `business_value: 40` · `value_type: technical_debt`
+- [ ] **Hook `useAgendaSlots`** — extraire la logique métier slots de `AgendaCalendar.tsx` (305 lignes) dans un hook custom · `business_value: 35` · `value_type: technical_debt`
 
 **KPIs cibles** : MRR > 500 €, volume séquestre > 2 000 €/mois, 5+ apps catalogue
 
