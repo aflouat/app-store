@@ -39,14 +39,14 @@
 Priorités ordonnées par valeur client (confiance → acquisition → rétention) :
 
 **🔴 Bloquants légaux — RGPD Phase 1** *(obligatoire avant tout utilisateur réel)*
-- [ ] **Page CGU** — conditions d'utilisation acceptées à l'inscription (checkbox horodatée → `freelancehub.signatures`, migration 008 déjà en place) · `business_value: 90` · `value_type: strategic_positioning`
-- [ ] **Politique de confidentialité** — page `/legal/privacy` : responsable traitement, données collectées, durée conservation, droits utilisateurs (accès, rectification, suppression) · `business_value: 90` · `value_type: strategic_positioning`
-- [ ] **Mentions légales** — page `/legal` : éditeur, hébergeur, SIRET · `business_value: 85` · `value_type: strategic_positioning`
-- [ ] **Consentement email marketing** — opt-in explicite à l'inscription waitlist/portail (base légale : consentement art. 6.1.a RGPD) · `business_value: 80` · `value_type: user_acquisition`
-- [ ] **Droit à l'effacement** — API `DELETE /api/freelancehub/user/me` : anonymisation des données personnelles (name → "Utilisateur supprimé", email haché, conservation des bookings pour obligations comptables 10 ans) · `business_value: 75` · `value_type: strategic_positioning`
+- [x] **Page CGU** — page `/freelancehub/cgu`, checkbox horodatée à l'inscription → `freelancehub.signatures` (IP + UA) · `business_value: 90` · `value_type: strategic_positioning` ✅ 2026-04-21
+- [x] **Politique de confidentialité** — page `/freelancehub/privacy` : responsable traitement, données collectées, durée conservation, droits utilisateurs · `business_value: 90` · `value_type: strategic_positioning` ✅ 2026-04-21
+- [x] **Mentions légales** — page `/legal` : éditeur, hébergeur, SIRET *(⚠ adresse `[ADRESSE]` à compléter)* · `business_value: 85` · `value_type: strategic_positioning` ✅ 2026-04-21
+- [x] **Consentement email marketing** — opt-in explicite à l'inscription waitlist/portail + migration 014 · `business_value: 80` · `value_type: user_acquisition` ✅ 2026-04-21
+- [x] **Droit à l'effacement** — API `DELETE /api/freelancehub/user/me` : anonymisation données personnelles, soft delete · `business_value: 75` · `value_type: strategic_positioning` ✅ 2026-04-21
 
 **🔴 Confiance client — Lancement crédible**
-- [ ] **Onboarding consultant KYC** — upload KBIS/URSSAF dans MinIO, validation admin avant activation du profil (badge "Vérifié") · `business_value: 92` · `value_type: user_acquisition`
+- [ ] **Onboarding consultant KYC** — upload KBIS/URSSAF dans MinIO ✅ (upload OK), validation admin avant activation du profil (badge "Vérifié") · `business_value: 92` · `value_type: user_acquisition`
 - [ ] **NDA automatique Phase 1** — checkbox + signature horodatée avant 1ère mission, stockée dans `freelancehub.signatures` · `business_value: 80` · `value_type: strategic_positioning`
 - [ ] **Offre Early Adopter** — commission 10% (au lieu de 15%) + badge "Fondateur" pour les 20 premiers consultants · `business_value: 88` · `value_type: user_acquisition`
 
@@ -54,11 +54,12 @@ Priorités ordonnées par valeur client (confiance → acquisition → rétentio
 - [ ] **Landing page → portail** — bouton CTA vers `/freelancehub/register` sur perform-learn.fr · `business_value: 95` · `value_type: user_acquisition`
 - [ ] **Email de lancement** aux inscrits waitlist (Brevo) — J-3 teasing, J-0 go-live · `business_value: 88` · `value_type: user_acquisition`
 
-**🔴 Sécurité — Correctifs avant lancement** *(identifiés analyse refacto.md 2026-04-19)*
-- [ ] **Fix CRON_SECRET query param** — supprimer fallback `searchParams.get('secret')` dans `cron/reminders/route.ts` · `business_value: 85` · `value_type: strategic_positioning`
-- [ ] **Fix Multiple PaymentIntents** — vérifier PI existant avant création Stripe dans `payment-intent/route.ts` · `business_value: 90` · `value_type: strategic_positioning`
-- [ ] **Fix exposition erreur KYC** — message générique en réponse 500 (`kyc/route.ts`) · `business_value: 75` · `value_type: strategic_positioning`
-- [ ] **Health Check endpoint** — `GET /api/freelancehub/health` (SELECT 1 DB) · `business_value: 70` · `value_type: technical_debt`
+**🔴 Sécurité — Correctifs avant lancement**
+- [x] **Fix CRON_SECRET query param** — `Authorization: Bearer` uniquement dans `cron/reminders/route.ts` · `business_value: 85` · `value_type: strategic_positioning` ✅ 2026-04-21
+- [x] **Fix Multiple PaymentIntents** — vérifie PI existant avant création Stripe dans `payment-intent/route.ts` · `business_value: 90` · `value_type: strategic_positioning` ✅ 2026-04-21
+- [x] **Fix exposition erreur KYC** — message générique en réponse 500 (`kyc/route.ts`) · `business_value: 75` · `value_type: strategic_positioning` ✅ 2026-04-21
+- [x] **Health Check endpoint** — `GET /api/freelancehub/health` (SELECT 1 DB) · `business_value: 70` · `value_type: technical_debt` ✅ 2026-04-21
+- [ ] **Headers sécurité HTTP** — `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy` dans `next.config.mjs` *(identifié refacto.md 2026-04-21)* · `business_value: 80` · `value_type: strategic_positioning`
 
 **🟡 Rétention — Post-lancement immédiat**
 - [ ] **Facture PDF** générée automatiquement après paiement (nom client, n° réservation, montant HT/TVA/TTC, mentions légales) → stockée MinIO, accessible depuis "Mes paiements" · `business_value: 76` · `value_type: ux_improvement`
