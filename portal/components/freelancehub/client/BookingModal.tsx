@@ -71,50 +71,55 @@ function StripeForm({
     setError('')
     setPaying(true)
 
-    // Finalize Elements form validation
-    const { error: submitError } = await elements.submit()
-    if (submitError) {
-      setError(submitError.message ?? 'Erreur de validation.')
+    try {
+      // Finalize Elements form validation
+      const { error: submitError } = await elements.submit()
+      if (submitError) {
+        setError(submitError.message ?? 'Erreur de validation.')
+        setPaying(false)
+        return
+      }
+
+      // Confirm payment client-side (no redirect for card payments)
+      const { error: confirmError, paymentIntent } = await stripe.confirmPayment({
+        elements,
+        confirmParams: {
+          return_url: `${window.location.origin}/freelancehub/client/bookings`,
+        },
+        redirect: 'if_required',
+      })
+
+      if (confirmError) {
+        setError(confirmError.message ?? 'Paiement refusé.')
+        setPaying(false)
+        return
+      }
+
+      if (!paymentIntent || paymentIntent.status !== 'succeeded') {
+        setError('Le paiement n\'a pas pu être finalisé.')
+        setPaying(false)
+        return
+      }
+
+      // Notify server: verify PaymentIntent + confirm booking
+      const res = await fetch(`/api/freelancehub/client/bookings/${bookingId}/pay`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ payment_intent_id: paymentIntent.id }),
+      })
+
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}))
+        setError(d.error ?? 'Erreur lors de la confirmation.')
+        setPaying(false)
+        return
+      }
+
+      onSuccess()
+    } catch {
+      setError('Erreur réseau. Veuillez réessayer.')
       setPaying(false)
-      return
     }
-
-    // Confirm payment client-side (no redirect for card payments)
-    const { error: confirmError, paymentIntent } = await stripe.confirmPayment({
-      elements,
-      confirmParams: {
-        return_url: `${window.location.origin}/freelancehub/client/bookings`,
-      },
-      redirect: 'if_required',
-    })
-
-    if (confirmError) {
-      setError(confirmError.message ?? 'Paiement refusé.')
-      setPaying(false)
-      return
-    }
-
-    if (!paymentIntent || paymentIntent.status !== 'succeeded') {
-      setError('Le paiement n\'a pas pu être finalisé.')
-      setPaying(false)
-      return
-    }
-
-    // Notify server: verify PaymentIntent + confirm booking
-    const res = await fetch(`/api/freelancehub/client/bookings/${bookingId}/pay`, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ payment_intent_id: paymentIntent.id }),
-    })
-
-    if (!res.ok) {
-      const d = await res.json().catch(() => ({}))
-      setError(d.error ?? 'Erreur lors de la confirmation.')
-      setPaying(false)
-      return
-    }
-
-    onSuccess()
   }
 
   return (
