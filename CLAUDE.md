@@ -228,6 +228,88 @@ Scopes : freelancehub | govern | infra | portal | db
 
 ---
 
+## Stratégie de branches — main / release
+
+### Principe
+
+```
+main    ──●──●──●──●──●──────────────●──  (développement continu)
+               │                     │
+            release/v1.2          release/v1.3
+               │                     │
+             Vercel prod           Vercel prod
+```
+
+- **`main`** : développement continu — tous les commits quotidiens vont ici
+- **`release/vX.Y.Z`** : branche stable taillée depuis main avant déploiement prod
+- **Vercel** déploie depuis la branche `release` active (à configurer dans le dashboard Vercel : Production Branch = `release/vX.Y.Z`)
+
+### Quand créer une release
+
+Créer une release uniquement sur décision explicite d'Abdel ("on fait une release").  
+Ne jamais créer une release automatiquement.
+
+### Checklist de stabilité (obligatoire avant de tailler la release)
+
+Vérifier dans cet ordre — stopper si une étape échoue :
+
+```bash
+# 1. Build Next.js sans erreur
+cd portal && npm run build
+
+# 2. VPS synchronisé
+ssh -p 2222 abdel@37.59.125.159 'cd /appli/app-store && git pull origin main && docker compose ps'
+
+# 3. API health
+curl -s https://api.perform-learn.fr/health | grep '"status":"ok"'
+
+# 4. Portal accessible
+curl -o /dev/null -s -w "%{http_code}" https://portal.perform-learn.fr | grep 200
+
+# 5. Login page accessible
+curl -o /dev/null -s -w "%{http_code}" https://portal.perform-learn.fr/freelancehub/login | grep 200
+
+# 6. Pages protégées → redirect (pas d'erreur 500)
+curl -o /dev/null -s -w "%{http_code}" https://portal.perform-learn.fr/freelancehub/client/dashboard | grep 307
+```
+
+Si toutes les étapes sont ✅ → tailler la release.
+
+### Créer une release
+
+```bash
+# Depuis main, après checklist validée
+git checkout main
+git pull origin main
+git checkout -b release/vX.Y.Z
+git push origin release/vX.Y.Z
+
+# Puis dans Vercel dashboard :
+# Settings → Git → Production Branch → release/vX.Y.Z
+```
+
+### Après la release
+
+```bash
+# Revenir sur main pour continuer le dev
+git checkout main
+
+# Supprimer l'ancienne release si remplacée par une plus récente
+git push origin --delete release/vX.Y.OLD
+```
+
+### Règles branches — résumé
+
+| Règle | Action |
+|---|---|
+| Tout développement | → `main` uniquement |
+| Jamais de branche feature | → commit direct sur `main` |
+| Release | → branche `release/vX.Y.Z` taillée depuis `main` stable |
+| Après merge PR Claude Code | → supprimer la branche immédiatement |
+| Vérifier branches orphelines | → `git fetch --prune && git branch -a` |
+
+---
+
 ## Règles de sécurité immuables
 
 | Règle | Raison |
