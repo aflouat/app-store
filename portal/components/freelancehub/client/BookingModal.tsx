@@ -196,48 +196,59 @@ export default function BookingModal({ match, clientId, notes, onClose, onBooked
     setError('')
     setLoading(true)
 
-    // 1. Créer la réservation
-    const bookingRes = await fetch('/api/freelancehub/client/bookings', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        client_id:      clientId,
-        consultant_id:  c.id,
-        slot_id:        selectedSlot.id,
-        matching_score: match.score,
-        notes:          notes,
-        amount_ht:      pricing.priceHTCents,
-        commission:     pricing.commissionCents,
-        consultant_net: pricing.consultantCents,
-      }),
-    })
+    try {
+      // 1. Créer la réservation
+      const bookingRes = await fetch('/api/freelancehub/client/bookings', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          client_id:      clientId,
+          consultant_id:  c.id,
+          slot_id:        selectedSlot.id,
+          matching_score: match.score,
+          notes:          notes,
+          amount_ht:      pricing.priceHTCents,
+          commission:     pricing.commissionCents,
+          consultant_net: pricing.consultantCents,
+        }),
+      })
 
-    if (!bookingRes.ok) {
-      const d = await bookingRes.json().catch(() => ({}))
-      setError(d.error ?? 'Erreur lors de la réservation.')
+      if (!bookingRes.ok) {
+        const d = await bookingRes.json().catch(() => ({}))
+        setError(d.error ?? 'Erreur lors de la réservation.')
+        setLoading(false)
+        return
+      }
+
+      const { booking_id } = await bookingRes.json()
+      setBookingId(booking_id)
+
+      // 2. Create PaymentIntent
+      const piRes = await fetch(`/api/freelancehub/client/bookings/${booking_id}/payment-intent`, {
+        method: 'POST',
+      })
+
+      if (!piRes.ok) {
+        const d = await piRes.json().catch(() => ({}))
+        setError(d.error ?? 'Erreur lors de l\'initialisation du paiement.')
+        setLoading(false)
+        return
+      }
+
+      const { client_secret } = await piRes.json()
+      if (!client_secret) {
+        setError('Réponse de paiement invalide. Veuillez réessayer.')
+        setLoading(false)
+        return
+      }
+
+      setClientSecret(client_secret)
       setLoading(false)
-      return
-    }
-
-    const { booking_id } = await bookingRes.json()
-    setBookingId(booking_id)
-
-    // 2. Create PaymentIntent
-    const piRes = await fetch(`/api/freelancehub/client/bookings/${booking_id}/payment-intent`, {
-      method: 'POST',
-    })
-
-    if (!piRes.ok) {
-      const d = await piRes.json().catch(() => ({}))
-      setError(d.error ?? 'Erreur lors de l\'initialisation du paiement.')
+      setStep('payment')
+    } catch {
+      setError('Erreur réseau. Veuillez vérifier votre connexion et réessayer.')
       setLoading(false)
-      return
     }
-
-    const { client_secret } = await piRes.json()
-    setClientSecret(client_secret)
-    setLoading(false)
-    setStep('payment')
   }
 
   return (
