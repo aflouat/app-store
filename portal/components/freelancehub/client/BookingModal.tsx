@@ -58,13 +58,19 @@ function StripeForm({
 }) {
   const stripe   = useStripe()
   const elements = useElements()
-  const [paying,         setPaying]         = useState(false)
-  const [error,          setError]          = useState('')
-  const [stripeReady,    setStripeReady]    = useState(false)
+  const [paying,      setPaying]      = useState(false)
+  const [error,       setError]       = useState('')
+  const [stripeReady, setStripeReady] = useState(false)
+  const [initTimeout, setInitTimeout] = useState(false)
 
+  // Timeout 15s si Stripe ne s'initialise pas
   useEffect(() => {
-    if (stripe) setStripeReady(true)
-  }, [stripe])
+    const t = setTimeout(() => {
+      if (!stripeReady) setInitTimeout(true)
+    }, 15000)
+    return () => clearTimeout(t)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   async function handlePay() {
     if (!stripe || !elements) return
@@ -131,9 +137,18 @@ function StripeForm({
           Les fonds sont sécurisés sur escrow jusqu&apos;à la fin de la mission.
         </p>
         <div className="modal-stripe-elements">
-          <PaymentElement options={{ layout: 'tabs' }} />
+          <PaymentElement
+            options={{ layout: 'tabs' }}
+            onReady={() => setStripeReady(true)}
+            onLoadError={() => setError('Formulaire de paiement indisponible. Rechargez la page.')}
+          />
         </div>
       </div>
+      {initTimeout && !stripeReady && (
+        <p className="modal-error">
+          Le formulaire de paiement n&apos;a pas pu se charger. Rechargez la page ou réessayez.
+        </p>
+      )}
       {error && <p className="modal-error">{error}</p>}
       <div className="modal-actions">
         <button className="modal-btn-ghost" onClick={onBack} disabled={paying}>Retour</button>
