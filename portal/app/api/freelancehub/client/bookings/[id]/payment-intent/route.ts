@@ -83,8 +83,7 @@ export async function POST(
 
     return NextResponse.json({ client_secret: paymentIntent.client_secret })
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
-    console.error('[payment-intent] error:', msg)
-    return NextResponse.json({ error: `Stripe: ${msg}` }, { status: 500 })
+    console.error('[payment-intent] error:', err instanceof Error ? err.message : err)
+    return NextResponse.json({ error: 'Erreur lors de l\'initialisation du paiement.' }, { status: 500 })
   }
 }
