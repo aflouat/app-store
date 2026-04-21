@@ -14,7 +14,8 @@ function fmtDate(dateStr: string) {
   return d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })
 }
 
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
+const STRIPE_PK = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+const stripePromise = STRIPE_PK ? loadStripe(STRIPE_PK) : null
 
 // ─── Calcul prix depuis le taux horaire consultant ───────────
 function buildPricing(hourlyRateEur: number) {
@@ -358,23 +359,29 @@ export default function BookingModal({ match, clientId, notes, onClose, onBooked
         )}
 
         {step === 'payment' && clientSecret && (
-          <Elements
-            stripe={stripePromise}
-            options={{
-              clientSecret,
-              appearance: {
-                theme: 'stripe',
-                variables: { colorPrimary: '#5b6af0', borderRadius: '8px' },
-              },
-            }}
-          >
-            <StripeForm
-              bookingId={bookingId!}
-              priceTTC={pricing.priceTTC}
-              onSuccess={() => setStep('done')}
-              onBack={() => setStep('confirm')}
-            />
-          </Elements>
+          !stripePromise ? (
+            <div className="modal-error">
+              Paiement indisponible — configuration manquante. Contactez le support.
+            </div>
+          ) : (
+            <Elements
+              stripe={stripePromise}
+              options={{
+                clientSecret,
+                appearance: {
+                  theme: 'stripe',
+                  variables: { colorPrimary: '#5b6af0', borderRadius: '8px' },
+                },
+              }}
+            >
+              <StripeForm
+                bookingId={bookingId!}
+                priceTTC={pricing.priceTTC}
+                onSuccess={() => setStep('done')}
+                onBack={() => setStep('confirm')}
+              />
+            </Elements>
+          )
         )}
 
         {step === 'done' && (

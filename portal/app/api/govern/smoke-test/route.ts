@@ -18,10 +18,12 @@ export async function GET(req: NextRequest) {
   }
 
   const results: Record<string, 'ok' | 'err' | 'missing'> = {
-    db:     'err',
-    minio:  'err',
-    resend: 'missing',
-    stripe: 'missing',
+    db:                    'err',
+    minio:                 'err',
+    resend:                'missing',
+    stripe_secret:         'missing',
+    stripe_publishable:    'missing',
+    stripe_pi:             'err',
   }
 
   // DB ping
@@ -49,8 +51,26 @@ export async function GET(req: NextRequest) {
   // Resend key presence
   results.resend = process.env.RESEND_API_KEY ? 'ok' : 'missing'
 
-  // Stripe key presence
-  results.stripe = process.env.STRIPE_SECRET_KEY ? 'ok' : 'missing'
+  // Stripe keys presence
+  results.stripe_secret      = process.env.STRIPE_SECRET_KEY             ? 'ok' : 'missing'
+  results.stripe_publishable = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ? 'ok' : 'missing'
+
+  // Stripe live test : create + cancel a 1€ PaymentIntent
+  if (process.env.STRIPE_SECRET_KEY) {
+    try {
+      const Stripe = (await import('stripe')).default
+      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
+      const pi = await stripe.paymentIntents.create({
+        amount: 100, currency: 'eur',
+        metadata: { smoke_test: 'true' },
+        description: 'smoke-test — annulé immédiatement',
+      })
+      await stripe.paymentIntents.cancel(pi.id)
+      results.stripe_pi = 'ok'
+    } catch { results.stripe_pi = 'err' }
+  } else {
+    results.stripe_pi = 'missing'
+  }
 
   const allOk = Object.values(results).every(v => v === 'ok')
   return NextResponse.json({ ok: allOk, checks: results }, { status: allOk ? 200 : 503 })
