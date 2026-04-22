@@ -12,6 +12,7 @@ interface NavItem {
 
 const CONSULTANT_NAV: NavItem[] = [
   { label: 'Tableau de bord', href: '/freelancehub/consultant',           icon: '◉' },
+  { label: 'Mes tâches',      href: '/freelancehub/tasks',               icon: '▤' },
   { label: 'Mon profil',      href: '/freelancehub/consultant/profile',   icon: '○' },
   { label: 'Mon agenda',      href: '/freelancehub/consultant/agenda',    icon: '◫' },
   { label: 'Réservations',    href: '/freelancehub/consultant/bookings',  icon: '◈' },
@@ -24,6 +25,7 @@ const CONSULTANT_NAV: NavItem[] = [
 
 const CLIENT_NAV: NavItem[] = [
   { label: 'Tableau de bord', href: '/freelancehub/client',              icon: '◉' },
+  { label: 'Mes tâches',      href: '/freelancehub/tasks',              icon: '▤' },
   { label: 'Trouver un expert', href: '/freelancehub/client/search',     icon: '◎' },
   { label: 'Mes réservations', href: '/freelancehub/client/bookings',    icon: '◈' },
   { label: 'Mes paiements',    href: '/freelancehub/client/payments',    icon: '◇' },
@@ -33,6 +35,7 @@ const CLIENT_NAV: NavItem[] = [
 
 const ADMIN_NAV: NavItem[] = [
   { label: 'Dashboard',       href: '/freelancehub/admin',               icon: '◉' },
+  { label: 'Mes tâches',      href: '/freelancehub/tasks',              icon: '▤' },
   { label: 'Consultants',     href: '/freelancehub/admin/consultants',   icon: '○' },
   { label: 'Expertises',      href: '/freelancehub/admin/skills',        icon: '◑' },
   { label: 'Réservations',    href: '/freelancehub/admin/bookings',      icon: '◈' },
