@@ -91,6 +91,10 @@ Priorités ordonnées par valeur client (confiance → acquisition → rétentio
 - [ ] **Fix timezone dates** — remplacer `'T00:00:00'` par `'T00:00:00Z'` dans email.ts et cron · `business_value: 65` · `value_type: technical_debt`
 - [ ] **Skills sync transactionnel** — batch INSERT `unnest` dans `consultant/profile/route.ts` · `business_value: 60` · `value_type: technical_debt`
 
+**Support & relation client**
+- [x] **Formulaire de contact support** — page `/freelancehub/support` : sujet (technique/paiement/compte/autre), message, email de contact pré-rempli → Resend vers `contact@perform-learn.fr` + accusé réception utilisateur · `business_value: 72` · `value_type: ux_improvement` ✅ 2026-04-23
+- [ ] **Chatbot support** — intégration assistant IA sur la page support pour réponses instantanées aux questions fréquentes (FAQ, statut paiement, agenda) avec escalade vers email humain si non résolu · `business_value: 68` · `value_type: ux_improvement`
+
 **Valeur client — Récurrence & revenus**
 - [ ] **Stripe Connect** — reversement automatique consultant (supprime la gestion manuelle) · `business_value: 90` · `value_type: cost_reduction`
 - [ ] **Booking récurrent** — abonnement 10h/20h/mois avec tarif dégressif (−10%) · `business_value: 85` · `value_type: user_acquisition`
