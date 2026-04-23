@@ -17,22 +17,53 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  const results: Record<string, 'ok' | 'err' | 'missing'> = {
-    db:                    'err',
-    minio:                 'err',
-    resend:                'missing',
-    stripe_secret:         'missing',
-    stripe_publishable:    'missing',
-    stripe_pi:             'err',
+  const checks: Record<string, 'ok' | 'err' | 'missing' | 'invalid'> = {
+    db:                       'err',
+    resend:                   'missing',
+    stripe_secret:            'missing',
+    stripe_publishable:       'missing',
+    stripe_publishable_format: 'missing',
+    stripe_pi:                'err',
+    minio:                    'err',   // optional — VPS only
   }
 
   // DB ping
   try {
     await queryOne(`SELECT 1`, [])
-    results.db = 'ok'
-  } catch { results.db = 'err' }
+    checks.db = 'ok'
+  } catch { checks.db = 'err' }
 
-  // MinIO ping
+  // Resend key presence
+  checks.resend = process.env.RESEND_API_KEY ? 'ok' : 'missing'
+
+  // Stripe keys presence + format validation
+  const sk = process.env.STRIPE_SECRET_KEY ?? ''
+  const pk = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? ''
+  checks.stripe_secret      = sk ? 'ok' : 'missing'
+  checks.stripe_publishable = pk ? 'ok' : 'missing'
+  if (pk) {
+    checks.stripe_publishable_format = pk.startsWith('pk_') ? 'ok' : 'invalid'
+  }
+
+  // Stripe live test : create + cancel a PaymentIntent
+  if (sk) {
+    try {
+      const Stripe = (await import('stripe')).default
+      const stripe = new Stripe(sk)
+      const pi = await stripe.paymentIntents.create({
+        amount: 100, currency: 'eur',
+        automatic_payment_methods: { enabled: true },
+        metadata: { smoke_test: 'true' },
+        description: 'smoke-test — annulé immédiatement',
+      })
+      await stripe.paymentIntents.cancel(pi.id)
+      checks.stripe_pi = 'ok'
+    } catch { checks.stripe_pi = 'err' }
+  } else {
+    checks.stripe_pi = 'missing'
+  }
+
+  // MinIO ping — optional (VPS service, not available from Vercel serverless)
   try {
     const BUCKET = (process.env.MINIO_BUCKET_KYC ?? '').trim() || 'kyc-documents'
     const s3 = new S3Client({
@@ -45,33 +76,12 @@ export async function GET(req: NextRequest) {
       forcePathStyle: true,
     })
     await s3.send(new HeadBucketCommand({ Bucket: BUCKET }))
-    results.minio = 'ok'
-  } catch { results.minio = 'err' }
+    checks.minio = 'ok'
+  } catch { checks.minio = 'err' }
 
-  // Resend key presence
-  results.resend = process.env.RESEND_API_KEY ? 'ok' : 'missing'
+  // ok = only critical checks (minio is optional)
+  const CRITICAL = ['db', 'resend', 'stripe_secret', 'stripe_publishable', 'stripe_publishable_format', 'stripe_pi']
+  const allOk = CRITICAL.every(k => checks[k] === 'ok')
 
-  // Stripe keys presence
-  results.stripe_secret      = process.env.STRIPE_SECRET_KEY             ? 'ok' : 'missing'
-  results.stripe_publishable = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ? 'ok' : 'missing'
-
-  // Stripe live test : create + cancel a 1€ PaymentIntent
-  if (process.env.STRIPE_SECRET_KEY) {
-    try {
-      const Stripe = (await import('stripe')).default
-      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
-      const pi = await stripe.paymentIntents.create({
-        amount: 100, currency: 'eur',
-        metadata: { smoke_test: 'true' },
-        description: 'smoke-test — annulé immédiatement',
-      })
-      await stripe.paymentIntents.cancel(pi.id)
-      results.stripe_pi = 'ok'
-    } catch { results.stripe_pi = 'err' }
-  } else {
-    results.stripe_pi = 'missing'
-  }
-
-  const allOk = Object.values(results).every(v => v === 'ok')
-  return NextResponse.json({ ok: allOk, checks: results }, { status: allOk ? 200 : 503 })
+  return NextResponse.json({ ok: allOk, checks }, { status: allOk ? 200 : 503 })
 }
