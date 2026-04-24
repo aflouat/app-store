@@ -1,11 +1,14 @@
-// Server Component — détecte l'état de session via auth() et passe isAuthenticated au client
+// Page support — formulaire email uniquement.
+// Le chatbot est accessible via le widget flottant (ChatWidget) sur toutes les pages.
 import { auth } from '@/auth'
 import SupportClient from './SupportClient'
 
 export default async function SupportPage() {
   const session = await auth()
-  const isAuthenticated = !!(session?.user)
-  const userEmail = session?.user?.email ?? ''
-
-  return <SupportClient isAuthenticated={isAuthenticated} userEmail={userEmail} />
+  return (
+    <SupportClient
+      isAuthenticated={!!(session?.user)}
+      userEmail={session?.user?.email ?? ''}
+    />
+  )
 }

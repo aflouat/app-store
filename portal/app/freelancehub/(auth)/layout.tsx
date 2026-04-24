@@ -1,7 +1,8 @@
 import { redirect } from 'next/navigation'
 import { auth } from '@/auth'
-import FHNav     from '@/components/freelancehub/FHNav'
-import FHSidebar from '@/components/freelancehub/FHSidebar'
+import FHNav      from '@/components/freelancehub/FHNav'
+import FHSidebar  from '@/components/freelancehub/FHSidebar'
+import ChatWidget from '@/components/freelancehub/ChatWidget'
 import type { UserRole } from '@/lib/freelancehub/types'
 import { getUnreadCount } from '@/lib/freelancehub/notifications'
 
@@ -38,6 +39,7 @@ export default async function FreelanceHubLayout({
         <FHSidebar role={user.role} />
         <main className="fh-main">{children}</main>
       </div>
+      <ChatWidget userEmail={user.email ?? ''} />
 
       <style>{`
         .fh-shell {
