@@ -1,349 +1,158 @@
-# refacto.md — Analyse quotidienne · 2026-04-21
-
-## Score global : 7.5/10 ↑
-
-| Dimension | Score | Tendance |
-|---|---|---|
-| Sécurité OWASP | 7.5/10 | ↑ |
-| Qualité code | 7/10 | = |
-| Performance | 6/10 | = |
-| Dette technique | 8.5/10 | ↑ |
+# refacto.md — Analyse technique perform-learn.fr
+*Générée automatiquement le 2026-04-23 · Base : commit a1e1781*
 
 ---
 
-## Progrès depuis 2026-04-20 ✓
+## TL;DR
 
-| Item | Statut |
-|---|---|
-| Fix CRON_SECRET Bearer (au lieu de query param) | ✅ Fait |
-| Fix Multiple PaymentIntents (check PI existant) | ✅ Fait |
-| Health check `/api/freelancehub/health` | ✅ Fait |
-| RGPD — Droit à l'effacement `DELETE /api/user/me` | ✅ Fait |
-| RGPD — Consentement marketing waitlist (migration 014) | ✅ Fait |
-| RGPD — CGU acceptées à l'inscription + signature horodatée (IP/UA) | ✅ Fait |
-| RGPD — Page CGU `/freelancehub/cgu` | ✅ Fait |
-| RGPD — Politique de confidentialité `/freelancehub/privacy` | ✅ Fait |
-| RGPD — Mentions légales `/legal` (avec placeholder `[ADRESSE]`) | ✅ Fait (⚠ adresse manquante) |
-| KYC — Message générique en 500 (plus de détail serveur) | ✅ Fait |
-| Fix prix dynamique depuis `daily_rate` consultant | ✅ Fait |
-| Fix bouton Payer (état Chargement/Prêt) | ✅ Fait |
+Le codebase affiche **une base solide** (prepared statements systématiques, transactions DB, auth par rôle sur 24+ routes) mais accumule **5 failles critiques** et une dette technique grandissante. Priorité absolue : rate limiting + idempotence Stripe + IDOR slot avant le lancement public du 30/04.
 
 ---
 
-## 🔴 Critiques (à corriger avant lancement)
+## 1. Sécurité OWASP
 
-### 1. N+1 Queries dans `/consultant/profile/route.ts` — Insertion de compétences en boucle
-**Fichier** : `portal/app/api/freelancehub/consultant/profile/route.ts:58-65`
+### 🔴 CRITIQUE
 
-**Problème** :
-```typescript
-for (const s of skills) {
-  await query(
-    `INSERT INTO freelancehub.consultant_skills (consultant_id, skill_id, level) VALUES ($1, $2, $3)...`,
-    [consultant.id, s.skill_id, s.level ?? 'intermediate']
-  )
-}
-```
-Une requête DB par compétence → O(n) pour N compétences. Avec 10 compétences = 10 aller-retours réseau.
-
-**Fix recommandé** :
-```typescript
-if (Array.isArray(skills) && skills.length > 0) {
-  const values = skills.map((_, i) => `($1, $${i*2+2}, $${i*2+3})`).join(',')
-  const params = [consultant.id, ...skills.flatMap(s => [s.skill_id, s.level ?? 'intermediate'])]
-  await query(
-    `INSERT INTO freelancehub.consultant_skills (consultant_id, skill_id, level)
-     VALUES ${values}
-     ON CONFLICT (consultant_id, skill_id) DO UPDATE SET level = EXCLUDED.level`,
-    params
-  )
-}
-```
-
----
-
-### 2. N+1 dans `/consultant/slots/bulk/route.ts` — Vérification + insertion en boucle
-**Fichier** : `portal/app/api/freelancehub/consultant/slots/bulk/route.ts:42-61`
-
-**Problème** : Pour chaque slot (jusqu'à 70) : un SELECT doublon + un INSERT. Maximum 140 requêtes pour 70 créneaux.
-
-**Fix recommandé** :
-```typescript
-// 1. Récupérer tous les slots existants en une seule requête
-const existing = await query<{ slot_date: string; slot_time: string }>(
-  `SELECT slot_date::text, slot_time::text FROM freelancehub.slots
-   WHERE consultant_id = $1 AND status != 'cancelled'`,
-  [consultant_id]
-)
-const existingSet = new Set(existing.map(e => `${e.slot_date}|${e.slot_time}`))
-
-// 2. Filtrer les doublons en mémoire
-const toInsert = slots.filter(s =>
-  dateRegex.test(s.slot_date) && timeRegex.test(s.slot_time) &&
-  s.slot_date >= today && !existingSet.has(`${s.slot_date}|${s.slot_time}`)
-)
-
-// 3. Batch INSERT unique
-if (toInsert.length > 0) {
-  const values = toInsert.map((_, i) => `($1, $${i*3+2}, $${i*3+3}, $${i*3+4})`).join(',')
-  const params = [consultant_id, ...toInsert.flatMap(s => [s.slot_date, s.slot_time, s.duration_min ?? 60])]
-  const rows = await query<{ id: string; slot_date: string; slot_time: string; duration_min: number; status: string }>(
-    `INSERT INTO freelancehub.slots (consultant_id, slot_date, slot_time, duration_min)
-     VALUES ${values}
-     RETURNING id, slot_date::text, slot_time::text, duration_min, status`,
-    params
-  )
-  created.push(...rows)
-}
-```
-
----
-
-### 3. Absence de headers de sécurité HTTP (OWASP A05)
-**Fichier** : `portal/next.config.mjs:1-4`
-
-**Problème** : Le fichier est entièrement vide (`const nextConfig = {}`). Aucun header de sécurité.
-Risques : Clickjacking (X-Frame-Options absent), XSS sans CSP, MIME sniffing.
-
-**Fix** :
-```javascript
-/** @type {import('next').NextConfig} */
-const nextConfig = {
-  async headers() {
-    return [
-      {
-        source: '/:path*',
-        headers: [
-          { key: 'X-Frame-Options',        value: 'DENY' },
-          { key: 'X-Content-Type-Options',  value: 'nosniff' },
-          { key: 'Referrer-Policy',         value: 'strict-origin-when-cross-origin' },
-          { key: 'Permissions-Policy',      value: 'camera=(), microphone=(), geolocation=()' },
-        ],
-      },
-    ]
-  },
-}
-export default nextConfig
-```
-*Note : CSP nécessite un inventaire des scripts/styles (Stripe, Resend) → à affiner en C5, mais les 4 headers ci-dessus sont sans risque.*
-
----
-
-### 4. Mentions légales — placeholder `[ADRESSE]` non remplacé
-**Fichier** : `portal/app/legal/page.tsx`
-
-**Problème** : Adresse physique non renseignée (obligation légale — L.R. 29 juillet 1998).
-
-**Fix** : Remplacer `[ADRESSE]` par l'adresse réelle avant le lancement public.
-
----
-
-## 🟠 Hautes (sprint courant)
-
-### 1. Rate limiting absent sur `/auth/register` (OWASP A04)
-**Fichier** : `portal/app/api/freelancehub/auth/register/route.ts`
-
-**Problème** : Aucun rate limiting → énumération d'emails possible, spam DB.
-
-**Fix** : Middleware Vercel Edge ou header-based throttle (ex: 5 req/IP/10min) :
-```typescript
-const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
-// Utiliser Upstash Redis Ratelimit ou un Map in-memory simple pour MVP
-```
-
----
-
-### 2. Stripe instantié à chaque requête (non-singleton)
-**Fichiers** : `portal/app/api/freelancehub/client/bookings/[id]/pay/route.ts:36`
-           `portal/app/api/freelancehub/client/bookings/[id]/payment-intent/route.ts:44`
-
-**Problème** :
-```typescript
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)  // ← dans le handler, à chaque appel
-```
-Réinstanciation à chaque requête = overhead inutile + mauvais pattern.
-
-**Fix** : Créer `portal/lib/freelancehub/stripe.ts` :
-```typescript
-import Stripe from 'stripe'
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2024-12-18.acacia',
-})
-```
-
----
-
-### 3. Double SELECT dans `/client/bookings/[id]/pay/route.ts`
-**Fichier** : `portal/app/api/freelancehub/client/bookings/[id]/pay/route.ts:81-127`
-
-**Problème** : Deux requêtes quasi-identiques sur la même réservation (email details ligne 81–96, notification details ligne 115–127). Les données pourraient diverger entre les deux lectures.
-
-**Fix** : Fusionner en un SELECT unique :
-```typescript
-const details = await queryOne<{ ... }>(`SELECT uc.name AS client_name, uc.email,
-  c.user_id AS consultant_user_id, uc2.name AS consultant_name, uc2.email AS consultant_email,
-  sk.name AS skill_name, s.slot_date::text, s.slot_time::text, b.amount_ht, b.client_id
-  FROM freelancehub.bookings b ... WHERE b.id = $1`, [bookingId])
-// Réutiliser `details` pour email ET notification
-```
-
----
-
-### 4. Export CSV sans limite de résultats
-**Fichier** : `portal/app/api/freelancehub/admin/export-csv/route.ts`
-
-**Problème** : Charge toute la table `bookings` en mémoire (0 LIMIT). OOM si > 50k lignes.
-
-**Fix** : Ajouter `LIMIT 10000 OFFSET $n` ou streaming progressif.
-
----
-
-### 5. Pool PostgreSQL `max: 10` inadapté au serverless
-**Fichier** : `portal/lib/freelancehub/db.ts:6`
-
-**Problème** :
-```typescript
-const pool = new Pool({ max: 10, ... })
-```
-Sur Vercel chaque fonction Lambda est un processus Node distinct. `max: 10` par instance × N instances simultanées = saturation rapide des 100 connexions PostgreSQL. 
-
-**Fix recommandé C5** : `max: 2` + PgBouncer à moyen terme.
-
----
-
-## 🟡 Moyennes (backlog)
-
-### 1. `user_id` consultant exposé dans les résultats de matching
-**Fichier** : `portal/lib/freelancehub/matching.ts:130`
-
-**Problème** : `user_id: c.user_id` retourné au client avant révélation. Permet de relier un consultant anonyme à d'autres endpoints.
-
-**Fix** : Supprimer `user_id` de l'objet retourné (il n'est pas utilisé côté client pour le booking).
-
----
-
-### 2. Timezone emails rappels
-**Fichier** : `portal/app/api/freelancehub/cron/reminders/route.ts:83`
-
-**Problème** : `new Date(b.slot_date + 'T00:00:00Z')` force UTC. Si consultants/clients en timezone ±2h, le texte "demain" peut être incorrect.
-
-**Fix C5** : Stocker la timezone utilisateur en DB, l'utiliser au rendu.
-
----
-
-### 3. Fire-and-forget emails sans fallback
-**Fichiers** : `portal/app/api/freelancehub/client/bookings/[id]/pay/route.ts:79-149`
-
-**Problème** : Erreurs email catchées et loggées, mais silencieuses. Aucune retry, aucune alerte admin.
-
-**Fix C5** : Table `email_failures` ou webhook Resend pour retry automatique.
-
----
-
-### 4. Magic numbers éparpillés
-**Fichiers** : `portal/lib/freelancehub/matching.ts:28` (DEFAULT_HOURLY_RATE = 85), `booking/route.ts` (0.15 / 0.85 commission), bulk slots:24 (MAX = 70)
-
-**Fix** : Créer `portal/lib/freelancehub/constants.ts` (roadmap C4).
-
----
-
-## 🟢 Faibles / veille
-
-### 1. `nextauth` encore en beta
-**Package** : `next-auth@5.0.0-beta.30`
-
-Beta stable pour production mais surveiller les CVE sur la v5.
-
-### 2. Pas de validation schema (Zod)
-Validation manuelle dans chaque route → fragile. Migration progressive vers `zod` recommandée en C5.
-
-### 3. Mentions légales adresse placeholder
-Voir critique #4 ci-dessus.
-
----
-
-## Bonnes pratiques confirmées ✓
-
-- ✓ Requêtes SQL paramétrées partout ($1, $2) — pas d'injection SQL (OWASP A03)
-- ✓ Vérification d'ownership systématique (user_id / consultant_id) — RBAC strict (A01)
-- ✓ Transactions ACID avec `withTransaction()` + SELECT FOR UPDATE (race conditions)
-- ✓ Middleware Edge Runtime RBAC (middleware.ts) — protection route complète
-- ✓ bcrypt 12 rounds sur les mots de passe (A02)
-- ✓ JWT sessions NextAuth v5, Edge Runtime safe (auth.config.ts séparé)
-- ✓ Stripe webhook signature HMAC validée (A08)
-- ✓ `revealed_at` anonymisation respectée dans toutes les queries
-- ✓ `SELECT FOR UPDATE` sur slots pour booking concurrent
-- ✓ Vérification `metadata.booking_id` Stripe (anti-replay)
-- ✓ CRON_SECRET via `Authorization: Bearer` uniquement (non plus query param)
-- ✓ Pages légales CGU + Confidentialité + Mentions légales en place
-- ✓ Signature CGU horodatée (IP + UA) en base
-- ✓ Droit à l'effacement RGPD implémenté (soft delete + anonymisation)
-- ✓ Health check endpoint opérationnel
-- ✓ KYC — upload MinIO avec validation MIME + taille 5 Mo max
-
----
-
-## Checklist OWASP Top 10
-
-| # | Catégorie | Statut | Détail |
+| # | Fichier | Problème | Recommandation |
 |---|---|---|---|
-| A01 | Broken Access Control | ✅ Bon | RBAC Edge + ownership checks partout |
-| A02 | Cryptographic Failures | ✅ Bon | bcrypt 12, HTTPS, secrets en env vars |
-| A03 | Injection | ✅ Bon | 100% requêtes paramétrées |
-| A04 | Insecure Design | ⚠ Partiel | Rate limiting manquant sur /auth/register |
-| A05 | Security Misconfiguration | 🔴 Critique | next.config.mjs vide — aucun header sécurité |
-| A06 | Vulnerable Components | ✅ Bon | Next.js récent, Stripe 22, bcryptjs 3 |
-| A07 | Auth Failures | ✅ Bon | NextAuth v5, JWT, middleware RBAC |
-| A08 | Software Integrity | ✅ Bon | Stripe webhook HMAC validé |
-| A09 | Logging & Monitoring | ⚠ Partiel | Logs serveur OK, pas d'audit log DB centralisé |
-| A10 | SSRF | ✅ Bon | Pas de client HTTP externe contrôlable |
+| S1 | Toutes les routes API | **Aucun rate limiting** — brute-force registration, payment DoS possible | Middleware Vercel ou Upstash : 5 req/IP/h sur `auth/*`, 3 req/booking/min sur `payment-intent` |
+| S2 | `app/api/freelancehub/client/bookings/[id]/pay/route.ts:41` | **Stripe PI non vérifié** — un PI d'un autre client peut être soumis, montant non re-validé | Re-calculer `amount` depuis DB, vérifier `paymentIntent.metadata.booking_id === bookingId` |
+| S3 | `app/api/freelancehub/matching/route.ts:6-9` | **IDOR matching** — filtre `!== 'consultant'` insuffisant, un utilisateur sans rôle valide accède | Changer en `session.user.role === 'client' \|\| === 'admin'` (whitelist) |
+| S4 | `app/api/freelancehub/client/slots/route.ts:14` | **IDOR slots** — `consultant_id` arbitraire, crénaux de consultants non publics accessibles | Ajouter `AND c.is_available = true` dans la query |
+| S5 | `app/api/webhooks/stripe/route.ts` | **Rejeux webhook** — signature validée ✓ mais pas d'idempotence (event_id non stocké) | Table `webhook_events(stripe_event_id UNIQUE, processed_at)` — ignorer si déjà traité |
+
+### 🟠 MAJEUR
+
+| # | Fichier | Problème | Recommandation |
+|---|---|---|---|
+| S6 | `app/api/freelancehub/client/bookings/[id]/payment-intent/route.ts:72` | Montants HT/commission exposés en clair dans `paymentIntent.metadata` | Garder uniquement `booking_id` + `amount_ttc` en metadata, tout le reste en DB |
+| S7 | `middleware.ts:19-26` | Exclusions par `startsWith` — un futur endpoint `/freelancehub/login-admin` court-circuiterait la protection | Utiliser une whitelist explicite de routes publiques |
+| S8 | `app/freelancehub/register/page.tsx` | Formulaires sans protection CSRF | Ajouter header custom `X-Requested-With` vérifié côté middleware, ou SameSite=Strict |
+| S9 | `lib/freelancehub/consultant/kyc/route.ts:94` | Log expose chemin MinIO + consultant ID en production | Logger uniquement statut et type, jamais chemins ou IDs d'accès |
+
+### 🟡 MINEUR
+
+| # | Fichier | Problème | Recommandation |
+|---|---|---|---|
+| S10 | `app/api/freelancehub/consultant/slots/route.ts:56-62` | Regex date + `Date.parse()` redondant — accepte formats aberrants | Garder uniquement `/^\d{4}-\d{2}-\d{2}$/` |
+| S11 | `app/api/freelancehub/client/bookings/[id]/pay/route.ts:59` | Identité révélée avant acceptation consultant | Révéler seulement après premier échange ou confirmation explicite |
 
 ---
 
-## Checklist lancement public (30/04/2026)
+## 2. Dette technique
 
-| Item | Statut |
-|---|---|
-| ✅ RGPD — Page CGU | Fait |
-| ✅ RGPD — Politique de confidentialité | Fait |
-| ✅ RGPD — Mentions légales | Fait (⚠ adresse placeholder) |
-| ✅ RGPD — Consentement email marketing | Fait |
-| ✅ RGPD — Droit à l'effacement | Fait |
-| ✅ RGPD — CGU acceptées + signature horodatée | Fait |
-| ✅ Fix CRON_SECRET | Fait |
-| ✅ Fix Multiple PaymentIntents | Fait |
-| ✅ Fix KYC erreur exposition | Fait |
-| ✅ Health check `/health` | Fait |
-| 🔴 Headers sécurité HTTP (X-Frame, nosniff) | **À faire** |
-| 🟠 Adresse mentions légales [ADRESSE] | **À compléter** |
-| 🟠 NDA automatique Phase 1 | Pending |
-| 🟠 Offre Early Adopter (badge Fondateur, 10%) | Pending |
-| 🟠 Landing → CTA portail /register | Pending |
-| 🟠 Email lancement waitlist (J-3 / J-0) | Pending |
-| 🟡 Facture PDF post-paiement | Backlog C4 |
-| 🟡 `constants.ts` centralisation | Backlog C4 |
+### Duplications à extraire
+
+| Priorité | Duplication | Fichiers concernés | Action |
+|---|---|---|---|
+| 🟠 | `computePricing()` réimplémentée 3× | `BookingModal.tsx:21`, `matching.ts:19`, `payment-intent/route.ts:39` | Déjà planifié → `lib/freelancehub/pricing.ts` (C4) |
+| 🟠 | Validation date/heure identique | `slots/route.ts:56`, `slots/bulk/route.ts:35` | Créer `lib/freelancehub/validators.ts` avec `isValidDate()`, `isValidTime()` |
+| 🟡 | Queries jointure booking+user+consultant | `cron/reminders:36`, `pay/route.ts:86` | Créer `lib/freelancehub/queries.ts` : `getBookingDetails(id)` |
+| 🟡 | Logique d'autorisation rôle répétée sur 24 routes | Toutes les routes API | Helper `requireRole(...roles)(handler)` — voir C5 |
+
+### Couplage fort
+
+| Priorité | Problème | Fichier | Impact |
+|---|---|---|---|
+| 🟠 | Email envoyé directement dans route de paiement | `pay/route.ts:79-111` | Si Resend down → 500 sur paiement |
+| 🟠 | Logique métier liée à Stripe (pas d'abstraction) | `payment-intent/route.ts`, `pay/route.ts` | Remplacement PSP = réécriture totale |
+| 🟡 | `.catch(() => null)` silencieux sur email/notification | 5 routes | Erreurs invisibles en production |
+
+### Types TypeScript manquants
+
+| Priorité | Problème | Fichier |
+|---|---|---|
+| 🟠 | Metadata Stripe non typée | `payment-intent/route.ts:72` |
+| 🟠 | `query<T = unknown>()` trop permissif | `lib/freelancehub/db.ts:17,29` |
+| 🟡 | Types de réponses API non unifiés (`{ error }` vs `{ message }`) | Toutes routes |
+
+### Fichiers trop longs
+
+| Fichier | Lignes | Action planifiée |
+|---|---|---|
+| `lib/freelancehub/email.ts` | 385 | Scinder `email-handlers.ts` + `email-templates.ts` |
+| `components/freelancehub/client/BookingModal.tsx` | 498 | Extraire `<SlotPicker>`, `<PriceSummary>` (C6) |
+| `lib/freelancehub/agents.ts` | 219 | `agents/config.ts` + `agents/prompts/*.ts` |
+
+### Gestion d'erreurs incomplète
+
+| Problème | Fichiers | Recommandation |
+|---|---|---|
+| Pas de rollback DB lisible — client reçoit 500 vague | `bookings/route.ts:27-79` | Logger payload + retourner 409/422 selon le cas |
+| Race condition possible sur upsert consultant | `consultant/profile/route.ts:31-43` | Ajouter `WHERE updated_at = $prev_updated_at` |
 
 ---
 
-## Plan d'action Pareto (80% résultats, 20% effort)
+## 3. Agilité
 
-| # | Action | Impact | Effort | Fichier |
-|---|--------|--------|--------|---------|
-| 1 | Headers sécurité HTTP (`next.config.mjs`) | Sécurité OWASP A05 | **15 min** | `next.config.mjs` |
-| 2 | Compléter adresse dans mentions légales | Légal obligatoire | **5 min** | `app/legal/page.tsx` |
-| 3 | Stripe singleton (`lib/stripe.ts`) | Perf + pattern | **15 min** | 2 fichiers |
-| 4 | Fix N+1 skills insert | Perf DB | **30 min** | `consultant/profile/route.ts` |
-| 5 | Fix N+1 slots/bulk | Perf DB critique | **45 min** | `slots/bulk/route.ts` |
-| 6 | Fusionner 2 SELECT dans `/pay` | Perf + cohérence | **20 min** | `client/bookings/[id]/pay/route.ts` |
-| 7 | Rate limiting `/auth/register` | Sécurité A04 | **60 min** | `auth/register/route.ts` |
-| 8 | Export CSV paginé | Stabilité | **30 min** | `admin/export-csv/route.ts` |
-| 9 | Pool DB `max: 2` | Stabilité serverless | **5 min** | `lib/db.ts` |
-| 10 | Masquer `user_id` dans matching | Sécu IDOR | **10 min** | `lib/matching.ts` |
+### Tests manquants (critique avant lancement)
 
-**Quick wins (#1, #2, #3, #9, #10) = 50 min → score OWASP 7.5 → 8.5**
+| Flux critique | Couverture actuelle | Priorité |
+|---|---|---|
+| Paiement (booking → PI → capture → fonds) | ❌ zéro test | 🔴 |
+| Validation KYC admin | ❌ zéro test | 🔴 |
+| Libération fonds (double review) | ❌ zéro test | 🔴 |
+| Matching algorithm (4 critères) | ❌ zéro test | 🟠 |
+| `computePricing()` | ❌ zéro test | 🟠 |
+
+Vitest est déjà installé — setup en place. Ajouter au moins les tests unitaires `computePricing` et `findMatches` avant C5.
+
+### Séparation des responsabilités
+
+Route `pay/route.ts` (152 lignes) fait : validation Stripe + vérification ownership + update DB + email + notification. Créer `services/booking-service.ts` :
+```typescript
+confirmPayment(bookingId, paymentIntentId): Promise<Booking>
+releaseEscrow(bookingId): Promise<void>
+```
+Routes = auth + validation input + appel service + réponse HTTP.
+
+### Configuration dispersée
+
+Les constantes suivantes sont éclatées dans 3+ fichiers — centraliser dans `lib/freelancehub/config.ts` :
+
+```typescript
+export const PRICING = {
+  baseTva:                 0.20,
+  baseCommission:          0.15,
+  earlyAdopterCommission:  0.10,
+  earlyAdopterCap:         20,
+  defaultHourlyRate:       85,
+}
+```
 
 ---
 
-**Confiance** : 90% (analyse statique, 16 fichiers lus, agent d'exploration indépendant)
-**Date** : 2026-04-21
-**Prochaine revue** : 2026-04-22
+## 4. Ce qui fonctionne bien ✅
+
+- **Injection SQL** : 100% prepared statements (`$1, $2`), aucune concaténation SQL détectée
+- **Auth par rôle** : vérification systématique `session.user.role` sur toutes les routes
+- **Transactions DB** : `withTransaction()` utilisé sur les opérations critiques
+- **Anonymat consultant** : `revealed_at IS NULL` respecté dans les queries matching
+- **Montant Stripe côté serveur** : recalculé depuis DB, pas depuis le client
+- **Validation de signature Stripe** : `stripe.webhooks.constructEvent()` en place
+
+---
+
+## 5. Plan d'action priorisé
+
+### Avant lancement 30/04 (cette semaine)
+
+1. **[S3] Fix IDOR matching** — whitelist rôle (`=== 'client' || === 'admin'`) · 30 min
+2. **[S4] Fix IDOR slots** — ajouter `AND c.is_available = true` · 30 min
+3. **[S2] Vérifier montant PI** — recalcul depuis DB avant `capture()` · 2h
+4. **[S5] Idempotence webhook** — table `webhook_events` + unique constraint · 2h
+5. **[Headers sécurité]** — déjà ROADMAP C4, appliquer dans `next.config.mjs` · 1h
+
+### C5 Mai-Juin 2026
+
+6. **[S1] Rate limiting** — Upstash sur auth + payment-intent (déjà planifié C5)
+7. **[S8] CSRF** — header custom vérifié middleware · demi-journée
+8. **[validators.ts]** — centraliser validation date/heure · 1h
+9. **[queries.ts]** — extraire `getBookingDetails()`, `getConsultantProfile()` · 2h
+10. **Tests Vitest** — computePricing + matching (déjà planifié C5)
+
+### C6 Juillet+ 2026
+
+11. **Service layer** — booking-service.ts
+12. **Abstraction PSP** — interface PaymentProcessor
+13. **Découpage composants** — BookingModal, SearchClient (déjà planifié C6)

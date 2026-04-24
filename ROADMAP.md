@@ -60,6 +60,10 @@ Priorités ordonnées par valeur client (confiance → acquisition → rétentio
 - [x] **Fix exposition erreur KYC** — message générique en réponse 500 (`kyc/route.ts`) · `business_value: 75` · `value_type: strategic_positioning` ✅ 2026-04-21
 - [x] **Health Check endpoint** — `GET /api/freelancehub/health` (SELECT 1 DB) · `business_value: 70` · `value_type: technical_debt` ✅ 2026-04-21
 - [ ] **Headers sécurité HTTP** — `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy` dans `next.config.mjs` *(identifié refacto.md 2026-04-21)* · `business_value: 80` · `value_type: strategic_positioning`
+- [ ] **Fix IDOR matching** — whitelist rôle (`=== 'client' || === 'admin'`) dans `matching/route.ts:6` au lieu de blacklist · `business_value: 85` · `value_type: strategic_positioning` *(identifié refacto.md 2026-04-23)*
+- [ ] **Fix IDOR slots** — ajouter `AND c.is_available = true` dans `client/slots/route.ts:14` · `business_value: 80` · `value_type: strategic_positioning` *(identifié refacto.md 2026-04-23)*
+- [ ] **Idempotence webhook Stripe** — table `webhook_events(stripe_event_id UNIQUE)` pour éviter double traitement · `business_value: 85` · `value_type: strategic_positioning` *(identifié refacto.md 2026-04-23)*
+- [ ] **Vérification montant PI côté serveur** — recalculer `amount` depuis DB avant capture, vérifier `metadata.booking_id` · `business_value: 90` · `value_type: strategic_positioning` *(identifié refacto.md 2026-04-23)*
 
 **🟡 Rétention — Post-lancement immédiat**
 - [ ] **Facture PDF** générée automatiquement après paiement (nom client, n° réservation, montant HT/TVA/TTC, mentions légales) → stockée MinIO, accessible depuis "Mes paiements" · `business_value: 76` · `value_type: ux_improvement`
@@ -90,10 +94,11 @@ Priorités ordonnées par valeur client (confiance → acquisition → rétentio
 - [ ] **Tests automatisés** — Vitest (unit: computePricing, matching) + Playwright (E2E booking flow) · `business_value: 85` · `value_type: technical_debt`
 - [ ] **Fix timezone dates** — remplacer `'T00:00:00'` par `'T00:00:00Z'` dans email.ts et cron · `business_value: 65` · `value_type: technical_debt`
 - [ ] **Skills sync transactionnel** — batch INSERT `unnest` dans `consultant/profile/route.ts` · `business_value: 60` · `value_type: technical_debt`
+- [ ] **`validators.ts`** — centraliser `isValidDate()` et `isValidTime()` (dupliqués dans `slots/route.ts` + `slots/bulk/route.ts`) · `business_value: 55` · `value_type: technical_debt` *(identifié refacto.md 2026-04-23)*
 
 **Support & relation client**
 - [x] **Formulaire de contact support** — page `/freelancehub/support` : sujet (technique/paiement/compte/autre), message, email de contact pré-rempli → Resend vers `contact@perform-learn.fr` + accusé réception utilisateur · `business_value: 72` · `value_type: ux_improvement` ✅ 2026-04-23
-- [ ] **Chatbot support** — intégration assistant IA sur la page support pour réponses instantanées aux questions fréquentes (FAQ, statut paiement, agenda) avec escalade vers email humain si non résolu · `business_value: 68` · `value_type: ux_improvement`
+- [x] **Chatbot support** — widget flottant Intercom-style (ChatWidget), visible sans login, agents Gemini Flash 2.0 (supportPublic + support), escalade vers email humain · `business_value: 68` · `value_type: ux_improvement` ✅ 2026-04-23
 
 **Valeur client — Récurrence & revenus**
 - [ ] **Stripe Connect** — reversement automatique consultant (supprime la gestion manuelle) · `business_value: 90` · `value_type: cost_reduction`
