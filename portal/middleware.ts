@@ -15,13 +15,15 @@ const ROUTE_RULES: Array<{ prefix: string; roles: string[] }> = [
 export default auth((req: NextRequest & { auth: { user?: { role?: string } } | null }) => {
   const { pathname } = req.nextUrl
 
-  // Only protect /freelancehub/** routes (except login & api/auth)
+  // Only protect /freelancehub/** routes (except login & api/auth & public support)
   if (!pathname.startsWith('/freelancehub') ||
        pathname.startsWith('/freelancehub/login') ||
        pathname.startsWith('/freelancehub/register') ||
        pathname.startsWith('/freelancehub/cgu') ||
        pathname.startsWith('/freelancehub/privacy') ||
-       pathname.startsWith('/api/auth')) {
+       pathname.startsWith('/freelancehub/support') ||
+       pathname.startsWith('/api/auth') ||
+       pathname.startsWith('/api/freelancehub/support/chat/public')) {
     return NextResponse.next()
   }
 
