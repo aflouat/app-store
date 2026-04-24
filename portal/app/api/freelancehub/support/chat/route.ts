@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
-import Anthropic from '@anthropic-ai/sdk'
+import OpenAI from 'openai'
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+function getClient() {
+  return new OpenAI({
+    apiKey:  process.env.GROK_API_KEY ?? 'missing',
+    baseURL: 'https://api.x.ai/v1',
+  })
+}
 
 const SYSTEM_PROMPT = `Tu es l'assistant support de FreelanceHub sur perform-learn.fr. Tu aides les utilisateurs (clients et consultants) avec leurs questions sur la plateforme.
 
@@ -109,14 +114,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Message invalide' }, { status: 400 })
   }
 
-  const response = await client.messages.create({
-    model:      'claude-haiku-4-5-20251001',
+  const response = await getClient().chat.completions.create({
+    model:      'grok-3-mini',
     max_tokens: 512,
-    system:     SYSTEM_PROMPT,
-    messages:   messages.map(m => ({ role: m.role, content: m.content })),
+    messages:   [
+      { role: 'system', content: SYSTEM_PROMPT },
+      ...messages.map(m => ({ role: m.role, content: m.content })),
+    ],
   })
 
-  const raw = response.content[0].type === 'text' ? response.content[0].text : ''
+  const raw = response.choices[0]?.message?.content ?? ''
 
   // Detect escalation marker
   const escalateMatch = raw.match(/\{"escalate":true,"subject":"(\w+)"\}/)
