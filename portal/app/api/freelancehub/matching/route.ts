@@ -4,7 +4,7 @@ import { findMatches } from '@/lib/freelancehub/matching'
 
 export async function POST(req: NextRequest) {
   const session = await auth()
-  if (!session?.user || session.user.role === 'consultant') {
+  if (!session?.user || (session.user.role !== 'client' && session.user.role !== 'admin')) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

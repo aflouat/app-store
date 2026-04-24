@@ -22,8 +22,8 @@ export async function POST(
   }
 
   // Verify booking ownership
-  const booking = await queryOne<{ id: string; client_id: string; status: string }>(
-    `SELECT id, client_id, status FROM freelancehub.bookings WHERE id = $1`,
+  const booking = await queryOne<{ id: string; client_id: string; status: string; amount_ht: number | null }>(
+    `SELECT id, client_id, status, amount_ht FROM freelancehub.bookings WHERE id = $1`,
     [bookingId]
   )
 
@@ -54,6 +54,13 @@ export async function POST(
   // Verify metadata matches this booking (prevents replay attacks)
   if (paymentIntent.metadata.booking_id !== bookingId) {
     return NextResponse.json({ error: 'PaymentIntent invalide pour cette réservation.' }, { status: 400 })
+  }
+
+  // Verify amount matches booking (prevents amount manipulation)
+  const expectedTtcCents = Math.round(Number(booking.amount_ht ?? 0) * 1.20)
+  if (expectedTtcCents > 0 && paymentIntent.amount !== expectedTtcCents) {
+    console.error(`[pay] amount mismatch: PI=${paymentIntent.amount} expected=${expectedTtcCents}`)
+    return NextResponse.json({ error: 'Montant du paiement incohérent.' }, { status: 400 })
   }
 
   // Update booking: confirmed + reveal consultant identity

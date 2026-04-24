@@ -22,13 +22,15 @@ export async function GET(req: NextRequest) {
   const limitStr = limit.toISOString().split('T')[0]
 
   const rows = await query<{ id: string; slot_date: string; slot_time: string; duration_min: number }>(
-    `SELECT id, slot_date::text, slot_time::text, duration_min
-     FROM freelancehub.slots
-     WHERE consultant_id = $1
-       AND status = 'available'
-       AND slot_date >= $2
-       AND slot_date <= $3
-     ORDER BY slot_date, slot_time`,
+    `SELECT s.id, s.slot_date::text, s.slot_time::text, s.duration_min
+     FROM freelancehub.slots s
+     JOIN freelancehub.consultants c ON c.id = s.consultant_id
+     WHERE s.consultant_id = $1
+       AND c.is_available = true
+       AND s.status = 'available'
+       AND s.slot_date >= $2
+       AND s.slot_date <= $3
+     ORDER BY s.slot_date, s.slot_time`,
     [consultantId, today, limitStr]
   )
 

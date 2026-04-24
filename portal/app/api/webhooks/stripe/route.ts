@@ -25,6 +25,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
   }
 
+  // Idempotency check — ignore duplicate events
+  const inserted = await queryOne<{ id: string }>(
+    `INSERT INTO freelancehub.webhook_events (event_id, event_type)
+     VALUES ($1, $2)
+     ON CONFLICT (event_id) DO NOTHING
+     RETURNING id`,
+    [event.id, event.type]
+  )
+  if (!inserted) {
+    return NextResponse.json({ received: true, duplicate: true })
+  }
+
   try {
     switch (event.type) {
       case 'payment_intent.succeeded': {
