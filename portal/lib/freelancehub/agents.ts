@@ -2,7 +2,7 @@
 // Registry central de tous les agents IA du projet.
 // Pour changer de modèle ou de provider : modifier ici uniquement.
 
-export type AgentProvider = 'grok' | 'anthropic' | 'openai'
+export type AgentProvider = 'grok' | 'anthropic' | 'openai' | 'gemini'
 
 export interface AgentConfig {
   id:             string
@@ -162,7 +162,7 @@ Valeurs possibles pour subject : "technique", "paiement", "compte", "autre"
 Ne mets JAMAIS ce bloc si tu peux répondre complètement.`
 
 // ─── Registry des agents ───────────────────────────────────────
-// Coûts Grok xAI : grok-3-mini ~0.03$/1M input, ~0.05$/1M output (≈0.027€/0.045€)
+// Coûts Gemini : gemini-2.0-flash ~0.10$/1M input, ~0.40$/1M output (≈0.09€/0.37€)
 // Coûts Anthropic : haiku-4-5 ~0.80$/1M input, ~4$/1M output
 // Coûts OpenAI   : gpt-4o-mini ~0.15$/1M input, ~0.60$/1M output
 
@@ -170,24 +170,24 @@ export const AGENTS: Record<string, AgentConfig> = {
   support: {
     id:              'support',
     label:           'Agent Support',
-    provider:        'grok',
-    model:           'grok-3-mini',
+    provider:        'gemini',
+    model:           'gemini-2.0-flash',
     maxTokens:       512,
     systemPrompt:    SUPPORT_SYSTEM_PROMPT,
-    costPer1MInput:  3,    // ~0.03€ par million de tokens input
-    costPer1MOutput: 5,    // ~0.05€ par million de tokens output
+    costPer1MInput:  9,    // ~0.09€ par million de tokens input
+    costPer1MOutput: 37,   // ~0.37€ par million de tokens output
     monthlyCap:      150,  // 1.50€/mois max pour cet agent
   },
 
   supportPublic: {
     id:              'supportPublic',
     label:           'Agent Support Public',
-    provider:        'grok',
-    model:           'grok-3-mini',
+    provider:        'gemini',
+    model:           'gemini-2.0-flash',
     maxTokens:       400,
     systemPrompt:    SUPPORT_PUBLIC_SYSTEM_PROMPT,
-    costPer1MInput:  3,    // ~0.03€ par million de tokens input
-    costPer1MOutput: 5,    // ~0.05€ par million de tokens output
+    costPer1MInput:  9,
+    costPer1MOutput: 37,
     monthlyCap:      100,  // 1.00€/mois max pour cet agent
   },
 
