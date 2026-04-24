@@ -3,23 +3,70 @@
 import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 
+type AgentId = 'onboarding' | 'matching' | 'sales' | 'support' | 'supportPublic'
+
 interface Message { role: 'user' | 'assistant'; content: string }
-interface Props { userEmail?: string }
+interface Props { userEmail?: string; isAuthenticated?: boolean }
 
-const CHIPS = [
-  'Comment fonctionne la plateforme ?',
-  'Comment réserver un consultant ?',
-  'Quand reçois-je mon paiement ?',
-]
+const AGENT_META: Record<AgentId, { label: string; color: string; chips: string[] }> = {
+  onboarding: {
+    label: 'Agent Onboarding',
+    color: '#8b5cf6',
+    chips: [
+      'Comment créer un compte consultant ?',
+      "Qu'est-ce que le KYC ?",
+      'Comment fixer mon tarif horaire ?',
+    ],
+  },
+  matching: {
+    label: 'Agent Matching',
+    color: '#0ea5e9',
+    chips: [
+      'Comment rechercher un consultant ?',
+      'Comment fonctionne la réservation ?',
+      'Quel est le prix d une consultation ?',
+    ],
+  },
+  sales: {
+    label: 'Agent Commercial',
+    color: '#f59e0b',
+    chips: [
+      "C'est quoi l offre Early Adopter ?",
+      'Quelle commission pour les consultants ?',
+      'Demander une démonstration B2B',
+    ],
+  },
+  support: {
+    label: 'Agent Support',
+    color: '#10b981',
+    chips: [
+      'J ai un problème de paiement',
+      'Comment annuler une réservation ?',
+      'Je ne reçois pas mes emails',
+    ],
+  },
+  supportPublic: {
+    label: 'Assistant FreelanceHub',
+    color: '#B9958D',
+    chips: [
+      'Comment fonctionne la plateforme ?',
+      'Comment réserver un consultant ?',
+      'Quand reçois-je mon paiement ?',
+    ],
+  },
+}
 
-export default function ChatWidget({ userEmail = '' }: Props) {
-  const [open,    setOpen]    = useState(false)
-  const [msgs,    setMsgs]    = useState<Message[]>([])
-  const [input,   setInput]   = useState('')
-  const [loading, setLoading] = useState(false)
+export default function ChatWidget({ userEmail = '', isAuthenticated = false }: Props) {
+  const [open,      setOpen]      = useState(false)
+  const [msgs,      setMsgs]      = useState<Message[]>([])
+  const [input,     setInput]     = useState('')
+  const [loading,   setLoading]   = useState(false)
   const [escalated, setEscalated] = useState(false)
+  const [currentAgent, setCurrentAgent] = useState<AgentId>('supportPublic')
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef  = useRef<HTMLTextAreaElement>(null)
+
+  const meta = AGENT_META[currentAgent]
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -39,19 +86,30 @@ export default function ChatWidget({ userEmail = '' }: Props) {
     setLoading(true)
 
     try {
-      const res  = await fetch('/api/freelancehub/support/chat/public', {
+      const endpoint = isAuthenticated
+        ? '/api/freelancehub/support/chat'
+        : '/api/freelancehub/support/chat/public'
+
+      const res  = await fetch(endpoint, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ messages: next }),
+        body:    JSON.stringify({ messages: next, currentAgent }),
       })
       const data = await res.json()
       setMsgs(prev => [...prev, { role: 'assistant', content: data.message ?? 'Erreur inattendue.' }])
+      if (data.agentId) setCurrentAgent(data.agentId)
       if (data.escalate) setEscalated(true)
     } catch {
       setMsgs(prev => [...prev, { role: 'assistant', content: 'Une erreur est survenue. Réessayez ou écrivez-nous à contact@perform-learn.fr.' }])
     } finally {
       setLoading(false)
     }
+  }
+
+  function reset() {
+    setMsgs([])
+    setEscalated(false)
+    setCurrentAgent('supportPublic')
   }
 
   function onKey(e: React.KeyboardEvent) {
@@ -66,17 +124,32 @@ export default function ChatWidget({ userEmail = '' }: Props) {
           {/* Header */}
           <div className="cw-header">
             <div className="cw-header-left">
-              <div className="cw-avatar">FH</div>
+              <div className="cw-avatar" style={{ background: `rgba(255,255,255,.2)`, color: '#fff' }}>
+                {meta.label.split(' ').map(w => w[0]).join('').slice(0,2)}
+              </div>
               <div>
-                <div className="cw-agent-name">Assistant FreelanceHub</div>
-                <div className="cw-status"><span className="cw-dot" />En ligne</div>
+                <div className="cw-agent-name">{meta.label}</div>
+                <div className="cw-status">
+                  <span className="cw-dot" style={{ background: meta.color }} />
+                  En ligne
+                </div>
               </div>
             </div>
-            <button className="cw-close" onClick={() => setOpen(false)} aria-label="Fermer">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-              </svg>
-            </button>
+            <div className="cw-header-actions">
+              {msgs.length > 0 && (
+                <button className="cw-reset" onClick={reset} aria-label="Nouvelle conversation" title="Nouvelle conversation">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                    <polyline points="1 4 1 10 7 10"/>
+                    <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
+                  </svg>
+                </button>
+              )}
+              <button className="cw-close" onClick={() => setOpen(false)} aria-label="Fermer">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
+            </div>
           </div>
 
           {/* Messages */}
@@ -84,10 +157,10 @@ export default function ChatWidget({ userEmail = '' }: Props) {
             {/* Message de bienvenue */}
             <div className="cw-msg cw-msg-bot">
               <div className="cw-bubble cw-bubble-bot">
-                Bonjour ! Je suis votre assistant FreelanceHub. Comment puis-je vous aider ?
+                Bonjour ! Je suis {meta.label}. Comment puis-je vous aider ?
                 {msgs.length === 0 && (
                   <div className="cw-chips">
-                    {CHIPS.map(q => (
+                    {meta.chips.map(q => (
                       <button key={q} className="cw-chip" onClick={() => send(q)}>{q}</button>
                     ))}
                   </div>
@@ -220,6 +293,7 @@ export default function ChatWidget({ userEmail = '' }: Props) {
           flex-shrink: 0;
         }
         .cw-header-left { display: flex; align-items: center; gap: .7rem; }
+        .cw-header-actions { display: flex; align-items: center; gap: .4rem; }
         .cw-avatar {
           width: 38px; height: 38px; border-radius: 50%;
           background: rgba(255,255,255,.25);
@@ -235,7 +309,7 @@ export default function ChatWidget({ userEmail = '' }: Props) {
           width: 7px; height: 7px; border-radius: 50%;
           background: #4ade80; display: inline-block;
         }
-        .cw-close {
+        .cw-close, .cw-reset {
           background: rgba(255,255,255,.18);
           border: none; border-radius: 8px;
           width: 30px; height: 30px;
@@ -244,7 +318,7 @@ export default function ChatWidget({ userEmail = '' }: Props) {
           transition: background .12s;
           flex-shrink: 0;
         }
-        .cw-close:hover { background: rgba(255,255,255,.3); }
+        .cw-close:hover, .cw-reset:hover { background: rgba(255,255,255,.3); }
 
         /* ── Messages ── */
         .cw-messages {
