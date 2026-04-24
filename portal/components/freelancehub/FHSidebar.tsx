@@ -19,6 +19,7 @@ const CONSULTANT_NAV: NavItem[] = [
   { label: 'Mon CV',          href: '/freelancehub/consultant/cv',        icon: '◻' },
   { label: 'Mon KYC',         href: '/freelancehub/consultant/kyc',       icon: '◑' },
   { label: 'NDA',             href: '/freelancehub/consultant/nda',       icon: '◐' },
+  { label: 'Support',         href: '/freelancehub/support',              icon: '?' },
 ]
 
 const CLIENT_NAV: NavItem[] = [
@@ -27,6 +28,7 @@ const CLIENT_NAV: NavItem[] = [
   { label: 'Mes réservations', href: '/freelancehub/client/bookings',    icon: '◈' },
   { label: 'Mes paiements',    href: '/freelancehub/client/payments',    icon: '◇' },
   { label: 'Mes évaluations',  href: '/freelancehub/client/reviews',     icon: '◌' },
+  { label: 'Support',          href: '/freelancehub/support',            icon: '?' },
 ]
 
 const ADMIN_NAV: NavItem[] = [
@@ -36,6 +38,7 @@ const ADMIN_NAV: NavItem[] = [
   { label: 'Réservations',    href: '/freelancehub/admin/bookings',      icon: '◈' },
   { label: 'Paiements',       href: '/freelancehub/admin/payments',      icon: '◇' },
   { label: 'Matching engine', href: '/freelancehub/admin/matching',      icon: '◎' },
+  { label: 'Support',         href: '/freelancehub/support',             icon: '?' },
 ]
 
 const NAV_BY_ROLE: Record<UserRole, NavItem[]> = {
