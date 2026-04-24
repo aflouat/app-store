@@ -59,11 +59,11 @@ Priorités ordonnées par valeur client (confiance → acquisition → rétentio
 - [x] **Fix Multiple PaymentIntents** — vérifie PI existant avant création Stripe dans `payment-intent/route.ts` · `business_value: 90` · `value_type: strategic_positioning` ✅ 2026-04-21
 - [x] **Fix exposition erreur KYC** — message générique en réponse 500 (`kyc/route.ts`) · `business_value: 75` · `value_type: strategic_positioning` ✅ 2026-04-21
 - [x] **Health Check endpoint** — `GET /api/freelancehub/health` (SELECT 1 DB) · `business_value: 70` · `value_type: technical_debt` ✅ 2026-04-21
-- [ ] **Headers sécurité HTTP** — `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy` dans `next.config.mjs` *(identifié refacto.md 2026-04-21)* · `business_value: 80` · `value_type: strategic_positioning`
-- [ ] **Fix IDOR matching** — whitelist rôle (`=== 'client' || === 'admin'`) dans `matching/route.ts:6` au lieu de blacklist · `business_value: 85` · `value_type: strategic_positioning` *(identifié refacto.md 2026-04-23)*
-- [ ] **Fix IDOR slots** — ajouter `AND c.is_available = true` dans `client/slots/route.ts:14` · `business_value: 80` · `value_type: strategic_positioning` *(identifié refacto.md 2026-04-23)*
-- [ ] **Idempotence webhook Stripe** — table `webhook_events(stripe_event_id UNIQUE)` pour éviter double traitement · `business_value: 85` · `value_type: strategic_positioning` *(identifié refacto.md 2026-04-23)*
-- [ ] **Vérification montant PI côté serveur** — recalculer `amount` depuis DB avant capture, vérifier `metadata.booking_id` · `business_value: 90` · `value_type: strategic_positioning` *(identifié refacto.md 2026-04-23)*
+- [x] **Headers sécurité HTTP** — `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy` dans `next.config.mjs` · `business_value: 80` · `value_type: strategic_positioning` ✅ 2026-04-23
+- [x] **Fix IDOR matching** — whitelist rôle (`role !== 'client' && !== 'admin'`) dans `matching/route.ts:7` · `business_value: 85` · `value_type: strategic_positioning` ✅ 2026-04-23
+- [x] **Fix IDOR slots** — JOIN consultants + `AND c.is_available = true` dans `client/slots/route.ts` · `business_value: 80` · `value_type: strategic_positioning` ✅ 2026-04-23
+- [x] **Idempotence webhook Stripe** — migration `015_webhook_events.sql` + INSERT ON CONFLICT dans webhook route · `business_value: 85` · `value_type: strategic_positioning` ✅ 2026-04-23 *(migration à appliquer sur VPS)*
+- [x] **Vérification montant PI côté serveur** — calcul `expectedTtcCents` depuis DB + guard null, rejet 400 si mismatch · `business_value: 90` · `value_type: strategic_positioning` ✅ 2026-04-23
 
 **🟡 Rétention — Post-lancement immédiat**
 - [ ] **Facture PDF** générée automatiquement après paiement (nom client, n° réservation, montant HT/TVA/TTC, mentions légales) → stockée MinIO, accessible depuis "Mes paiements" · `business_value: 76` · `value_type: ux_improvement`
