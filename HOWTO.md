@@ -799,3 +799,35 @@ Le tableau `/freelancehub/admin/bookings` permet une analyse multi-critères des
 
 - Ligne de totaux : **Σ HT**, **Σ TTC estimé**, **Σ commission plateforme** sur les résultats filtrés
 - Export CSV : toutes les réservations (bouton `↓ Export CSV`, route `GET /api/freelancehub/admin/export-csv`)
+
+---
+
+## 5. Historique des fonctionnalités implémentées
+
+> Ce section archive les features livrées. Pour les prochaines priorités, voir `ROADMAP.md`.
+
+### Avril 2026 — Pré-lancement (Sécurité & Fondations)
+
+| Date | Feature | Détail |
+|---|---|---|
+| 2026-04-21 | **Page CGU** | `/freelancehub/cgu` + checkbox horodatée à l'inscription → `freelancehub.signatures` (IP + UA) |
+| 2026-04-21 | **Politique de confidentialité** | `/freelancehub/privacy` : responsable traitement, données collectées, durée conservation, droits utilisateurs |
+| 2026-04-21 | **Mentions légales** | `/legal` : éditeur, hébergeur, SIREN |
+| 2026-04-21 | **Consentement email marketing** | Opt-in explicite à l'inscription + migration 014 |
+| 2026-04-21 | **Droit à l'effacement** | API `DELETE /api/freelancehub/user/me` : anonymisation données, soft delete |
+| 2026-04-21 | **Fix CRON_SECRET** | `Authorization: Bearer` uniquement dans `cron/reminders/route.ts` |
+| 2026-04-21 | **Fix Multiple PaymentIntents** | Vérifie PI existant avant création Stripe |
+| 2026-04-21 | **Fix exposition erreur KYC** | Message générique en réponse 500 |
+| 2026-04-21 | **Health Check endpoint** | `GET /api/freelancehub/health` (SELECT 1 DB) |
+| 2026-04-23 | **Headers sécurité HTTP** | `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy` dans `next.config.mjs` |
+| 2026-04-23 | **Fix IDOR matching** | Whitelist rôle (`=== 'client' \|\| === 'admin'`) |
+| 2026-04-23 | **Fix IDOR slots** | JOIN consultants + `AND c.is_available = true` |
+| 2026-04-23 | **Idempotence webhook Stripe** | Migration `015_webhook_events.sql` + INSERT ON CONFLICT |
+| 2026-04-23 | **Vérification montant PI** | Calcul `expectedTtcCents` depuis DB + rejet 400 si mismatch |
+| 2026-04-23 | **Formulaire de contact support** | `/freelancehub/support` : sujet/message/email → Resend + accusé réception |
+| 2026-04-23 | **Chatbot support** | Widget flottant Intercom-style, agents Gemini Flash 2.0, escalade email |
+| 2026-04-25 | **Router intelligent multi-agents** | 4 agents spécialisés (onboarding, matching, sales, support) avec classifier hybride mots-clés + LLM |
+
+### Releases
+
+Voir `ROADMAP.md` → section *Historique des releases* pour le détail complet par version.

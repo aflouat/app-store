@@ -4,7 +4,9 @@
 > **Positionnement** : Digital Service Hub haut de gamme — automatiser l'intermédiation freelance/entreprise pour libérer le talent de la paperasse.
 > **Entité** : Marketplace d'intermediation entre freelance et client
 > **Lancement public** : 30 avril 2026
-**Version courante** : `v1.3.0`
+> **Version courante** : `v1.3.0`
+>
+> **Pour les features déjà livrées, voir `HOWTO.md` → section 5.**
 
 ---
 
@@ -38,13 +40,6 @@
 
 Priorités ordonnées par valeur client (confiance → acquisition → rétention) :
 
-**🔴 Bloquants légaux — RGPD Phase 1** *(obligatoire avant tout utilisateur réel)*
-- [x] **Page CGU** — page `/freelancehub/cgu`, checkbox horodatée à l'inscription → `freelancehub.signatures` (IP + UA) · `business_value: 90` · `value_type: strategic_positioning` ✅ 2026-04-21
-- [x] **Politique de confidentialité** — page `/freelancehub/privacy` : responsable traitement, données collectées, durée conservation, droits utilisateurs · `business_value: 90` · `value_type: strategic_positioning` ✅ 2026-04-21
-- [x] **Mentions légales** — page `/legal` : éditeur, hébergeur, SIRET *(⚠ adresse `[ADRESSE]` à compléter)* · `business_value: 85` · `value_type: strategic_positioning` ✅ 2026-04-21
-- [x] **Consentement email marketing** — opt-in explicite à l'inscription waitlist/portail + migration 014 · `business_value: 80` · `value_type: user_acquisition` ✅ 2026-04-21
-- [x] **Droit à l'effacement** — API `DELETE /api/freelancehub/user/me` : anonymisation données personnelles, soft delete · `business_value: 75` · `value_type: strategic_positioning` ✅ 2026-04-21
-
 **🔴 Confiance client — Lancement crédible**
 - [ ] **Onboarding consultant KYC** — upload KBIS/URSSAF dans MinIO ✅ (upload OK), validation admin avant activation du profil (badge "Vérifié") · `business_value: 92` · `value_type: user_acquisition`
 - [ ] **NDA automatique Phase 1** — checkbox + signature horodatée avant 1ère mission, stockée dans `freelancehub.signatures` · `business_value: 80` · `value_type: strategic_positioning`
@@ -53,17 +48,6 @@ Priorités ordonnées par valeur client (confiance → acquisition → rétentio
 **🟠 Acquisition — Signal de lancement**
 - [ ] **Landing page → portail** — bouton CTA vers `/freelancehub/register` sur perform-learn.fr · `business_value: 95` · `value_type: user_acquisition`
 - [ ] **Email de lancement** aux inscrits waitlist (Brevo) — J-3 teasing, J-0 go-live · `business_value: 88` · `value_type: user_acquisition`
-
-**🔴 Sécurité — Correctifs avant lancement**
-- [x] **Fix CRON_SECRET query param** — `Authorization: Bearer` uniquement dans `cron/reminders/route.ts` · `business_value: 85` · `value_type: strategic_positioning` ✅ 2026-04-21
-- [x] **Fix Multiple PaymentIntents** — vérifie PI existant avant création Stripe dans `payment-intent/route.ts` · `business_value: 90` · `value_type: strategic_positioning` ✅ 2026-04-21
-- [x] **Fix exposition erreur KYC** — message générique en réponse 500 (`kyc/route.ts`) · `business_value: 75` · `value_type: strategic_positioning` ✅ 2026-04-21
-- [x] **Health Check endpoint** — `GET /api/freelancehub/health` (SELECT 1 DB) · `business_value: 70` · `value_type: technical_debt` ✅ 2026-04-21
-- [x] **Headers sécurité HTTP** — `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy` dans `next.config.mjs` · `business_value: 80` · `value_type: strategic_positioning` ✅ 2026-04-23
-- [x] **Fix IDOR matching** — whitelist rôle (`role !== 'client' && !== 'admin'`) dans `matching/route.ts:7` · `business_value: 85` · `value_type: strategic_positioning` ✅ 2026-04-23
-- [x] **Fix IDOR slots** — JOIN consultants + `AND c.is_available = true` dans `client/slots/route.ts` · `business_value: 80` · `value_type: strategic_positioning` ✅ 2026-04-23
-- [x] **Idempotence webhook Stripe** — migration `015_webhook_events.sql` + INSERT ON CONFLICT dans webhook route · `business_value: 85` · `value_type: strategic_positioning` ✅ 2026-04-23 *(migration à appliquer sur VPS)*
-- [x] **Vérification montant PI côté serveur** — calcul `expectedTtcCents` depuis DB + guard null, rejet 400 si mismatch · `business_value: 90` · `value_type: strategic_positioning` ✅ 2026-04-23
 
 **🟡 Rétention — Post-lancement immédiat**
 - [ ] **Facture PDF** générée automatiquement après paiement (nom client, n° réservation, montant HT/TVA/TTC, mentions légales) → stockée MinIO, accessible depuis "Mes paiements" · `business_value: 76` · `value_type: ux_improvement`
@@ -87,18 +71,14 @@ Priorités ordonnées par valeur client (confiance → acquisition → rétentio
 - [ ] **Sous-traitants** — DPA (Data Processing Agreement) Stripe, Resend, Vercel, OVH documentés · `business_value: 55` · `value_type: strategic_positioning`
 
 **Dette technique — Performance & Sécurité**
-- [ ] **Rate limiting** — middleware sur `/api/freelancehub/auth/*` (Upstash ou in-memory) · `business_value: 80` · `value_type: strategic_positioning`
+- [ ] **Rate limiting persistant** — Upstash Redis ou KV Vercel sur auth + payment-intent (remplace in-memory Edge) · `business_value: 80` · `value_type: strategic_positioning`
 - [ ] **Stripe singleton** — `lib/freelancehub/stripe.ts` partagé (évite réinstanciation par requête) · `business_value: 60` · `value_type: technical_debt`
 - [ ] **CSP Headers** — `next.config.ts` avec `Content-Security-Policy`, `X-Frame-Options` · `business_value: 72` · `value_type: strategic_positioning`
 - [ ] **Pool connexions PostgreSQL** — `max: 2` immédiat + PgBouncer C6 (évite saturation 100 conx) · `business_value: 78` · `value_type: technical_debt`
 - [ ] **Tests automatisés** — Vitest (unit: computePricing, matching) + Playwright (E2E booking flow) · `business_value: 85` · `value_type: technical_debt`
 - [ ] **Fix timezone dates** — remplacer `'T00:00:00'` par `'T00:00:00Z'` dans email.ts et cron · `business_value: 65` · `value_type: technical_debt`
 - [ ] **Skills sync transactionnel** — batch INSERT `unnest` dans `consultant/profile/route.ts` · `business_value: 60` · `value_type: technical_debt`
-- [ ] **`validators.ts`** — centraliser `isValidDate()` et `isValidTime()` (dupliqués dans `slots/route.ts` + `slots/bulk/route.ts`) · `business_value: 55` · `value_type: technical_debt` *(identifié refacto.md 2026-04-23)*
-
-**Support & relation client**
-- [x] **Formulaire de contact support** — page `/freelancehub/support` : sujet (technique/paiement/compte/autre), message, email de contact pré-rempli → Resend vers `contact@perform-learn.fr` + accusé réception utilisateur · `business_value: 72` · `value_type: ux_improvement` ✅ 2026-04-23
-- [x] **Chatbot support** — widget flottant Intercom-style (ChatWidget), visible sans login, agents Gemini Flash 2.0 (supportPublic + support), escalade vers email humain · `business_value: 68` · `value_type: ux_improvement` ✅ 2026-04-23
+- [ ] **`validators.ts`** — centraliser `isValidDate()` et `isValidTime()` (dupliqués dans `slots/route.ts` + `slots/bulk/route.ts`) · `business_value: 55` · `value_type: technical_debt`
 
 **Valeur client — Récurrence & revenus**
 - [ ] **Stripe Connect** — reversement automatique consultant (supprime la gestion manuelle) · `business_value: 90` · `value_type: cost_reduction`
@@ -174,138 +154,47 @@ Priorités ordonnées par valeur client (confiance → acquisition → rétentio
 
 ## Historique des releases
 
----
-
 ### v1.3.0 — FreelanceHub V1.3
 **16 avril 2026**
 
-**Bug fix critique**
-- Évaluation client : violation FK corrigée (`consultant_user_id` au lieu de `consultant_id` dans `reviews`)
-
-**Tarif consultant paramétrable**
-- `daily_rate` (THM €/h) du consultant utilisé pour calculer le prix de la consultation
-- `BookingModal` : affichage dynamique HT/TVA/TTC/honoraire selon le tarif du consultant
-- `payment-intent` : recalcul serveur depuis la DB (règle sécurité — jamais côté client)
-- Matching : filtre budget par consultant, `price_score` actif (5%)
-
-**Numéro de réservation**
-- Migration 010 : `booking_number SERIAL UNIQUE` sur `freelancehub.bookings`
-- Affiché `#N°` sur les vues consultant, client et admin
-
-**Consultant autonome**
-- API `PATCH /api/freelancehub/consultant/bookings/[id]/status`
-- Transitions autorisées : `confirmed → in_progress → completed`
-- Composant `BookingAction` avec boutons "Démarrer" / "Terminer"
-- Notification client automatique à chaque transition
-
-**Admin tableau comptable**
-- Composant `BookingsTable` client — filtres : statut, date de/à, consultant, client, montant min/max
-- Ligne de totaux : Σ HT, Σ TTC estimé, Σ commission plateforme (sur résultats filtrés)
-- Limite portée à 500 réservations
-
-**UI Agenda**
-- Créneaux réservés : fond terracotta `#e07b54` + libellé "PRIS" blanc (était bleu nuit illisible)
-
-**Fichiers créés/modifiés** :
-```
-migrations/010_booking_number_hourly_rate.sql                       [nouveau]
-portal/app/api/freelancehub/consultant/bookings/[id]/status/route.ts [nouveau]
-portal/components/freelancehub/admin/BookingsTable.tsx              [nouveau]
-portal/components/freelancehub/consultant/BookingAction.tsx         [nouveau]
-portal/lib/freelancehub/matching.ts                                 [modifié — tarif paramétrable]
-portal/components/freelancehub/client/BookingModal.tsx              [modifié — prix dynamique]
-portal/app/api/freelancehub/client/bookings/[id]/payment-intent/route.ts [modifié — recalcul DB]
-portal/app/api/freelancehub/reviews/route.ts                        [modifié — bug fix FK]
-portal/app/freelancehub/(auth)/client/reviews/[bookingId]/page.tsx  [modifié — bug fix FK]
-portal/app/freelancehub/(auth)/admin/bookings/page.tsx              [modifié — délègue BookingsTable]
-portal/app/freelancehub/(auth)/consultant/bookings/page.tsx         [modifié — BookingAction + #N°]
-portal/app/freelancehub/(auth)/client/bookings/page.tsx             [modifié — #N°]
-portal/components/freelancehub/consultant/AgendaCalendar.tsx        [modifié — couleur terracotta]
-```
-
----
+- Bug fix critique : violation FK corrigée dans `reviews`
+- Tarif consultant paramétrable (`daily_rate`)
+- Numéro de réservation (`booking_number`)
+- Consultant autonome (transitions `confirmed → in_progress → completed`)
+- Admin tableau comptable avec filtres et totaux
+- UI Agenda : créneaux réservés en terracotta
 
 ### v1.2.0 — FreelanceHub V1.2
 **12 avril 2026**
 
-**Notifications in-app**
-- Nouvelle table PostgreSQL `freelancehub.notifications` (migration 007)
-- `lib/freelancehub/notifications.ts` : `createNotification`, `getUnreadCount`, `listNotifications`, `markAllRead`, `markOneRead`
-- API `GET /api/freelancehub/notifications` (liste) + `PATCH` (mark read)
-- Page `/freelancehub/notifications` : liste avec indicateur point rouge, marquage lu/non lu
-- Badge cloche dans FHNav (compteur non lus, mise à jour côté serveur dans le layout)
-- Notifications automatiques au paiement (`booking_confirmed` client + `new_booking` consultant)
-- Notifications automatiques aux évaluations (`review_request` + `fund_released`)
-
-**Cron J-1 rappels automatiques**
-- Route `POST /api/freelancehub/cron/reminders` (auth via `Authorization: Bearer <CRON_SECRET>`)
-- Vercel Cron configuré : `0 8 * * *` (08:00 UTC chaque jour)
-- Envoie emails Resend + crée notifications in-app pour les bookings du lendemain
-
-**Export CSV admin**
-- Route `GET /api/freelancehub/admin/export-csv` (admin only)
-- Exporte toutes les réservations avec filtre optionnel `?status=confirmed,completed`
-- Bouton `↓ Export CSV` dans `/freelancehub/admin/bookings`
-
-**Fichiers créés/modifiés** :
-```
-migrations/007_freelancehub_v2.sql                    [nouveau]
-portal/lib/freelancehub/notifications.ts              [nouveau]
-portal/app/api/freelancehub/notifications/route.ts    [nouveau]
-portal/app/api/freelancehub/cron/reminders/route.ts   [nouveau]
-portal/app/api/freelancehub/admin/export-csv/route.ts [nouveau]
-portal/app/freelancehub/(auth)/notifications/page.tsx [nouveau]
-portal/components/freelancehub/FHNav.tsx              [modifié — cloche + badge]
-portal/app/freelancehub/(auth)/layout.tsx             [modifié — unreadCount]
-portal/app/api/freelancehub/client/bookings/[id]/pay/route.ts   [modifié — notifs]
-portal/app/api/freelancehub/reviews/route.ts          [modifié — notifs]
-portal/vercel.json                                    [modifié — cron config]
-```
-
----
+- Notifications in-app (`freelancehub.notifications`)
+- Cron J-1 rappels automatiques (08:00 UTC)
+- Export CSV admin
 
 ### v1.1.0 — FreelanceHub Stripe réelle + recherche avancée
 **Avril 2026**
 
-- Intégration Stripe réelle (remplace le mock) : `payment-intent/route.ts`, vérification `paymentIntents.retrieve`, protection replay attack via `metadata.booking_id`
-- Recherche consultants par compétence + budget client
-- Accès FreelanceHub depuis la homepage du portail
-- Tests E2E documentés (scénarios 1→6)
-
----
+- Intégration Stripe réelle avec vérification PI
+- Recherche consultants par compétence + budget
+- Tests E2E documentés
 
 ### v1.0.0 — FreelanceHub MVP
 **Avril 2026**
 
-- Schéma PostgreSQL complet `freelancehub` : 8 tables (migration 006)
-- Auth NextAuth v5 + Credentials + bcrypt, RBAC 3 rôles (client / consultant / admin)
-- Algorithme de matching 4 critères, top 5 consultants anonymes
+- Schéma PostgreSQL complet `freelancehub`
+- Auth NextAuth v5 + Credentials + bcrypt, RBAC 3 rôles
+- Algorithme de matching 4 critères
 - Flow complet : recherche → booking → paiement Stripe → révélation identité
-- Interface consultant : dashboard, profil, agenda (slots), réservations, gains
-- Interface client : dashboard, recherche, réservations, paiements, évaluations
-- Interface admin : dashboard, consultants, réservations, paiements, matching engine
-- Emails transactionnels Resend (confirmation, rappel, évaluation, libération fonds)
-- Edge Runtime safe (séparation `auth.config.ts` / `auth.ts`)
-
----
+- Emails transactionnels Resend
 
 ### v0.2.0 — Module gouvernance
 **Avril 2026**
 
-- Schéma PostgreSQL `governance` : 6 tables
+- Schéma PostgreSQL `governance`
 - Hiérarchie Vision → Cycle → Epic → User Story → Task
-- business_value (0–100), value_type, scoring badge
-- Vue `v_artifact_context` (jointure complète)
-- Interface `/govern` : plan, roadmap, logs, artifacts
-
----
 
 ### v0.1.0 — Infra & Landing
 **Mars – début avril 2026**
 
-- VPS OVH Ubuntu 24.04, Docker Compose
-- PostgreSQL 16, MinIO, Umami, Netdata, Caddy
-- API Node.js (waitlist)
-- Landing page perform-learn.fr avec countdown + formulaire waitlist segmenté
-- DNS + SSL (Hostinger + Caddy)
-- Schéma PostgreSQL `store` (apps, installations, waitlist)
+- VPS OVH, Docker Compose, PostgreSQL 16, MinIO, Umami, Netdata, Caddy
+- Landing page avec waitlist segmentée
