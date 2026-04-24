@@ -831,3 +831,69 @@ Le tableau `/freelancehub/admin/bookings` permet une analyse multi-critères des
 ### Releases
 
 Voir `ROADMAP.md` → section *Historique des releases* pour le détail complet par version.
+
+---
+
+## 6. Déploiement — Agent DevOps
+
+### Prérequis
+
+- **SSH key-based auth** configuré pour `abdel@37.59.125.159:2222`
+- **.env.local** présent dans `portal/` (pour les tests)
+- Node.js 18+ et npm installés
+
+### Scripts disponibles
+
+| Script | Rôle | Usage |
+|---|---|---|
+| `scripts/tnr.sh` | Tests de Non-Régression (TNR) | `./scripts/tnr.sh` |
+| `scripts/deploy-vps.sh` | Déploiement VPS | `./scripts/deploy-vps.sh [--skip-migrations] [--skip-caddy]` |
+| `scripts/deploy-agent.sh` | Orchestrateur complet (TNR → Deploy) | `./scripts/deploy-agent.sh` |
+
+### Flux de déploiement
+
+```bash
+# 1. Lancer l'agent complet (TNR + Deploy)
+./scripts/deploy-agent.sh
+
+# 2. Si TNR échoue → corriger, puis relancer
+# 3. Si TNR passe → déploiement VPS automatique
+```
+
+### Ce que vérifie le TNR
+
+1. **Build Next.js** — `npm run build` (TypeScript + compilation)
+2. **Tests unitaires** — Vitest (10 tests actuels)
+3. **Lint** — `next lint`
+4. **Routes API** — Comptage des routes `route.ts`
+5. **Migrations SQL** — Présence des fichiers `.sql`
+
+### Ce que fait le déploiement VPS
+
+1. **Git pull** sur `/appli/app-store`
+2. **Rebuild Docker** — `docker compose up -d --build`
+3. **Reload Caddy** — si le Caddyfile a changé
+4. **Vérification migrations** — liste les migrations disponibles (application manuelle recommandée en POC)
+5. **Health checks** — API health + `docker compose ps`
+
+### Post-déploiement
+
+L'agent vérifie automatiquement :
+- `https://api.perform-learn.fr/health`
+- `https://portal.perform-learn.fr`
+
+### Commandes manuelles (fallback)
+
+```bash
+# TNR seul
+./scripts/tnr.sh
+
+# Déploiement VPS seul (skip migrations)
+./scripts/deploy-vps.sh --skip-migrations
+
+# SSH manuel
+ssh -p 2222 abdel@37.59.125.159
+cd /appli/app-store && git pull origin main
+docker compose up -d --build
+docker compose exec caddy caddy reload --config /etc/caddy/Caddyfile
+```
