@@ -1,17 +1,17 @@
 # refacto.md — Analyse technique perform-learn.fr
-*Générée automatiquement le 2026-04-25 · Base : commit 791224e*
+*Générée automatiquement le 2026-04-25 · Base : commit d97ac95*
 
 ---
 
 ## TL;DR
 
-Le codebase affiche **une base solide** (S1-S5 corrigés cette semaine, prepared statements, auth rôle, transactions, anonymat respecté). **2 nouvelles failles critiques** ont été identifiées : le montant de réservation est accepté côté client (`bookings/route.ts`) et une notification fonds libérés cible un mauvais ID. Priorité absolue avant le lancement du 30/04.
+Le codebase affiche **une base solide** (S1-S5 corrigés cette semaine, prepared statements, auth rôle, transactions, anonymat respecté). **2 failles critiques** restent ouvertes : le montant de réservation est accepté côté client (`bookings/route.ts`) et une notification fonds libérés cible un mauvais ID. **Nouveau risque** : le `monthlyCap` des agents IA n'est pas enforce — coût API non plafonné en production. Priorité absolue avant le lancement du 30/04.
 
 ---
 
 ## 1. Sécurité OWASP
 
-### 🔴 CRITIQUE (nouveau)
+### 🔴 CRITIQUE (ouvert)
 
 | # | Fichier | Problème | Recommandation |
 |---|---|---|---|
@@ -32,6 +32,7 @@ Le codebase affiche **une base solide** (S1-S5 corrigés cette semaine, prepared
 
 | # | Fichier | Problème | Recommandation |
 |---|---|---|---|
+| N1 | `lib/freelancehub/agents.ts:346` | **Cap mensuel API IA non enforce** — `estimateCost()` calcule mais ne bloque pas. `monthlyCap` défini pour chaque agent (50c–1,50€) mais jamais vérifié. Spam du chat public = dépassement de budget. | Implémenter `checkBudget(agentId, cost)` avec stockage persistant (KV Vercel ou PostgreSQL) et retourner fallback statique si cap atteint. |
 | S6 | `app/api/freelancehub/client/bookings/[id]/payment-intent/route.ts:72-80` | **Metadata Stripe expose le détail financier** (`amount_ht`, `tva`, `platform_commission`, `consultant_net`). Information commerciale sensible en clair chez Stripe. | Garder uniquement `booking_id` + `amount_ttc` en metadata. |
 | S7 | `middleware.ts:66-73` | Exclusions par `startsWith` — un endpoint `/freelancehub/login-admin` court-circuiterait la protection | Utiliser une whitelist explicite de routes publiques (Set). |
 | S8 | `app/freelancehub/register/page.tsx` | Formulaire d'inscription sans protection CSRF | Ajouter token CSRF dans le formulaire + vérifier dans `register/route.ts`. |
@@ -42,6 +43,8 @@ Le codebase affiche **une base solide** (S1-S5 corrigés cette semaine, prepared
 
 | # | Fichier | Problème | Recommandation |
 |---|---|---|---|
+| N2 | `lib/freelancehub/chat-router.ts:162` | **Regex escalation trop stricte** — `/\{"escalate":true,"subject":"(\w+)"\}/` ne capture que `[A-Za-z0-9_]`. Un sujet comme "problème paiement" ou "bug-agenda" est tronqué ou ignoré. | Remplacer `\w+` par `[^"]+` pour capturer tous les caractères sauf guillemet. |
+| N3 | `lib/freelancehub/chat-router.ts:143-145` | **Catch silencieux sur dispatcher LLM** — échec du classifier = fallback support sans log. Difficile à diagnostiquer. | Ajouter `console.error('[chat-router] dispatcher failed:', err)`. |
 | S10 | `app/api/freelancehub/consultant/slots/route.ts:58` | `Date.parse()` redondant après regex — accepte des formats aberrants | Garder uniquement la regex `/^\d{4}-\d{2}-\d{2}$/`. |
 | S11 | `app/api/freelancehub/support/chat/public/route.ts` | Chat public sans auth — seul le rate limit middleware (20/min) protège. Risque de coût API IA si bypass. | Ajouter un challenge captcha ou token côté client + hard limit quotidienne par IP côté agent. |
 
@@ -57,6 +60,7 @@ Le codebase affiche **une base solide** (S1-S5 corrigés cette semaine, prepared
 | 🟠 | Validation date/heure identique | `slots/route.ts:56`, `slots/bulk/route.ts:35` | Créer `lib/freelancehub/validators.ts` avec `isValidDate()`, `isValidTime()`. |
 | 🟡 | Queries jointure booking+user+consultant | `cron/reminders:36`, `pay/route.ts:86`, `reviews/route.ts:106` | Créer `lib/freelancehub/queries.ts` : `getBookingDetails(id)`. |
 | 🟡 | Logique d'autorisation rôle répétée sur 24 routes | Toutes les routes API | Helper `requireRole(...roles)(handler)` — voir C5. |
+| 🟡 | `T00:00:00` sans Z (timezone local) | `email.ts:35`, `cron/reminders:91`, `BookingModal.tsx`, 8 composants/pages | Remplacer par `T00:00:00Z` + `toLocaleDateString` côté client. Voir ROADMAP C5. |
 
 ### Couplage fort
 
@@ -80,7 +84,7 @@ Le codebase affiche **une base solide** (S1-S5 corrigés cette semaine, prepared
 |---|---|---|
 | `lib/freelancehub/email.ts` | 385 | Scinder `email-handlers.ts` + `email-templates.ts` (C5) |
 | `components/freelancehub/client/BookingModal.tsx` | 498 | Extraire `<SlotPicker>`, `<PriceSummary>` (C6) |
-| `lib/freelancehub/agents.ts` | 219 | `agents/config.ts` + `agents/prompts/*.ts` (C5) |
+| `lib/freelancehub/agents.ts` | 356 | `agents/config.ts` + `agents/prompts/*.ts` (C5) |
 | `components/freelancehub/client/SearchClient.tsx` | 398 | Extraire `<SearchForm>` (C6) |
 
 ### Gestion d'erreurs incomplète
@@ -105,8 +109,9 @@ Le codebase affiche **une base solide** (S1-S5 corrigés cette semaine, prepared
 | `computePricing()` | 🟡 testé via copie locale | 🟠 |
 | Rate limiting middleware | ❌ zéro test | 🟠 |
 | Webhook idempotence | ❌ zéro test | 🟠 |
+| Chat router (keyword + dispatcher) | ❌ zéro test | 🟠 |
 
-Vitest est installé — setup en place. Ajouter au moins `computePricing` (depuis `matching.ts`), `findMatches` (mock DB), et un test webhook idempotence avant C5.
+Vitest est installé — setup en place. Ajouter au moins `computePricing` (depuis `matching.ts`), `findMatches` (mock DB), `routeMessage` (mock agents), et un test webhook idempotence avant C5.
 
 ### Séparation des responsabilités
 
@@ -142,6 +147,8 @@ export const PRICING = {
 - **Validation de signature Stripe** : `stripe.webhooks.constructEvent()` en place + idempotence DB (S5 fixé)
 - **Rate limiting basique** : in-memory Edge sur auth, payment, chat (S1 fixé — à renforcer en C5)
 - **Headers sécurité HTTP** : `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy` dans `next.config.mjs`
+- **Multi-agents chat** : router hybride (keywords + LLM dispatcher) opérationnel, context persistence, 4 agents spécialisés + fallback
+- **DevOps automatisé** : TNR + déploiement VPS orchestrés via `scripts/deploy-agent.sh`, build/test/lint/migrations vérifiés avant push
 
 ---
 
@@ -151,21 +158,24 @@ export const PRICING = {
 
 1. **[C1] Fix montant client trusté** — calculer `amount_ht` depuis `consultants.daily_rate` dans `bookings/route.ts`, ignorer champs financiers client · 2h
 2. **[C2] Fix notification fonds libérés** — utiliser `consultant_user_id` au lieu de `consultant_id` dans `reviews/route.ts` · 15 min
-3. **[S6] Réduire metadata Stripe** — ne garder que `booking_id` + `amount_ttc` · 30 min
-4. **[S10] Nettoyer validation date** — supprimer `Date.parse()` redondant · 15 min
-5. **[S9] Logger erreurs email** — remplacer `.catch(() => null)` par `.catch(e => console.error)` · 30 min
+3. **[N1] Enforcer monthlyCap agents IA** — stocker consommation mensuelle en DB/KV et fallback statique si cap atteint · 2h
+4. **[S6] Réduire metadata Stripe** — ne garder que `booking_id` + `amount_ttc` · 30 min
+5. **[S10] Nettoyer validation date** — supprimer `Date.parse()` redondant · 15 min
+6. **[S9] Logger erreurs email** — remplacer `.catch(() => null)` par `.catch(e => console.error)` · 30 min
 
 ### C5 Mai-Juin 2026
 
-6. **[S1] Rate limiting persistant** — Upstash Redis ou KV Vercel sur auth + payment-intent · 3h
-7. **[S8] CSRF** — token dans formulaire register + vérification route · demi-journée
-8. **[validators.ts]** — centraliser validation date/heure · 1h
-9. **[queries.ts]** — extraire `getBookingDetails()`, `getConsultantProfile()` · 2h
-10. **[Tests Vitest]** — computePricing + findMatches + webhook idempotence · 3h
-11. **[Service layer]** — `services/booking-service.ts` (confirmPayment, releaseEscrow) · 4h
+7. **[S1] Rate limiting persistant** — Upstash Redis ou KV Vercel sur auth + payment-intent · 3h
+8. **[S8] CSRF** — token dans formulaire register + vérification route · demi-journée
+9. **[validators.ts]** — centraliser validation date/heure · 1h
+10. **[queries.ts]** — extraire `getBookingDetails()`, `getConsultantProfile()` · 2h
+11. **[Tests Vitest]** — computePricing + findMatches + webhook idempotence + chat router · 4h
+12. **[Service layer]** — `services/booking-service.ts` (confirmPayment, releaseEscrow) · 4h
+13. **[pricing.ts]** — centraliser `computePricing()` + `fmtEur()` · 1h
 
 ### C6 Juillet+ 2026
 
-12. **Abstraction PSP** — interface PaymentProcessor
-13. **Découpage composants** — BookingModal, SearchClient (déjà planifié C6)
-14. **Agents prompts** — scinder `agents.ts` en `agents/config.ts` + `agents/prompts/*.ts`
+14. **Abstraction PSP** — interface PaymentProcessor
+15. **Découpage composants** — BookingModal, SearchClient (déjà planifié C6)
+16. **Agents prompts** — scinder `agents.ts` en `agents/config.ts` + `agents/prompts/*.ts`
+17. **Timezone dates** — remplacer `T00:00:00` par `T00:00:00Z` partout
