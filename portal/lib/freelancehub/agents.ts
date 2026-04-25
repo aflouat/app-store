@@ -70,6 +70,13 @@ R: Paiement sécurisé via Stripe. Les fonds sont placés en séquestre et libé
 Q: Comment les consultants sont-ils sélectionnés ?
 R: Algorithme 4 critères : compétences, budget, disponibilité, note moyenne. Top 5 consultants affichés anonymement.
 
+**NDA / Confidentialité**
+Q: Y a-t-il un NDA pour protéger mes informations ?
+R: Oui. Tous les consultants FreelanceHub signent un Accord de Non-Divulgation (NDA) électronique avant leur première mission. Ce NDA est horodaté et juridiquement valable (art. 1366 Code civil). Il couvre : non-divulgation pendant 3 ans, non-sollicitation pendant 12 mois après la mission, et les livrables restent propriété du client.
+
+Q: En tant que consultant, dois-je signer quelque chose ?
+R: Oui, un NDA (Accord de Non-Divulgation) est obligatoire avant votre première mission. La signature se fait par checkbox horodatée depuis votre espace consultant (/freelancehub/consultant/nda). Valeur légale garantie par l'art. 1366 du Code civil.
+
 ## Règles de comportement
 
 - Réponds toujours en français, de façon concise et bienveillante
@@ -146,6 +153,16 @@ R: Rechargez la page. Navigateur récent requis (Chrome, Firefox, Safari). Désa
 Q: Comment êtes-vous sélectionnés dans les résultats ?
 R: Algorithme 4 critères : compétences, budget, disponibilité, note moyenne. Top 5 consultants affichés anonymement.
 
+**NDA / Confidentialité**
+Q: Y a-t-il un NDA sur la plateforme ?
+R: Oui. Tous les consultants signent un Accord de Non-Divulgation (NDA) électronique avant leur première mission. Horodaté et juridiquement valable (art. 1366 Code civil). Non-divulgation 3 ans, non-sollicitation 12 mois, livrables propriété du client.
+
+Q: Mon NDA est-il signé ?
+R: Vérifiez depuis votre espace consultant → menu NDA. Si ce n'est pas fait, vous devez le signer avant d'accéder à vos réservations.
+
+Q: Que couvre le NDA ?
+R: 1) Non-divulgation des informations client pendant 3 ans. 2) Non-sollicitation des clients FreelanceHub pendant 12 mois après la mission. 3) Les livrables créés dans le cadre de la mission restent propriété du client. 4) Sanctions : suspension de compte + dommages et intérêts en cas de manquement.
+
 ## Règles de comportement
 
 - Réponds toujours en français, de façon concise et bienveillante
@@ -181,6 +198,15 @@ const ONBOARDING_SYSTEM_PROMPT = `Tu es l'agent onboarding de FreelanceHub. Tu a
 - URSSAF : attestation de vigilance ou attestation de régularité fiscale
 - Délai : 48h ouvrées après soumission
 - Sans KYC validé : le consultant ne peut pas recevoir de réservations
+
+## NDA (Accord de Non-Divulgation)
+- Obligatoire avant la première mission, signature via /freelancehub/consultant/nda
+- Signature électronique par checkbox horodatée — valeur légale (art. 1366 Code civil)
+- Ce que couvre le NDA :
+  - Non-divulgation des informations confidentielles du client : **3 ans**
+  - Non-sollicitation des clients FreelanceHub en dehors de la plateforme : **12 mois** après la mission
+  - Livrables produits pendant la mission : **propriété du client**
+  - Sanction en cas de manquement : suspension du compte + dommages et intérêts
 
 ## Règles
 - Réponds en français, concise et encourageante
