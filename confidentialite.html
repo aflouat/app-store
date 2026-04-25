@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Politique de confidentialité — Perform-Learn.fr</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;0,700;0,900;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --c1: #B9958D;
+  --c1-light: #cca89f;
+  --c1-pale: #ecddd9;
+  --c2: #AAB1AF;
+  --c3: #96AEAA;
+  --c3-pale: #d8e5e3;
+  --c4: #A3AB9A;
+  --dark: #22201e;
+  --text: #2e2c2a;
+  --text-mid: #5c5956;
+  --text-light: #968e89;
+  --bg: #f7f5f3;
+  --white: #ffffff;
+  --border: #e2deda;
+  --radius: 12px;
+  --radius-sm: 8px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  color: var(--text);
+  background: var(--bg);
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+}
+
+.page-header {
+  background: var(--white);
+  border-bottom: 1px solid var(--border);
+  padding: 1.2rem 2rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  text-decoration: none;
+  color: inherit;
+}
+
+.logo-mark {
+  width: 32px; height: 32px;
+  background: var(--c1);
+  color: #fff;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: .8rem; letter-spacing: .05em;
+  flex-shrink: 0;
+}
+
+.logo-text {
+  font-family: 'Fraunces', serif;
+  font-weight: 700; font-size: 1.05rem;
+  color: var(--dark);
+}
+
+.page-header nav {
+  margin-left: auto;
+  display: flex;
+  gap: 1.5rem;
+}
+
+.page-header nav a {
+  font-size: .85rem;
+  color: var(--text-mid);
+  text-decoration: none;
+}
+
+.page-header nav a:hover { color: var(--c1); }
+
+.container {
+  max-width: 780px;
+  margin: 3rem auto;
+  padding: 0 1.5rem 4rem;
+}
+
+.doc-title {
+  font-family: 'Fraunces', serif;
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--dark);
+  margin-bottom: .4rem;
+}
+
+.doc-meta {
+  font-size: .85rem;
+  color: var(--text-light);
+  margin-bottom: 2.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.toc {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.2rem 1.5rem;
+  margin-bottom: 2.5rem;
+}
+
+.toc-title {
+  font-size: .8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--text-light);
+  margin-bottom: .75rem;
+}
+
+.toc ol {
+  padding-left: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: .3rem;
+}
+
+.toc a {
+  font-size: .88rem;
+  color: var(--c1);
+  text-decoration: none;
+}
+
+.toc a:hover { text-decoration: underline; }
+
+h2 {
+  font-family: 'Fraunces', serif;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--dark);
+  margin: 2.5rem 0 .75rem;
+  padding-top: .5rem;
+}
+
+h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
+  margin: 1.5rem 0 .5rem;
+}
+
+p {
+  margin-bottom: .9rem;
+  color: var(--text);
+}
+
+ul, ol {
+  padding-left: 1.4rem;
+  margin-bottom: .9rem;
+}
+
+li {
+  margin-bottom: .4rem;
+  color: var(--text);
+}
+
+.highlight-box {
+  background: var(--c1-pale);
+  border-left: 3px solid var(--c1);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  padding: .9rem 1.1rem;
+  margin: 1.2rem 0;
+}
+
+.highlight-box p { margin: 0; font-size: .9rem; }
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0 1.2rem;
+  font-size: .88rem;
+}
+
+th {
+  text-align: left;
+  background: var(--bg);
+  padding: .6rem .9rem;
+  font-weight: 600;
+  border-bottom: 2px solid var(--border);
+  color: var(--text);
+}
+
+td {
+  padding: .6rem .9rem;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-mid);
+  vertical-align: top;
+}
+
+tr:last-child td { border-bottom: none; }
+
+a { color: var(--c1); }
+
+.page-footer {
+  background: var(--white);
+  border-top: 1px solid var(--border);
+  text-align: center;
+  padding: 1.5rem 2rem;
+  font-size: .82rem;
+  color: var(--text-light);
+}
+
+.page-footer a { color: var(--c1); text-decoration: none; }
+.page-footer a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<header class="page-header">
+  <a href="/" class="brand">
+    <span class="logo-mark">PL</span>
+    <span class="logo-text">Perform-Learn.fr</span>
+  </a>
+  <nav>
+    <a href="/cgu.html">CGU</a>
+    <a href="/confidentialite.html">Confidentialité</a>
+  </nav>
+</header>
+
+<div class="container">
+
+  <h1 class="doc-title">Politique de confidentialité</h1>
+  <p class="doc-meta">Dernière mise à jour : 25 avril 2026 · Applicable à FreelanceHub et perform-learn.fr</p>
+
+  <div class="toc">
+    <p class="toc-title">Sommaire</p>
+    <ol>
+      <li><a href="#responsable">Responsable du traitement</a></li>
+      <li><a href="#donnees">Données collectées</a></li>
+      <li><a href="#finalites">Finalités et bases légales</a></li>
+      <li><a href="#conservation">Durée de conservation</a></li>
+      <li><a href="#partage">Partage des données</a></li>
+      <li><a href="#transferts">Transferts hors UE</a></li>
+      <li><a href="#droits">Vos droits</a></li>
+      <li><a href="#cookies">Cookies et traceurs</a></li>
+      <li><a href="#securite">Sécurité</a></li>
+      <li><a href="#contact">Contact</a></li>
+    </ol>
+  </div>
+
+  <div class="highlight-box">
+    <p><strong>En bref :</strong> Perform-Learn.fr collecte uniquement les données nécessaires au fonctionnement de la marketplace. L'anonymat des consultants est préservé jusqu'à la confirmation du paiement. Vos données ne sont jamais vendues à des tiers.</p>
+  </div>
+
+  <h2 id="responsable">1. Responsable du traitement</h2>
+  <p>Le responsable du traitement des données personnelles collectées via perform-learn.fr et la plateforme FreelanceHub est :</p>
+  <ul>
+    <li><strong>Dénomination :</strong> Perform-Learn (entreprise individuelle)</li>
+    <li><strong>Adresse :</strong> France</li>
+    <li><strong>Contact :</strong> <a href="mailto:contact@perform-learn.fr">contact@perform-learn.fr</a></li>
+  </ul>
+
+  <h2 id="donnees">2. Données collectées</h2>
+
+  <h3>2.1 Données d'inscription</h3>
+  <ul>
+    <li>Adresse e-mail, nom et prénom</li>
+    <li>Rôle sur la plateforme (client ou consultant)</li>
+    <li>Mot de passe (stocké sous forme de hash bcrypt — jamais en clair)</li>
+    <li>Photo de profil (optionnelle, stockée sur serveur privé MinIO)</li>
+  </ul>
+
+  <h3>2.2 Connexion via Google (OAuth)</h3>
+  <p>Si vous choisissez de vous connecter avec Google, nous recevons de Google uniquement :</p>
+  <ul>
+    <li>Votre adresse e-mail associée au compte Google</li>
+    <li>Votre nom d'affichage</li>
+    <li>Votre photo de profil Google (optionnelle)</li>
+    <li>Un identifiant technique unique Google (sub)</li>
+  </ul>
+  <p>Nous ne recevons ni n'accédons à votre mot de passe Google, ni à vos contacts, ni à votre calendrier.</p>
+
+  <h3>2.3 Profil consultant</h3>
+  <ul>
+    <li>Titre, biographie professionnelle, tarif journalier</li>
+    <li>Compétences déclarées, années d'expérience, localisation</li>
+    <li>URL LinkedIn et YouTube (optionnelles)</li>
+    <li>Documents KYC (pièce d'identité, RIB) pour l'activation des paiements Stripe Connect</li>
+  </ul>
+
+  <h3>2.4 Données transactionnelles</h3>
+  <ul>
+    <li>Réservations : créneau, statut, montant</li>
+    <li>Paiements : référence Stripe, statut (en séquestre / capturé / transféré)</li>
+    <li>Évaluations mutuelles après prestation</li>
+  </ul>
+
+  <h3>2.5 Données techniques</h3>
+  <ul>
+    <li>Logs d'accès (adresse IP, user-agent) conservés par le serveur Caddy</li>
+    <li>Données d'analytics anonymisées via Umami (auto-hébergé, sans cookie tiers)</li>
+  </ul>
+
+  <h2 id="finalites">3. Finalités et bases légales</h2>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Finalité</th>
+        <th>Base légale (RGPD)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Création et gestion du compte utilisateur</td>
+        <td>Exécution du contrat (Art. 6.1.b)</td>
+      </tr>
+      <tr>
+        <td>Authentification (email/mot de passe ou Google OAuth)</td>
+        <td>Exécution du contrat (Art. 6.1.b)</td>
+      </tr>
+      <tr>
+        <td>Matching algorithmique entre clients et consultants</td>
+        <td>Exécution du contrat (Art. 6.1.b)</td>
+      </tr>
+      <tr>
+        <td>Traitement des paiements en séquestre via Stripe</td>
+        <td>Exécution du contrat + obligation légale (Art. 6.1.b et 6.1.c)</td>
+      </tr>
+      <tr>
+        <td>Envoi de notifications transactionnelles (e-mail)</td>
+        <td>Exécution du contrat (Art. 6.1.b)</td>
+      </tr>
+      <tr>
+        <td>Statistiques d'utilisation anonymisées</td>
+        <td>Intérêt légitime (Art. 6.1.f)</td>
+      </tr>
+      <tr>
+        <td>Vérification d'identité KYC (consultants)</td>
+        <td>Obligation légale (Art. 6.1.c)</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 id="conservation">4. Durée de conservation</h2>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Catégorie</th>
+        <th>Durée</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Données de compte actif</td>
+        <td>Durée de la relation contractuelle + 3 ans</td>
+      </tr>
+      <tr>
+        <td>Données de compte supprimé</td>
+        <td>30 jours (suppression définitive), sauf obligation légale</td>
+      </tr>
+      <tr>
+        <td>Données de facturation / paiements</td>
+        <td>10 ans (obligation comptable)</td>
+      </tr>
+      <tr>
+        <td>Logs d'accès techniques</td>
+        <td>12 mois</td>
+      </tr>
+      <tr>
+        <td>Documents KYC</td>
+        <td>5 ans après fin de la relation (LCB-FT)</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 id="partage">5. Partage des données</h2>
+  <p>Vos données sont partagées uniquement avec les sous-traitants strictement nécessaires :</p>
+  <ul>
+    <li><strong>Stripe</strong> (paiements) — <a href="https://stripe.com/fr/privacy" target="_blank" rel="noopener">politique de confidentialité Stripe</a></li>
+    <li><strong>Resend</strong> (envoi d'e-mails transactionnels) — données : adresse e-mail uniquement</li>
+    <li><strong>Vercel</strong> (hébergement du portail Next.js) — aucune donnée applicative stockée chez Vercel</li>
+    <li><strong>Google</strong> (authentification OAuth, si utilisée) — <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">politique Google</a></li>
+  </ul>
+  <p>Les données ne sont jamais vendues, louées ou cédées à des tiers à des fins commerciales.</p>
+
+  <h3>Anonymat jusqu'au paiement</h3>
+  <p>L'identité complète d'un consultant (nom, e-mail, profil LinkedIn) n'est révélée au client qu'après confirmation du paiement. Avant cela, seuls le titre, les compétences et le tarif sont visibles.</p>
+
+  <h2 id="transferts">6. Transferts hors Union européenne</h2>
+  <p>Les données principales sont hébergées sur un VPS OVH localisé en France. Les transferts hors UE concernent uniquement :</p>
+  <ul>
+    <li><strong>Stripe</strong> : encadrés par les Clauses Contractuelles Types (CCT) de la Commission européenne</li>
+    <li><strong>Google OAuth</strong> : encadrés par le Data Privacy Framework UE-États-Unis et les CCT</li>
+    <li><strong>Vercel</strong> : encadrés par les CCT ; les données d'accès réseau passent par les CDN Vercel</li>
+  </ul>
+
+  <h2 id="droits">7. Vos droits</h2>
+  <p>Conformément au RGPD (articles 15 à 22), vous disposez des droits suivants :</p>
+  <ul>
+    <li><strong>Accès</strong> : obtenir une copie de vos données personnelles</li>
+    <li><strong>Rectification</strong> : corriger des données inexactes</li>
+    <li><strong>Effacement</strong> : demander la suppression de votre compte et de vos données</li>
+    <li><strong>Opposition</strong> : vous opposer à certains traitements fondés sur l'intérêt légitime</li>
+    <li><strong>Limitation</strong> : restreindre temporairement un traitement</li>
+    <li><strong>Portabilité</strong> : recevoir vos données dans un format structuré</li>
+  </ul>
+  <p>Pour exercer vos droits, contactez : <a href="mailto:privacy@perform-learn.fr">privacy@perform-learn.fr</a></p>
+  <p>En cas de réclamation non résolue, vous pouvez saisir la <strong>CNIL</strong> : <a href="https://www.cnil.fr" target="_blank" rel="noopener">www.cnil.fr</a></p>
+
+  <h2 id="cookies">8. Cookies et traceurs</h2>
+  <p>La landing page perform-learn.fr utilise <strong>Umami</strong>, un outil d'analytics auto-hébergé, sans dépôt de cookie tiers. Aucun cookie publicitaire n'est utilisé.</p>
+  <p>Le portail FreelanceHub utilise un cookie de session (<code>next-auth.session-token</code>) strictement nécessaire à l'authentification. Ce cookie n'est pas utilisé à des fins publicitaires.</p>
+
+  <h2 id="securite">9. Sécurité</h2>
+  <ul>
+    <li>Toutes les communications sont chiffrées via HTTPS (TLS 1.2+)</li>
+    <li>Les mots de passe sont hachés avec bcrypt (facteur de coût 12)</li>
+    <li>Les données bancaires ne transitent pas par nos serveurs (traitement Stripe)</li>
+    <li>L'accès à la base de données est restreint par IP et authentification</li>
+    <li>Le monitoring de sécurité est assuré via Netdata</li>
+  </ul>
+
+  <h2 id="contact">10. Contact</h2>
+  <p>Pour toute question relative à vos données personnelles :</p>
+  <ul>
+    <li>E-mail : <a href="mailto:privacy@perform-learn.fr">privacy@perform-learn.fr</a></li>
+    <li>Formulaire : via le portail FreelanceHub, rubrique Support</li>
+  </ul>
+  <p>Nous nous engageons à répondre dans un délai de <strong>30 jours</strong>.</p>
+
+</div>
+
+<footer class="page-footer">
+  <p>© 2026 Perform-Learn.fr · <a href="/cgu.html">CGU</a> · <a href="/confidentialite.html">Confidentialité</a> · <a href="mailto:contact@perform-learn.fr">Contact</a></p>
+</footer>
+
+</body>
+</html>

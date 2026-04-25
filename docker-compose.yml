@@ -20,6 +20,8 @@ services:
       - caddy_data:/data
       - caddy_config:/config
       - ./landing.html:/srv/index.html:ro
+      - ./cgu.html:/srv/cgu.html:ro
+      - ./confidentialite.html:/srv/confidentialite.html:ro
 
     networks:
       - app-network

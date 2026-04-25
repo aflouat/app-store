@@ -22,3 +22,7 @@ perform-learn.fr {
 	root * /srv
 	file_server
 }
+
+www.perform-learn.fr {
+	redir https://perform-learn.fr{uri} permanent
+}
