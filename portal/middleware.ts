@@ -19,7 +19,7 @@ const RL_MAP = new Map<string, RateEntry>()
 const RL_RULES: Array<{ pattern: RegExp; limit: number; windowMs: number }> = [
   { pattern: /^\/api\/freelancehub\/auth\//,                           limit: 10,  windowMs: 15 * 60 * 1000 },
   { pattern: /\/payment-intent$/,                                      limit:  5,  windowMs:  5 * 60 * 1000 },
-  { pattern: /^\/api\/freelancehub\/support\/chat\/(public|route)$/,   limit: 20,  windowMs:  1 * 60 * 1000 },
+  { pattern: /^\/api\/freelancehub\/support\/chat\/public$/,            limit: 20,  windowMs:  1 * 60 * 1000 },
 ]
 
 function checkRateLimit(ip: string, pathname: string): boolean {

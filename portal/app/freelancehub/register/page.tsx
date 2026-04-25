@@ -3,6 +3,7 @@
 import { useState, FormEvent } from 'react'
 import { signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
+import ChatWidget from '@/components/freelancehub/ChatWidget'
 
 type Role = 'consultant' | 'client' | null
 
@@ -179,6 +180,7 @@ export default function RegisterPage() {
         </p>
       </div>
 
+      <ChatWidget />
       <style>{`
         .reg-page { min-height: 100vh; background: var(--bg); display: flex; align-items: flex-start; justify-content: center; padding: 2.5rem 1rem 4rem; }
         .reg-inner { width: 100%; max-width: 780px; display: flex; flex-direction: column; gap: 1.8rem; }
