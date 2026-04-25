@@ -264,81 +264,80 @@ Règles :
 - Exemple : "je cherche un consultant data" → matching
 - Exemple : "bug paiement" → support
 - Exemple : "prix plateforme" → sales`
-// Coûts Gemini : gemini-2.0-flash ~0.10$/1M input, ~0.40$/1M output (≈0.09€/0.37€)
-// Coûts Anthropic : haiku-4-5 ~0.80$/1M input, ~4$/1M output
-// Coûts OpenAI   : gpt-4o-mini ~0.15$/1M input, ~0.60$/1M output
+// Coûts Claude Haiku 4.5 : ~0.80$/1M input, ~4$/1M output (≈0.73€/3.67€)
+// Coûts Gemini Flash 2.0 : ~0.10$/1M input, ~0.40$/1M output (≈0.09€/0.37€)
 
 export const AGENTS: Record<string, AgentConfig> = {
   support: {
     id:              'support',
     label:           'Agent Support',
-    provider:        'gemini',
-    model:           'gemini-2.0-flash',
+    provider:        'anthropic',
+    model:           'claude-haiku-4-5-20251001',
     maxTokens:       512,
     systemPrompt:    SUPPORT_SYSTEM_PROMPT,
-    costPer1MInput:  9,    // ~0.09€ par million de tokens input
-    costPer1MOutput: 37,   // ~0.37€ par million de tokens output
-    monthlyCap:      150,  // 1.50€/mois max pour cet agent
+    costPer1MInput:  73,   // ~0.73€ par million de tokens input
+    costPer1MOutput: 367,  // ~3.67€ par million de tokens output
+    monthlyCap:      300,  // 3€/mois max pour cet agent
   },
 
   supportPublic: {
     id:              'supportPublic',
     label:           'Agent Support Public',
-    provider:        'gemini',
-    model:           'gemini-2.0-flash',
+    provider:        'anthropic',
+    model:           'claude-haiku-4-5-20251001',
     maxTokens:       400,
     systemPrompt:    SUPPORT_PUBLIC_SYSTEM_PROMPT,
-    costPer1MInput:  9,
-    costPer1MOutput: 37,
-    monthlyCap:      100,  // 1.00€/mois max pour cet agent
+    costPer1MInput:  73,
+    costPer1MOutput: 367,
+    monthlyCap:      200,  // 2€/mois max pour cet agent
   },
 
   onboarding: {
     id:              'onboarding',
     label:           'Agent Onboarding',
-    provider:        'gemini',
-    model:           'gemini-2.0-flash',
+    provider:        'anthropic',
+    model:           'claude-haiku-4-5-20251001',
     maxTokens:       512,
     systemPrompt:    ONBOARDING_SYSTEM_PROMPT,
-    costPer1MInput:  9,
-    costPer1MOutput: 37,
-    monthlyCap:      100,
+    costPer1MInput:  73,
+    costPer1MOutput: 367,
+    monthlyCap:      200,
   },
 
   matching: {
     id:              'matching',
     label:           'Agent Matching',
-    provider:        'gemini',
-    model:           'gemini-2.0-flash',
+    provider:        'anthropic',
+    model:           'claude-haiku-4-5-20251001',
     maxTokens:       512,
     systemPrompt:    MATCHING_SYSTEM_PROMPT,
-    costPer1MInput:  9,
-    costPer1MOutput: 37,
-    monthlyCap:      100,
+    costPer1MInput:  73,
+    costPer1MOutput: 367,
+    monthlyCap:      200,
   },
 
   sales: {
     id:              'sales',
     label:           'Agent Commercial',
-    provider:        'gemini',
-    model:           'gemini-2.0-flash',
+    provider:        'anthropic',
+    model:           'claude-haiku-4-5-20251001',
     maxTokens:       512,
     systemPrompt:    SALES_SYSTEM_PROMPT,
-    costPer1MInput:  9,
-    costPer1MOutput: 37,
-    monthlyCap:      100,
+    costPer1MInput:  73,
+    costPer1MOutput: 367,
+    monthlyCap:      200,
   },
 
   dispatcher: {
     id:              'dispatcher',
     label:           'Dispatcher',
-    provider:        'gemini',
-    model:           'gemini-2.0-flash',
+    provider:        'anthropic',
+    model:           'claude-haiku-4-5-20251001',
     maxTokens:       32,
     systemPrompt:    DISPATCHER_SYSTEM_PROMPT,
-    costPer1MInput:  9,
-    costPer1MOutput: 37,
-    monthlyCap:      50,
+    costPer1MInput:  73,
+    costPer1MOutput: 367,
+    monthlyCap:      100,
   },
 }
 
