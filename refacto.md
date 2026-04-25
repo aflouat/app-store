@@ -39,7 +39,17 @@ Le codebase affiche **une base solide** (S1-S5 corrigés cette semaine, prepared
 | S9 | `lib/freelancehub/email.ts` | `.catch(() => null)` silencieux sur 3 emails critiques (welcome, KYC validé/rejeté). Échec invisible en production. | Logger au minimum `console.error` avant le catch silencieux. |
 | C3 | `middleware.ts:15-63` | Rate limiting in-memory non persistant. Un attaquant distribué ou un cold start Vercel réinitialise les compteurs. | Migrer vers Upstash Redis ou KV Vercel en C5. |
 
-### 🟡 MINEUR
+### 🟡 MINEUR — Nouvelles failles (code activation funnel + RGPD)
+
+| # | Fichier | Problème | Recommandation |
+|---|---|---|---|
+| S12 | `app/api/freelancehub/admin/kyc-presign/route.ts:38` | **Path traversal S3** — clé MinIO extraite de `docUrl` fourni en query param sans validation. Une URL forgée peut pointer hors du bucket KYC. | Valider : `if (!key.startsWith('kyc/') \|\| key.includes('..')) return 400` |
+| S13 | `app/api/webhooks/stripe/route.ts:78-80` | **Remboursements non gérés** — handler `charge.refunded` log only, aucune mise à jour DB ni notification client. | `UPDATE payments SET status='refunded'` + notification client dans le handler. |
+| S14 | `app/api/freelancehub/user/me/route.ts:36-44` | **RGPD delete partiel** — soft delete anonymise `users` mais laisse les données dans `reviews.comment`, `consultant_skills`, `slots` futurs. | Anonymiser `reviews.comment` + supprimer `slots` futurs dans la même transaction. |
+| S15 | `app/api/freelancehub/user/me/route.ts:37` | **`password_hash = ''`** — chaîne vide, pas un hash. Si une logique teste `password_hash !== ''` pour autoriser une connexion, cela devient un bypass. | `encode(gen_random_bytes(32), 'hex')` ou valeur fixe non déchiffrable. |
+| S16 | `app/api/freelancehub/admin/export-csv/route.ts:9-16` | **CSV formula injection** — `esc()` protège virgules/guillemets mais pas les formules Excel (`=`, `+`, `@`, `-`). Un nom de consultant/client malveillant exécute une formule à l'ouverture du CSV. | Préfixer les valeurs commençant par `=+-@` d'une apostrophe dans `esc()`. |
+
+### 🟡 MINEUR — Persistants
 
 | # | Fichier | Problème | Recommandation |
 |---|---|---|---|
@@ -160,8 +170,11 @@ export const PRICING = {
 2. **[C2] Fix notification fonds libérés** — utiliser `consultant_user_id` au lieu de `consultant_id` dans `reviews/route.ts` · 15 min
 3. **[N1] Enforcer monthlyCap agents IA** — stocker consommation mensuelle en DB/KV et fallback statique si cap atteint · 2h
 4. **[S6] Réduire metadata Stripe** — ne garder que `booking_id` + `amount_ttc` · 30 min
-5. **[S10] Nettoyer validation date** — supprimer `Date.parse()` redondant · 15 min
-6. **[S9] Logger erreurs email** — remplacer `.catch(() => null)` par `.catch(e => console.error)` · 30 min
+5. **[S12] Valider clé S3 presign** — `key.startsWith('kyc/')` + `!key.includes('..')` · 15 min
+6. **[S13] Implémenter charge.refunded** — update payment status + notification client · 1h
+7. **[S16] CSV formula injection** — préfixer `=+-@` dans `esc()` · 15 min
+8. **[S10] Nettoyer validation date** — supprimer `Date.parse()` redondant · 15 min
+9. **[S9] Logger erreurs email** — remplacer `.catch(() => null)` par `.catch(e => console.error)` · 30 min
 
 ### C5 Mai-Juin 2026
 
