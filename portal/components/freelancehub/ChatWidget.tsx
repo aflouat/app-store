@@ -56,17 +56,29 @@ const AGENT_META: Record<AgentId, { label: string; color: string; chips: string[
   },
 }
 
+const QUALIFY_PITCH: Record<'client' | 'consultant', string> = {
+  client:     "Parfait ! FreelanceHub connecte les entreprises avec des consultants experts vérifiés (ERP, Data, Finance, Tech, Management). Consultation à l'heure, paiement sécurisé par séquestre, identité révélée après paiement. Pas d'engagement. Quelle est votre question ?",
+  consultant: "Excellent ! Sur FreelanceHub, vous fixez votre tarif horaire, gérez votre agenda et recevez des missions automatiquement. Commission 15% seulement (10% pour les 20 premiers fondateurs). Quelle est votre question ?",
+}
+
 export default function ChatWidget({ userEmail = '', isAuthenticated = false }: Props) {
-  const [open,      setOpen]      = useState(false)
-  const [msgs,      setMsgs]      = useState<Message[]>([])
-  const [input,     setInput]     = useState('')
-  const [loading,   setLoading]   = useState(false)
-  const [escalated, setEscalated] = useState(false)
+  const [open,         setOpen]         = useState(false)
+  const [msgs,         setMsgs]         = useState<Message[]>([])
+  const [input,        setInput]        = useState('')
+  const [loading,      setLoading]      = useState(false)
+  const [escalated,    setEscalated]    = useState(false)
+  const [limitReached, setLimitReached] = useState(false)
+  const [stage,        setStage]        = useState<'qualify' | 'chat'>(isAuthenticated ? 'chat' : 'qualify')
   const [currentAgent, setCurrentAgent] = useState<AgentId>('supportPublic')
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef  = useRef<HTMLTextAreaElement>(null)
 
   const meta = AGENT_META[currentAgent]
+
+  function handleQualify(type: 'client' | 'consultant') {
+    setStage('chat')
+    setMsgs([{ role: 'assistant', content: QUALIFY_PITCH[type] }])
+  }
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -96,6 +108,11 @@ export default function ChatWidget({ userEmail = '', isAuthenticated = false }: 
         body:    JSON.stringify({ messages: next, currentAgent }),
       })
       const data = await res.json()
+      if (data.limitReached) {
+        setLimitReached(true)
+        setMsgs(prev => [...prev, { role: 'assistant', content: 'Vous avez utilisé vos 2 messages gratuits cette semaine. Créez un compte pour continuer sans limite ou contactez notre support.' }])
+        return
+      }
       setMsgs(prev => [...prev, { role: 'assistant', content: data.message ?? 'Erreur inattendue.' }])
       if (data.agentId) setCurrentAgent(data.agentId)
       if (data.escalate) setEscalated(true)
@@ -109,7 +126,9 @@ export default function ChatWidget({ userEmail = '', isAuthenticated = false }: 
   function reset() {
     setMsgs([])
     setEscalated(false)
+    setLimitReached(false)
     setCurrentAgent('supportPublic')
+    if (!isAuthenticated) setStage('qualify')
   }
 
   function onKey(e: React.KeyboardEvent) {
@@ -157,8 +176,20 @@ export default function ChatWidget({ userEmail = '', isAuthenticated = false }: 
             {/* Message de bienvenue */}
             <div className="cw-msg cw-msg-bot">
               <div className="cw-bubble cw-bubble-bot">
-                Bonjour ! Je suis {meta.label}. Comment puis-je vous aider ?
-                {msgs.length === 0 && (
+                {!isAuthenticated && stage === 'qualify'
+                  ? 'Bonjour ! Pour mieux vous aider, dites-moi…'
+                  : `Bonjour ! Je suis ${meta.label}. Comment puis-je vous aider ?`}
+                {!isAuthenticated && stage === 'qualify' && (
+                  <div className="cw-chips cw-qualify">
+                    <button className="cw-chip" onClick={() => handleQualify('client')}>
+                      🏢 Je cherche un expert freelance
+                    </button>
+                    <button className="cw-chip" onClick={() => handleQualify('consultant')}>
+                      💼 Je suis consultant freelance
+                    </button>
+                  </div>
+                )}
+                {(isAuthenticated || stage === 'chat') && msgs.length === 0 && (
                   <div className="cw-chips">
                     {meta.chips.map(q => (
                       <button key={q} className="cw-chip" onClick={() => send(q)}>{q}</button>
@@ -184,8 +215,23 @@ export default function ChatWidget({ userEmail = '', isAuthenticated = false }: 
               </div>
             )}
 
+            {/* Limite semaine atteinte */}
+            {limitReached && (
+              <div className="cw-escalade">
+                <p className="cw-escalade-text">🔒 Limite hebdomadaire atteinte</p>
+                <div className="cw-escalade-actions">
+                  <Link href="/freelancehub/register" className="cw-escalade-btn" onClick={() => setOpen(false)}>
+                    Créer un compte gratuit →
+                  </Link>
+                  <a href="mailto:contact@perform-learn.fr?subject=Question FreelanceHub" className="cw-escalade-ghost">
+                    Écrire au support
+                  </a>
+                </div>
+              </div>
+            )}
+
             {/* Escalade */}
-            {escalated && (
+            {escalated && !limitReached && (
               <div className="cw-escalade">
                 <p className="cw-escalade-text">Besoin d&apos;une aide personnalisée ?</p>
                 {userEmail ? (
@@ -215,9 +261,9 @@ export default function ChatWidget({ userEmail = '', isAuthenticated = false }: 
               placeholder="Écrivez votre message…"
               rows={1}
               maxLength={1000}
-              disabled={loading}
+              disabled={loading || stage === 'qualify' || limitReached}
             />
-            <button className="cw-send" onClick={() => send()} disabled={loading || !input.trim()} aria-label="Envoyer">
+            <button className="cw-send" onClick={() => send()} disabled={loading || !input.trim() || stage === 'qualify' || limitReached} aria-label="Envoyer">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
               </svg>
