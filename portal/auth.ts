@@ -1,13 +1,18 @@
 import NextAuth from 'next-auth'
+import Google from 'next-auth/providers/google'
 import Credentials from 'next-auth/providers/credentials'
 import bcrypt from 'bcryptjs'
-import { getUserWithPasswordHash } from '@/lib/freelancehub/auth-queries'
+import { getUserWithPasswordHash, upsertOAuthUser } from '@/lib/freelancehub/auth-queries'
 import { authConfig } from './auth.config'
 import type { UserRole } from '@/lib/freelancehub/types'
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   ...authConfig,
   providers: [
+    Google({
+      clientId:     process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    }),
     Credentials({
       name: 'credentials',
       credentials: {
@@ -35,6 +40,28 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       },
     }),
   ],
+  callbacks: {
+    ...authConfig.callbacks,
+    async signIn({ user, account }) {
+      if (account?.provider === 'google') {
+        try {
+          const dbUser = await upsertOAuthUser({
+            email:           user.email!,
+            name:            user.name ?? user.email!,
+            oauthProvider:   'google',
+            oauthProviderId: account.providerAccountId,
+            avatarUrl:       user.image,
+          })
+          user.id = dbUser.id
+          ;(user as { role: UserRole }).role = dbUser.role
+        } catch (err) {
+          console.error('[signIn] Google upsert error:', err)
+          return false
+        }
+      }
+      return true
+    },
+  },
 })
 
 // Augment next-auth types
@@ -51,6 +78,3 @@ declare module 'next-auth' {
     }
   }
 }
-
-// JWT augmentation is handled via next-auth's unified types in v5 beta
-// The jwt callback above extends the token directly
