@@ -319,6 +319,34 @@ git push origin --delete release/vX.Y.OLD
 | Après merge PR Claude Code | → supprimer la branche immédiatement |
 | Vérifier branches orphelines | → `git fetch --prune && git branch -a` |
 
+### Règle — Suppression de branche obligatoire après PR validée
+
+**Après chaque PR mergée :**
+
+```bash
+# 1. Vérifier que la branche est bien mergée
+git branch -a | grep <nom-branche>
+
+# 2. Supprimer la branche distante immédiatement
+git push origin --delete <nom-branche>
+
+# 3. Supprimer la branche locale si elle existe
+git branch -d <nom-branche>
+
+# 4. Nettoyer les références obsolètes
+git fetch --prune
+```
+
+**Règle de nettoyage périodique (début de session) :**
+
+```bash
+git fetch --prune
+# Toute branche distante claude/* de plus de 24h sans activité = supprimer
+# Sauf : release/* (branches stables)
+```
+
+**Ne jamais laisser traîner une branche `claude/*` après merge.** Ces branches sont créées automatiquement par Claude Code et n'ont pas vocation à persister.
+
 ---
 
 ## Règles de sécurité immuables
