@@ -2,7 +2,7 @@
 
 ## Contexte & propriétaire
 Ce fichier se focalise sur l'architecture high level et comment claude delivre avec qualité en conformité avec les priorités de la roadmap tout en analysant, planifiant avant de choisir la meilleur solution technique par rapport au contexte complet.
-le fichier ROADMAP.md contient une liste priorisé des fonctionnalités futures organisées par release cohérente pour le client. Le fichier HOWTO.md permet de guider dans l'utilisation du site que ce soit en mode developpeur , en mode testeur ou en mode administrateur
+Le fichier ROADMAP.md contient une liste priorisée des fonctionnalités futures organisées par release. Le fichier DEV.md couvre le setup, le workflow et le déploiement. Le fichier FEATURES.md documente les règles de gestion métier (RG-01–RG-14).
 
 **perform-learn.fr** — Digital Service Hub B2B : connecte freelances experts  avec consultation horaire et entreprises via une marketplace avec matching algorithmique, paiement séquestre et anonymat jusqu'au paiement.
 
