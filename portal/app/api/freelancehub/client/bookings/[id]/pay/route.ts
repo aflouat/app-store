@@ -58,7 +58,11 @@ export async function POST(
 
   // Verify amount matches booking (prevents amount manipulation)
   const expectedTtcCents = Math.round(Number(booking.amount_ht ?? 0) * 1.20)
-  if (expectedTtcCents > 0 && paymentIntent.amount !== expectedTtcCents) {
+  if (expectedTtcCents <= 0) {
+    console.error(`[pay] amount_ht manquant ou nul pour booking ${bookingId}`)
+    return NextResponse.json({ error: 'Montant de réservation invalide.' }, { status: 400 })
+  }
+  if (paymentIntent.amount !== expectedTtcCents) {
     console.error(`[pay] amount mismatch: PI=${paymentIntent.amount} expected=${expectedTtcCents}`)
     return NextResponse.json({ error: 'Montant du paiement incohérent.' }, { status: 400 })
   }

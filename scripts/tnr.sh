@@ -5,6 +5,7 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -35,9 +36,16 @@ echo "  TNR — Tests de Non-Régression"
 echo "  $(date '+%Y-%m-%d %H:%M:%S')"
 echo "========================================"
 
+# Navigate to repo root then portal
+if [ -f "$SCRIPT_DIR/../portal/package.json" ]; then
+  REPO_ROOT="$SCRIPT_DIR/.."
+else
+  REPO_ROOT="$SCRIPT_DIR"
+fi
+cd "$REPO_ROOT/portal"
+
 # ── 1. Build Next.js ──────────────────────────────────────────
 step "Build Next.js (TypeScript + compilation)"
-cd portal
 if npm run build > /tmp/tnr-build.log 2>&1; then
   ok "Build réussi"
 else
@@ -57,16 +65,20 @@ fi
 
 # ── 3. Lint ───────────────────────────────────────────────────
 step "Lint (si configuré)"
-if npx next lint > /tmp/tnr-lint.log 2>&1; then
-  ok "Lint OK"
+if [ ! -f ".eslintrc.json" ] && [ ! -f ".eslintrc.js" ] && [ ! -f ".eslintrc.cjs" ]; then
+  echo "    ⚠ Pas de config ESLint — lint sauté"
 else
-  ko "Lint échoué — voir /tmp/tnr-lint.log"
-  tail -n 20 /tmp/tnr-lint.log
+  if npx next lint > /tmp/tnr-lint.log 2>&1; then
+    ok "Lint OK"
+  else
+    ko "Lint échoué — voir /tmp/tnr-lint.log"
+    tail -n 20 /tmp/tnr-lint.log
+  fi
 fi
 
 # ── 4. Vérification routes API critiques ──────────────────────
 step "Smoke test routes API (local)"
-cd ..
+cd "$REPO_ROOT"
 # Démarrer le serveur en arrière-plan pour les smoke tests
 # (optionnel — nécessite .env.local configuré)
 if [ -f portal/.env.local ]; then

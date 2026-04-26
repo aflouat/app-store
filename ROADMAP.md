@@ -35,6 +35,7 @@
 
 ## Roadmap — Cycles à livrer
 
+
 ### Cycle 4 — Lancement public 🚀
 **30 avril 2026**
 
@@ -125,18 +126,7 @@ Priorités ordonnées par valeur client (confiance → acquisition → rétentio
 
 ---
 
-## Décisions architecturales
 
-| Date | Décision | Raison |
-|---|---|---|
-| 04/04/2026 | Architecture hybride VPS + Vercel | Scalabilité + coût minimal + données sous contrôle |
-| 04/04/2026 | PostgreSQL multi-schéma (pas multi-DB) | Simplicité opérationnelle pour un POC |
-| 04/04/2026 | Waitlist segmentée client/freelance | Mesurer le ratio demande/offre dès le teasing |
-| 16/04/2026 | Anonymat consultant jusqu'au paiement | Différenciation + protection données RGPD |
-| 16/04/2026 | Prix paramétrable par consultant (THM) | Attractivité marché + matching prix/budget client |
-| 12/04/2026 | Notifications in-app plutôt que push browser | Moins intrusif, plus simple à implémenter |
-| 16/04/2026 | Données hébergées VPS OVH France | Souveraineté données RGPD — pas de transfert hors UE |
-| 16/04/2026 | Table `signatures` avec horodatage IP/UA | Preuve légale d'acceptation CGU/NDA (art. 7 RGPD) |
 
 ---
 
