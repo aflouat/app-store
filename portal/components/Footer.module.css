@@ -39,6 +39,23 @@
   color: var(--text-light);
 }
 
+.legal {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.legalLink {
+  font-size: 0.78rem;
+  color: var(--text-light);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.legalLink:hover {
+  color: var(--c1);
+}
+
 @media (max-width: 600px) {
   .footer {
     padding: 24px 20px;

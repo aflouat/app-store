@@ -4,6 +4,7 @@ import Footer from '@/components/Footer'
 import AppCatalog from '@/components/AppCatalog'
 import CtaBand from '@/components/CtaBand'
 import HeroSearch from '@/components/HeroSearch'
+import ChatWidget from '@/components/freelancehub/ChatWidget'
 import styles from './page.module.css'
 
 const CATEGORIES = [
@@ -62,8 +63,8 @@ export default async function Home() {
             <div className={styles.statL}>Made with AI</div>
           </div>
           <div className={styles.stat}>
-            <div className={styles.statN}>30/04</div>
-            <div className={styles.statL}>Lancement 2026</div>
+            <div className={styles.statN}>15%</div>
+            <div className={styles.statL}>commission seulement</div>
           </div>
         </div>
       </section>
@@ -112,7 +113,7 @@ export default async function Home() {
       {/* FREELANCEHUB CTA */}
       <section className={styles.fhSection}>
         <div className={styles.fhContent}>
-          <div className={styles.fhBadge}>Nouveau · Lancement 30 avril</div>
+          <div className={styles.fhBadge}>Disponible maintenant</div>
           <h2 className={styles.fhTitle}>
             Trouvez l&apos;expert B2B<br />qu&apos;il vous faut.
           </h2>
@@ -153,6 +154,7 @@ export default async function Home() {
       <CtaBand />
 
       <Footer />
+      <ChatWidget />
     </div>
   )
 }
