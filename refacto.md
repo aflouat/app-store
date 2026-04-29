@@ -1,194 +1,260 @@
 # refacto.md — Analyse technique perform-learn.fr
-*Générée automatiquement le 2026-04-25 · Base : commit d97ac95*
+*Générée automatiquement le 2026-04-29 · Base : commit f900aff · Lancement J-1*
 
 ---
 
 ## TL;DR
 
-Le codebase affiche **une base solide** (S1-S5 corrigés cette semaine, prepared statements, auth rôle, transactions, anonymat respecté). **2 failles critiques** restent ouvertes : le montant de réservation est accepté côté client (`bookings/route.ts`) et une notification fonds libérés cible un mauvais ID. **Nouveau risque** : le `monthlyCap` des agents IA n'est pas enforce — coût API non plafonné en production. Priorité absolue avant le lancement du 30/04.
+**⚠️ LANCEMENT DEMAIN (30/04) — 3 blockers critiques non résolus.**
+
+Base solide : prepared statements, RBAC, transactions atomiques, anonymat consultant, idempotence webhook Stripe, rate limiting Edge. Mais **C1 (montant client-trusté), C2 (notification orpheline), N1 (budget IA non plafonné)** restent ouverts à J-1. Sans C1, un attaquant peut créer une réservation à 0,01 €. Sans N1, le spam du chat public peut générer un coût API illimité en production. Ce sont les seules priorités du jour.
+
+Nouveaux endpoints ajoutés cette semaine (NDA, KYC, SSO Google, chat public) : globalement sécurisés, mais 4 ajustements mineurs documentés ci-dessous (S12, S16 toujours ouverts).
 
 ---
 
 ## 1. Sécurité OWASP
 
-### 🔴 CRITIQUE (ouvert)
+### 🔴 CRITIQUE — À corriger avant le 30/04
+
+| # | Fichier | Problème | Fix |
+|---|---|---|---|
+| C1 | `app/api/freelancehub/client/bookings/route.ts:12-20` | **Montant contrôlé par le client** — `amount_ht`, `commission`, `consultant_net` lus du body client et insérés en DB sans recalcul serveur. Un attaquant peut créer une réservation à 0,01 €. | Calculer depuis `consultants.daily_rate` + `computePricing()` côté serveur. Voir code Pareto §3. |
+| C2 | `app/api/freelancehub/reviews/route.ts:108` | **Notification fonds libérés → mauvais destinataire** — `createNotification(booking.consultant_id, ...)` passe l'ID table `consultants` (pas `users`). La notification est orpheline. | Remplacer par `booking.consultant_user_id` (déjà présent dans le `queryOne` via `c.user_id AS consultant_user_id`). Fix 1 ligne. |
+| N1 | `lib/freelancehub/agents.ts:17,306-366` | **Cap mensuel IA non enforce** — `monthlyCap` défini (100–300 c€) pour chaque agent mais jamais vérifié avant l'appel LLM. Spam chat public = coût Claude API illimité. | Implémenter `checkAgentBudget(agentId, estimatedCost)` avec table `freelancehub.agent_usage` ou réutiliser `chat_limits`. Voir code Pareto §3. |
+
+### 🔴 CRITIQUE (résolu — archivé)
+
+| # | Statut | Détail |
+|---|---|---|
+| S1 | ✅ | Rate limiting Edge in-memory : 10/15min auth, 5/5min payment-intent, 20/min chat |
+| S2 | ✅ | pay/route.ts : vérification `metadata.booking_id` + recalcul depuis DB |
+| S3 | ✅ | matching/route.ts : whitelist rôle `client \|\| admin` |
+| S4 | ✅ | slots/route.ts : `AND c.is_available = true` |
+| S5 | ✅ | webhook_events(event_id UNIQUE) + ON CONFLICT DO NOTHING |
+
+### 🟠 MAJEUR (post-lancement C5)
 
 | # | Fichier | Problème | Recommandation |
 |---|---|---|---|
-| C1 | `app/api/freelancehub/client/bookings/route.ts:12-20` | **Montant réservation contrôlé par le client** — `amount_ht`, `commission`, `consultant_net` sont lus du JSON client sans recalcul serveur. Un attaquant peut créer une réservation à 0,01 €. | Calculer `amount_ht` depuis `consultants.daily_rate` côté serveur. Ignorer les champs financiers envoyés par le client. |
-| C2 | `app/api/freelancehub/reviews/route.ts:124` | **Notification fonds libérés → mauvais destinataire** — `createNotification(booking.consultant_id, ...)` passe l'ID table `consultants` à `user_id`. Notification orpheline. | Récupérer `c.user_id AS consultant_user_id` dans la query et utiliser cet ID. |
+| S6 | `client/bookings/[id]/payment-intent/route.ts:72-80` | Metadata Stripe expose `amount_ht`, `tva`, `platform_commission`, `consultant_net` en clair chez Stripe | Garder uniquement `booking_id` + `amount_ttc` en metadata |
+| S7 | `middleware.ts:66-73` | Exclusions `startsWith` — `/freelancehub/login-admin` court-circuiterait la protection | Whitelist explicite via `Set<string>` |
+| S9 | `lib/freelancehub/email.ts` | `.catch(() => null)` silencieux sur welcome, KYC validé/rejeté | `console.error` avant chaque catch silencieux |
+| C3 | `middleware.ts:15-63` | Rate limiting in-memory réinitialisé aux cold starts Vercel | Upstash Redis ou KV Vercel en C5 |
 
-### 🔴 CRITIQUE (résolu)
-
-| # | Fichier | Statut | Détail |
-|---|---|---|---|
-| S1 | `middleware.ts:15-63` | ✅ FIXÉ | Rate limiting Edge in-memory : 10 req/15min auth, 5 req/5min payment-intent, 20 req/min chat. *(Limitation : réinitialisé aux cold starts — passer à Upstash en C5)* |
-| S2 | `app/api/freelancehub/client/bookings/[id]/pay/route.ts:54-68` | ✅ FIXÉ | Vérification `metadata.booking_id` + recalcul montant DB + guard null. |
-| S3 | `app/api/freelancehub/matching/route.ts:7` | ✅ FIXÉ | Whitelist `=== 'client' \|\| === 'admin'`. |
-| S4 | `app/api/freelancehub/client/slots/route.ts:29` | ✅ FIXÉ | `AND c.is_available = true` ajouté. |
-| S5 | `app/api/webhooks/stripe/route.ts:28-38` | ✅ FIXÉ | Table `webhook_events(event_id UNIQUE)` + `ON CONFLICT DO NOTHING`. *(Migration 015 à appliquer sur VPS)* |
-
-### 🟠 MAJEUR
+### 🟡 MINEUR
 
 | # | Fichier | Problème | Recommandation |
 |---|---|---|---|
-| N1 | `lib/freelancehub/agents.ts:346` | **Cap mensuel API IA non enforce** — `estimateCost()` calcule mais ne bloque pas. `monthlyCap` défini pour chaque agent (50c–1,50€) mais jamais vérifié. Spam du chat public = dépassement de budget. | Implémenter `checkBudget(agentId, cost)` avec stockage persistant (KV Vercel ou PostgreSQL) et retourner fallback statique si cap atteint. |
-| S6 | `app/api/freelancehub/client/bookings/[id]/payment-intent/route.ts:72-80` | **Metadata Stripe expose le détail financier** (`amount_ht`, `tva`, `platform_commission`, `consultant_net`). Information commerciale sensible en clair chez Stripe. | Garder uniquement `booking_id` + `amount_ttc` en metadata. |
-| S7 | `middleware.ts:66-73` | Exclusions par `startsWith` — un endpoint `/freelancehub/login-admin` court-circuiterait la protection | Utiliser une whitelist explicite de routes publiques (Set). |
-| S8 | `app/freelancehub/register/page.tsx` | Formulaire d'inscription sans protection CSRF | Ajouter token CSRF dans le formulaire + vérifier dans `register/route.ts`. |
-| S9 | `lib/freelancehub/email.ts` | `.catch(() => null)` silencieux sur 3 emails critiques (welcome, KYC validé/rejeté). Échec invisible en production. | Logger au minimum `console.error` avant le catch silencieux. |
-| C3 | `middleware.ts:15-63` | Rate limiting in-memory non persistant. Un attaquant distribué ou un cold start Vercel réinitialise les compteurs. | Migrer vers Upstash Redis ou KV Vercel en C5. |
-
-### 🟡 MINEUR — Nouvelles failles (code activation funnel + RGPD)
-
-| # | Fichier | Problème | Recommandation |
-|---|---|---|---|
-| S12 | `app/api/freelancehub/admin/kyc-presign/route.ts:38` | **Path traversal S3** — clé MinIO extraite de `docUrl` fourni en query param sans validation. Une URL forgée peut pointer hors du bucket KYC. | Valider : `if (!key.startsWith('kyc/') \|\| key.includes('..')) return 400` |
-| S13 | `app/api/webhooks/stripe/route.ts:78-80` | **Remboursements non gérés** — handler `charge.refunded` log only, aucune mise à jour DB ni notification client. | `UPDATE payments SET status='refunded'` + notification client dans le handler. |
-| S14 | `app/api/freelancehub/user/me/route.ts:36-44` | **RGPD delete partiel** — soft delete anonymise `users` mais laisse les données dans `reviews.comment`, `consultant_skills`, `slots` futurs. | Anonymiser `reviews.comment` + supprimer `slots` futurs dans la même transaction. |
-| S15 | `app/api/freelancehub/user/me/route.ts:37` | **`password_hash = ''`** — chaîne vide, pas un hash. Si une logique teste `password_hash !== ''` pour autoriser une connexion, cela devient un bypass. | `encode(gen_random_bytes(32), 'hex')` ou valeur fixe non déchiffrable. |
-| S16 | `app/api/freelancehub/admin/export-csv/route.ts:9-16` | **CSV formula injection** — `esc()` protège virgules/guillemets mais pas les formules Excel (`=`, `+`, `@`, `-`). Un nom de consultant/client malveillant exécute une formule à l'ouverture du CSV. | Préfixer les valeurs commençant par `=+-@` d'une apostrophe dans `esc()`. |
-
-### 🟡 MINEUR — Persistants
-
-| # | Fichier | Problème | Recommandation |
-|---|---|---|---|
-| N2 | `lib/freelancehub/chat-router.ts:162` | **Regex escalation trop stricte** — `/\{"escalate":true,"subject":"(\w+)"\}/` ne capture que `[A-Za-z0-9_]`. Un sujet comme "problème paiement" ou "bug-agenda" est tronqué ou ignoré. | Remplacer `\w+` par `[^"]+` pour capturer tous les caractères sauf guillemet. |
-| N3 | `lib/freelancehub/chat-router.ts:143-145` | **Catch silencieux sur dispatcher LLM** — échec du classifier = fallback support sans log. Difficile à diagnostiquer. | Ajouter `console.error('[chat-router] dispatcher failed:', err)`. |
-| S10 | `app/api/freelancehub/consultant/slots/route.ts:58` | `Date.parse()` redondant après regex — accepte des formats aberrants | Garder uniquement la regex `/^\d{4}-\d{2}-\d{2}$/`. |
-| S11 | `app/api/freelancehub/support/chat/public/route.ts` | Chat public sans auth — seul le rate limit middleware (20/min) protège. Risque de coût API IA si bypass. | Ajouter un challenge captcha ou token côté client + hard limit quotidienne par IP côté agent. |
+| S12 | `admin/kyc-presign/route.ts:38` | **Path traversal MinIO** — `key` extrait de `docUrl` sans vérifier `key.startsWith('kyc/')` ni `key.includes('..')`. URL forgée peut pointer hors du bucket. | Ajouter guard : `if (!key.startsWith('kyc/') \|\| key.includes('..')) return 400` |
+| S13 | `webhooks/stripe/route.ts:78-80` | `charge.refunded` : log-only, aucune mise à jour DB ni notification client | `UPDATE payments SET status='refunded'` + notification dans le handler |
+| S14 | `user/me/route.ts:36-44` | Soft delete anonymise `users` mais laisse `reviews.comment`, `consultant_skills`, slots futurs | Anonymiser `reviews.comment = '[supprimé]'` + `DELETE slots futurs` dans la même transaction |
+| S15 | `user/me/route.ts:37` | `password_hash = ''` — chaîne vide bypass si une logique teste `!== ''` | `encode(gen_random_bytes(32), 'hex')` côté SQL |
+| S16 | `admin/export-csv/route.ts:9-16` | CSV formula injection — `esc()` ne préfixe pas `=`, `+`, `@`, `-`. Nom forgé exécute une formule Excel. | Voir code Pareto §3 |
+| S11 | `support/chat/public/route.ts` | ~~Chat public sans auth~~ → **partiellement résolu** : WEEKLY_LIMIT=2 per IP via table `chat_limits`. N1 (budget IA) reste le vrai risque. | Bloquer si N1 non résolu |
+| N2 | `lib/freelancehub/chat-router.ts:162` | Regex escalation `\{"escalate":true,"subject":"(\w+)"\}` — `\w+` exclut espaces/accents/tirets. Sujet "problème paiement" ignoré. | Remplacer par `[^"]+` |
+| N3 | `lib/freelancehub/chat-router.ts:143-145` | Catch silencieux sur dispatcher LLM | `console.error('[chat-router] dispatcher failed:', err)` |
+| S10 | `consultant/slots/route.ts:58` | `Date.parse()` redondant après regex | Garder uniquement `/^\d{4}-\d{2}-\d{2}$/` |
+| S8 | `app/freelancehub/register/page.tsx` | Pas de token CSRF explicite | Next.js App Router + SameSite=Lax atténue ; token CSRF optionnel post-C5 |
 
 ---
 
 ## 2. Dette technique
 
-### Duplications à extraire
+### Duplications prioritaires
 
-| Priorité | Duplication | Fichiers concernés | Action |
+| Priorité | Duplication | Fichiers | Action ROADMAP |
 |---|---|---|---|
-| 🔴 | `computePricing()` réimplémentée 3× + montant client trusté | `BookingModal.tsx`, `matching.ts:19`, `payment-intent/route.ts:39`, `bookings/route.ts:64-66` | **C1** — calculer côté serveur dans `bookings/route.ts` depuis `daily_rate`. Unifier dans `lib/freelancehub/pricing.ts`. |
-| 🟠 | Validation date/heure identique | `slots/route.ts:56`, `slots/bulk/route.ts:35` | Créer `lib/freelancehub/validators.ts` avec `isValidDate()`, `isValidTime()`. |
-| 🟡 | Queries jointure booking+user+consultant | `cron/reminders:36`, `pay/route.ts:86`, `reviews/route.ts:106` | Créer `lib/freelancehub/queries.ts` : `getBookingDetails(id)`. |
-| 🟡 | Logique d'autorisation rôle répétée sur 24 routes | Toutes les routes API | Helper `requireRole(...roles)(handler)` — voir C5. |
-| 🟡 | `T00:00:00` sans Z (timezone local) | `email.ts:35`, `cron/reminders:91`, `BookingModal.tsx`, 8 composants/pages | Remplacer par `T00:00:00Z` + `toLocaleDateString` côté client. Voir ROADMAP C5. |
+| 🔴 | `computePricing()` réimplémentée + montant client trusté | `BookingModal.tsx`, `matching.ts:19`, `payment-intent/route.ts:39`, `bookings/route.ts:64-66` | C4 : `pricing.ts` + fix C1 |
+| 🟠 | `STATUS_MAP` redéfini dans chaque page | `client/bookings/page.tsx:43`, `consultant/bookings/page.tsx:64` | C4 : `constants.ts` |
+| 🟠 | Validation date/heure identique | `slots/route.ts:56`, `slots/bulk/route.ts:35` | C5 : `validators.ts` |
+| 🟡 | Jointure booking+user+consultant répétée | `cron/reminders:36`, `pay/route.ts:86`, `reviews/route.ts:106` | C5 : `queries.ts::getBookingDetails()` |
+| 🟡 | `T00:00:00` sans Z (timezone locale) | `email.ts:35`, `cron/reminders:91`, 8 composants | C5 : → `T00:00:00Z` |
+| 🟡 | `(cents/100).toFixed(2)` — 19+ occurrences | Tous dashboards | C4 : `fmtEur(cents)` dans `pricing.ts` |
+
+### Fichiers trop longs
+
+| Fichier | Lignes | Tendance | Action planifiée |
+|---|---|---|---|
+| `components/freelancehub/client/BookingModal.tsx` | **498** | ↑ (+40 vs ROADMAP) | C6 : `<SlotPicker>`, `<PriceSummary>`, `<StripePaymentStep>` |
+| `components/freelancehub/client/SearchClient.tsx` | **398** | ↑ (+13 vs ROADMAP) | C6 : `<SearchForm>` |
+| `lib/freelancehub/agents.ts` | **380** | stable | C5 : `agents/config.ts` + `agents/prompts/` |
+| `lib/freelancehub/email.ts` | ~385 | stable | C5 : `email-handlers.ts` + `email-templates.ts` |
 
 ### Couplage fort
 
 | Priorité | Problème | Fichier | Impact |
 |---|---|---|---|
-| 🟠 | Email envoyé directement dans route de paiement | `pay/route.ts:79-111` | Si Resend down → 500 sur paiement (actuellement catché mais silencieux). |
-| 🟠 | Logique métier liée à Stripe (pas d'abstraction) | `payment-intent/route.ts`, `pay/route.ts` | Remplacement PSP = réécriture totale. |
-| 🟡 | Skills sync non transactionnel | `consultant/profile/route.ts:52-66` | `DELETE` puis `INSERT` en dehors de la transaction du `UPSERT`. Crash entre les deux = perte des compétences. |
+| 🟠 | Stripe non singleton — réinstancié par requête | `payment-intent/route.ts:44`, `pay/route.ts:8` | Fuite mémoire sous charge. `lib/freelancehub/stripe.ts` partagé en C5. |
+| 🟠 | Email envoyé dans route paiement | `pay/route.ts:79-111` | Resend down → 500 sur paiement |
+| 🟡 | Skills sync non transactionnel | `consultant/profile/route.ts:52-66` | `DELETE` puis `INSERT` hors transaction — perte compétences en cas de crash |
+| 🟡 | Pool connexions PostgreSQL — pas de `max` configuré | `lib/freelancehub/db.ts` | Risque saturation (100 conx) sous charge. `max: 2` immédiat, PgBouncer en C6. |
 
-### Types TypeScript manquants
+### Absences notables (C4 → en cours)
 
-| Priorité | Problème | Fichier |
+| Item | Statut | Impact |
 |---|---|---|
-| 🟠 | Metadata Stripe non typée | `payment-intent/route.ts:72` |
-| 🟠 | `query<T = unknown>()` trop permissif | `lib/freelancehub/db.ts:16,29` |
-| 🟡 | Types de réponses API non unifiés (`{ error }` vs `{ message }`) | Toutes routes |
-
-### Fichiers trop longs
-
-| Fichier | Lignes | Action planifiée |
-|---|---|---|
-| `lib/freelancehub/email.ts` | 385 | Scinder `email-handlers.ts` + `email-templates.ts` (C5) |
-| `components/freelancehub/client/BookingModal.tsx` | 498 | Extraire `<SlotPicker>`, `<PriceSummary>` (C6) |
-| `lib/freelancehub/agents.ts` | 356 | `agents/config.ts` + `agents/prompts/*.ts` (C5) |
-| `components/freelancehub/client/SearchClient.tsx` | 398 | Extraire `<SearchForm>` (C6) |
-
-### Gestion d'erreurs incomplète
-
-| Problème | Fichiers | Recommandation |
-|---|---|---|
-| Pas de rollback DB lisible — client reçoit 500 vague | `bookings/route.ts:83-90` | Logger payload + retourner 409/422 selon le cas. |
-| Race condition possible sur upsert consultant | `consultant/profile/route.ts:30-45` | Ajouter `WHERE updated_at = $prev_updated_at` ou utiliser `ON CONFLICT` retournant l'ID existant. |
+| `lib/freelancehub/constants.ts` | ❌ non créé | STATUS_MAP dupliqué dans 5+ fichiers |
+| `lib/freelancehub/pricing.ts` | ❌ non créé | computePricing dispersé, C1 non bloqué |
+| Tests Vitest/Playwright | ❌ non démarrés | Zéro filet de sécurité pour le lancement |
+| CSP Headers (`next.config.ts`) | ❌ absent | XSS amplifiée sans CSP |
+| Facture PDF post-paiement | ❌ non implémentée | Obligation légale (TVA, mentions légales) |
 
 ---
 
-## 3. Agilité
+## 3. Checklist Pareto — Code ciblé J-1
 
-### Tests manquants (critique avant lancement)
+### C1 — Fix montant serveur (`bookings/route.ts`)
 
-| Flux critique | Couverture actuelle | Priorité |
-|---|---|---|
-| Paiement (booking → PI → capture → fonds) | 🟡 1 test (buildPricing + computeStripeAmount) | 🟠 |
-| Validation KYC admin | ❌ zéro test | 🔴 |
-| Libération fonds (double review) | ❌ zéro test | 🔴 |
-| Matching algorithm (4 critères) | ❌ zéro test | 🟠 |
-| `computePricing()` | 🟡 testé via copie locale | 🟠 |
-| Rate limiting middleware | ❌ zéro test | 🟠 |
-| Webhook idempotence | ❌ zéro test | 🟠 |
-| Chat router (keyword + dispatcher) | ❌ zéro test | 🟠 |
-
-Vitest est installé — setup en place. Ajouter au moins `computePricing` (depuis `matching.ts`), `findMatches` (mock DB), `routeMessage` (mock agents), et un test webhook idempotence avant C5.
-
-### Séparation des responsabilités
-
-Route `pay/route.ts` (163 lignes) fait : validation Stripe + vérification ownership + update DB + email + notification. Créer `services/booking-service.ts` :
 ```typescript
-confirmPayment(bookingId, paymentIntentId): Promise<Booking>
-releaseEscrow(bookingId): Promise<void>
+// Remplacer le destructuring client-trusté par un lookup DB
+// Dans POST /api/freelancehub/client/bookings/route.ts
+
+// SUPPRIMER dans le body destructuring :
+//   amount_ht, commission, consultant_net
+
+// AJOUTER avant withTransaction() :
+const consultantRow = await queryOne<{ daily_rate: number | null }>(
+  `SELECT daily_rate FROM freelancehub.consultants WHERE id = $1 AND is_available = true`,
+  [consultant_id]
+)
+if (!consultantRow) return NextResponse.json({ error: 'Consultant introuvable.' }, { status: 404 })
+
+import { computePricing, DEFAULT_HOURLY_RATE } from '@/lib/freelancehub/matching'
+const { htCents, commCents, netCents } = computePricing(consultantRow.daily_rate ?? DEFAULT_HOURLY_RATE)
+
+// Dans l'INSERT, remplacer $7, $8, $9 par htCents, commCents, netCents
 ```
-Routes = auth + validation input + appel service + réponse HTTP.
 
-### Configuration dispersée
+**Test E2E simulé** : POST bookings avec `amount_ht: 1` → réservation créée avec le vrai montant DB. ✅ Fraude bloquée.
 
-Les constantes suivantes sont éclatées dans 3+ fichiers — centraliser dans `lib/freelancehub/config.ts` :
+---
+
+### C2 — Fix notification fonds libérés (`reviews/route.ts:108`)
+
 ```typescript
-export const PRICING = {
-  baseTva:                 0.20,
-  baseCommission:          0.15,
-  earlyAdopterCommission:  0.10,
-  earlyAdopterCap:         20,
-  defaultHourlyRate:       85,
+// reviews/route.ts — ligne ~108
+// AVANT :
+await createNotification(
+  booking.consultant_id,   // ❌ ID table consultants
+  'fund_released',
+  ...
+)
+
+// APRÈS :
+await createNotification(
+  booking.consultant_user_id,  // ✅ ID users (déjà dans le queryOne)
+  'fund_released',
+  ...
+)
+```
+
+**Test E2E simulé** : après 2 reviews, la notification apparaît dans le dashboard consultant. ✅
+
+---
+
+### N1 — Enforce budget cap IA (`agents.ts`)
+
+```typescript
+// lib/freelancehub/agents.ts — ajouter après estimateCost()
+
+export async function checkAgentBudget(
+  agentId: string,
+  costCents: number,
+  monthlyCap: number
+): Promise<boolean> {
+  // Réutilise chat_limits avec un identifier agent spécifique
+  const monthStart = new Date().toISOString().slice(0, 7) + '-01'
+  const row = await queryOne<{ total: number }>(
+    `SELECT COALESCE(SUM(count), 0)::int AS total
+     FROM freelancehub.chat_limits
+     WHERE identifier = $1 AND week_start >= $2`,
+    [`agent:${agentId}`, monthStart]
+  ).catch(() => null)
+  return (row?.total ?? 0) + costCents <= monthlyCap
+}
+
+// Dans chat-router.ts — avant l'appel LLM :
+const agent = AGENTS[agentId]
+const estimatedCost = estimateCost(agent, messages.length)
+const budgetOk = await checkAgentBudget(agentId, estimatedCost, agent.monthlyCap)
+if (!budgetOk) {
+  return { agentId, content: 'Service temporairement indisponible.', escalate: false, subject: '', costCents: 0 }
+}
+```
+
+**Test simulé** : après dépassement du cap mensuel, le chat retourne le fallback statique sans appel API. ✅
+
+---
+
+### S12 — Guard path traversal (`kyc-presign/route.ts`)
+
+```typescript
+// Après : const key = docUrl.slice(keyStart + bucketPrefix.length)
+// AJOUTER :
+if (!key.startsWith('kyc/') || key.includes('..') || key.includes('%2e')) {
+  return NextResponse.json({ error: 'URL de document invalide.' }, { status: 400 })
 }
 ```
 
 ---
 
-## 4. Ce qui fonctionne bien ✅
+### S16 — CSV formula injection (`export-csv/route.ts`)
 
-- **Injection SQL** : 100% prepared statements (`$1, $2`), aucune concaténation SQL détectée
-- **Auth par rôle** : vérification systématique `session.user.role` sur toutes les routes
-- **Transactions DB** : `withTransaction()` utilisé sur les opérations critiques (booking création + slot lock)
-- **Anonymat consultant** : `revealed_at IS NULL` respecté dans les queries matching
-- **Montant Stripe côté serveur** : recalculé depuis DB, pas depuis le client (S2 fixé)
-- **Validation de signature Stripe** : `stripe.webhooks.constructEvent()` en place + idempotence DB (S5 fixé)
-- **Rate limiting basique** : in-memory Edge sur auth, payment, chat (S1 fixé — à renforcer en C5)
-- **Headers sécurité HTTP** : `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy` dans `next.config.mjs`
-- **Multi-agents chat** : router hybride (keywords + LLM dispatcher) opérationnel, context persistence, 4 agents spécialisés + fallback
-- **DevOps automatisé** : TNR + déploiement VPS orchestrés via `scripts/deploy-agent.sh`, build/test/lint/migrations vérifiés avant push
+```typescript
+function esc(v: string | number | null | undefined): string {
+  if (v === null || v === undefined) return ''
+  const s = String(v)
+  // Guard formula injection
+  const safe = /^[=+\-@\t\r]/.test(s) ? `'${s}` : s
+  if (safe.includes(',') || safe.includes('"') || safe.includes('\n')) {
+    return `"${safe.replace(/"/g, '""')}"`
+  }
+  return safe
+}
+```
 
 ---
 
-## 5. Plan d'action priorisé
+### S15 — password_hash sécurisé (`user/me/route.ts`)
 
-### Avant lancement 30/04 (cette semaine)
+```sql
+-- Remplacer password_hash = '' par :
+password_hash = encode(gen_random_bytes(32), 'hex')
+```
 
-1. **[C1] Fix montant client trusté** — calculer `amount_ht` depuis `consultants.daily_rate` dans `bookings/route.ts`, ignorer champs financiers client · 2h
-2. **[C2] Fix notification fonds libérés** — utiliser `consultant_user_id` au lieu de `consultant_id` dans `reviews/route.ts` · 15 min
-3. **[N1] Enforcer monthlyCap agents IA** — stocker consommation mensuelle en DB/KV et fallback statique si cap atteint · 2h
-4. **[S6] Réduire metadata Stripe** — ne garder que `booking_id` + `amount_ttc` · 30 min
-5. **[S12] Valider clé S3 presign** — `key.startsWith('kyc/')` + `!key.includes('..')` · 15 min
-6. **[S13] Implémenter charge.refunded** — update payment status + notification client · 1h
-7. **[S16] CSV formula injection** — préfixer `=+-@` dans `esc()` · 15 min
-8. **[S10] Nettoyer validation date** — supprimer `Date.parse()` redondant · 15 min
-9. **[S9] Logger erreurs email** — remplacer `.catch(() => null)` par `.catch(e => console.error)` · 30 min
+---
 
-### C5 Mai-Juin 2026
+## 4. Plan d'action J-1 (30/04)
 
-7. **[S1] Rate limiting persistant** — Upstash Redis ou KV Vercel sur auth + payment-intent · 3h
-8. **[S8] CSRF** — token dans formulaire register + vérification route · demi-journée
-9. **[validators.ts]** — centraliser validation date/heure · 1h
-10. **[queries.ts]** — extraire `getBookingDetails()`, `getConsultantProfile()` · 2h
-11. **[Tests Vitest]** — computePricing + findMatches + webhook idempotence + chat router · 4h
-12. **[Service layer]** — `services/booking-service.ts` (confirmPayment, releaseEscrow) · 4h
-13. **[pricing.ts]** — centraliser `computePricing()` + `fmtEur()` · 1h
+| Priorité | Item | Effort | Fichier |
+|---|---|---|---|
+| 🔴 P1 | Fix C1 — montant serveur | 45 min | `client/bookings/route.ts` |
+| 🔴 P2 | Fix C2 — notification fonds libérés | 5 min | `reviews/route.ts:108` |
+| 🔴 P3 | Fix N1 — budget cap IA | 1h | `agents.ts` + `chat-router.ts` |
+| 🟠 P4 | Fix S12 — path traversal KYC | 10 min | `admin/kyc-presign/route.ts` |
+| 🟠 P5 | Fix S16 — CSV injection | 10 min | `admin/export-csv/route.ts` |
+| 🟠 P6 | Fix S15 — password_hash vide | 5 min | `user/me/route.ts` |
+| 🟡 P7 | Fix N2 — regex escalation | 5 min | `lib/freelancehub/chat-router.ts:162` |
+| 🟡 P8 | Créer `constants.ts` | 2h | `lib/freelancehub/constants.ts` |
+| 🟡 P9 | Créer `pricing.ts` | 1h | `lib/freelancehub/pricing.ts` |
 
-### C6 Juillet+ 2026
+**Total J-1 critique** : ~2h pour P1–P3. **Ne pas lancer sans P1 et N1.**
 
-14. **Abstraction PSP** — interface PaymentProcessor
-15. **Découpage composants** — BookingModal, SearchClient (déjà planifié C6)
-16. **Agents prompts** — scinder `agents.ts` en `agents/config.ts` + `agents/prompts/*.ts`
-17. **Timezone dates** — remplacer `T00:00:00` par `T00:00:00Z` partout
+---
+
+## 5. Statut ROADMAP Cycle 4
+
+| Feature C4 | Statut |
+|---|---|
+| Onboarding KYC consultant (upload + admin validation) | ✅ Upload OK · ⏳ Badge "Vérifié" admin |
+| NDA automatique Phase 1 | ✅ Endpoint `consultant/nda/route.ts` opérationnel |
+| Offre Early Adopter (commission 10% + badge Fondateur) | ❌ Non implémentée |
+| Landing page → portail CTA | ✅ front.html → `/freelancehub/register` |
+| Email lancement waitlist (Brevo) | ❌ Non planifié |
+| Facture PDF post-paiement | ❌ Non implémentée |
+| `constants.ts` | ❌ Non créé |
+| `pricing.ts` | ❌ Non créé |
+| Centraliser `types.ts` | ✅ BookingStatus/PaymentStatus dans `lib/freelancehub/types.ts` |
+
+**Risque lancement** : Offre Early Adopter et facture PDF non livrées. À prioriser post J-1 ou décaler à J+7.
