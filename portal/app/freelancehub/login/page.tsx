@@ -5,14 +5,25 @@ import { signIn } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import ChatWidget from '@/components/freelancehub/ChatWidget'
 
+const GOOGLE_ERROR_MESSAGES: Record<string, string> = {
+  AccessDenied:  'Accès refusé par Google. Votre compte n\'est pas encore autorisé — contactez l\'administrateur.',
+  Callback:      'Erreur lors de la connexion Google. Réessayez ou utilisez email/mot de passe.',
+  OAuthCallback: 'Erreur lors de la connexion Google. Réessayez ou utilisez email/mot de passe.',
+  OAuthSignin:   'Impossible de démarrer la connexion Google. Vérifiez votre connexion et réessayez.',
+  Configuration: 'Connexion Google non configurée. Utilisez email/mot de passe.',
+}
+
 function LoginForm() {
   const router       = useRouter()
   const searchParams = useSearchParams()
   const callbackUrl  = searchParams.get('callbackUrl') || '/freelancehub'
+  const errorParam   = searchParams.get('error')
 
   const [email,    setEmail]    = useState('')
   const [password, setPassword] = useState('')
-  const [error,    setError]    = useState('')
+  const [error,    setError]    = useState(
+    errorParam ? (GOOGLE_ERROR_MESSAGES[errorParam] ?? 'Erreur de connexion. Réessayez.') : ''
+  )
   const [loading,  setLoading]  = useState(false)
 
   async function handleSubmit(e: FormEvent) {
