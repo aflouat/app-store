@@ -41,6 +41,17 @@
 
 Priorités ordonnées par valeur client (confiance → acquisition → rétention) :
 
+**🔴 Sécurité — Bloquants lancement (J-2, voir refacto.md)**
+- [ ] **[C1] Fix montant réservation côté serveur** — calculer `amount_ht` depuis `consultants.daily_rate` en DB, ignorer les champs financiers du JSON client dans `client/bookings/route.ts` · `business_value: 100` · `value_type: strategic_positioning`
+- [ ] **[C2] Fix notification fonds libérés** — remplacer `booking.consultant_id` par `booking.consultant_user_id` dans `reviews/route.ts:123` · `business_value: 90` · `value_type: ux_improvement`
+- [ ] **[N1] Enforcer monthlyCap agents IA** — stocker consommation mensuelle en DB, fallback statique si cap atteint · `business_value: 85` · `value_type: cost_reduction`
+- [ ] **[S16] CSV formula injection** — préfixer `=+-@` dans `esc()` · `business_value: 70` · `value_type: strategic_positioning`
+- [ ] **[S12] Valider clé S3 presign** — `key.startsWith('kyc/')` + `!key.includes('..')` · `business_value: 70` · `value_type: strategic_positioning`
+- [ ] **[S13] Gérer charge.refunded** — UPDATE payment + notification client · `business_value: 68` · `value_type: ux_improvement`
+- [ ] **[S6] Réduire metadata Stripe** — garder uniquement `booking_id` + `amount_ttc` · `business_value: 65` · `value_type: strategic_positioning`
+- [ ] **[S9] Logger erreurs email** — remplacer `.catch(() => null)` silencieux · `business_value: 60` · `value_type: technical_debt`
+- [ ] **[S15] Fix password_hash vide** — `encode(gen_random_bytes(32), 'hex')` au lieu de `''` · `business_value: 60` · `value_type: strategic_positioning`
+
 **🔴 Confiance client — Lancement crédible**
 - [ ] **Onboarding consultant KYC** — upload KBIS/URSSAF dans MinIO ✅ (upload OK), validation admin avant activation du profil (badge "Vérifié") · `business_value: 92` · `value_type: user_acquisition`
 - [ ] **NDA automatique Phase 1** — checkbox + signature horodatée avant 1ère mission, stockée dans `freelancehub.signatures` · `business_value: 80` · `value_type: strategic_positioning`
