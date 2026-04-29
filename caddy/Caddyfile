@@ -19,10 +19,9 @@ monitor.perform-learn.fr {
 }
 
 perform-learn.fr {
-	root * /srv
-	file_server
+	redir https://portal.perform-learn.fr{uri} permanent
 }
 
 www.perform-learn.fr {
-	redir https://perform-learn.fr{uri} permanent
+	redir https://portal.perform-learn.fr{uri} permanent
 }

@@ -138,3 +138,15 @@ export async function getWaitlistStats(): Promise<WaitlistStats | null> {
     return null
   }
 }
+
+export type EarlyAdopterStats = { total: number; taken: number; remaining: number }
+
+export async function getEarlyAdopterStats(): Promise<EarlyAdopterStats | null> {
+  try {
+    const res = await fetch(`${API}/early-adopter/stats`, { next: { revalidate: 60 } })
+    if (!res.ok) return null
+    return res.json()
+  } catch {
+    return null
+  }
+}

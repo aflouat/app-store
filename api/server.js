@@ -228,6 +228,21 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // GET /early-adopter/stats
+  if (req.method === 'GET' && url === '/early-adopter/stats') {
+    try {
+      const result = await pool.query(
+        `SELECT COUNT(*)::int AS taken FROM freelancehub.consultants WHERE is_early_adopter = true`
+      );
+      const taken = result.rows[0]?.taken ?? 0;
+      send(res, 200, { total: 20, taken, remaining: 20 - taken });
+    } catch (err) {
+      console.error('DB error:', err.message);
+      send(res, 500, { error: 'Server error' });
+    }
+    return;
+  }
+
   // GET /apps
   if (req.method === 'GET' && url === '/apps') {
     try {

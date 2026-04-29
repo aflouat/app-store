@@ -1,10 +1,11 @@
-import { getApps, getWaitlistStats } from '@/lib/api'
+import { getApps, getEarlyAdopterStats } from '@/lib/api'
 import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
 import AppCatalog from '@/components/AppCatalog'
 import CtaBand from '@/components/CtaBand'
 import HeroSearch from '@/components/HeroSearch'
 import ChatWidget from '@/components/freelancehub/ChatWidget'
+import EarlyAdopterBand from '@/components/EarlyAdopterBand'
 import styles from './page.module.css'
 
 const CATEGORIES = [
@@ -23,12 +24,13 @@ const HOW_STEPS = [
 ]
 
 export default async function Home() {
-  const [apps, stats] = await Promise.all([getApps(), getWaitlistStats()])
+  const [apps, earlyStats] = await Promise.all([getApps(), getEarlyAdopterStats()])
   const publishedCount = apps.filter(a => a.status === 'published').length
 
   return (
     <div className={styles.layout}>
       <Navbar />
+      <EarlyAdopterBand stats={earlyStats} />
 
       {/* HERO */}
       <section className={styles.hero}>
@@ -55,16 +57,16 @@ export default async function Home() {
             <div className={styles.statL}>apps disponibles</div>
           </div>
           <div className={styles.stat}>
-            <div className={styles.statN}>{stats?.total ?? '—'}</div>
-            <div className={styles.statL}>inscrits waitlist</div>
+            <div className={styles.statN}>{earlyStats?.remaining ?? 20}</div>
+            <div className={styles.statL}>places fondateur</div>
           </div>
           <div className={styles.stat}>
             <div className={styles.statN}>100%</div>
             <div className={styles.statL}>Made with AI</div>
           </div>
           <div className={styles.stat}>
-            <div className={styles.statN}>15%</div>
-            <div className={styles.statL}>commission seulement</div>
+            <div className={styles.statN}>10%</div>
+            <div className={styles.statL}>commission fondateurs</div>
           </div>
         </div>
       </section>
