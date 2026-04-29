@@ -1,5 +1,5 @@
 # refacto.md — Analyse technique perform-learn.fr
-*Générée automatiquement le 2026-04-29 · Base : commit f900aff · Lancement J-1*
+*Générée automatiquement le 2026-04-29 · Base : commit b100922 · Lancement J-1*
 
 ---
 
@@ -7,9 +7,9 @@
 
 **⚠️ LANCEMENT DEMAIN (30/04) — 3 blockers critiques non résolus.**
 
-Base solide : prepared statements, RBAC, transactions atomiques, anonymat consultant, idempotence webhook Stripe, rate limiting Edge. Mais **C1 (montant client-trusté), C2 (notification orpheline), N1 (budget IA non plafonné)** restent ouverts à J-1. Sans C1, un attaquant peut créer une réservation à 0,01 €. Sans N1, le spam du chat public peut générer un coût API illimité en production. Ce sont les seules priorités du jour.
+Base solide : prepared statements, RBAC, transactions atomiques, anonymat consultant, idempotence webhook Stripe, rate limiting Edge, chat public limité à 2 msg/semaine par IP. Mais **C1 (montant client-trusté), C2 (notification orpheline), N1 (budget IA non plafonné)** restent ouverts à J-1. Sans C1, un attaquant peut créer une réservation à 0,01 €. Sans N1, le spam du chat public peut générer un coût API illimité en production. Ce sont les seules priorités du jour.
 
-Nouveaux endpoints ajoutés cette semaine (NDA, KYC, SSO Google, chat public) : globalement sécurisés, mais 4 ajustements mineurs documentés ci-dessous (S12, S16 toujours ouverts).
+Nouveaux endpoints déployés depuis J-4 (NDA, KYC, SSO Google, chat public, pages CGU/confidentialité) : globalement sécurisés. Nouvelle faille mineure identifiée : **S17** — Google OAuth assigne le rôle `consultant` par défaut à tous les nouveaux utilisateurs (pas de sélection client/consultant). 4 ajustements mineurs restants (S12, S16, S17, bypass DB chat).
 
 ---
 
@@ -51,11 +51,12 @@ Nouveaux endpoints ajoutés cette semaine (NDA, KYC, SSO Google, chat public) : 
 | S14 | `user/me/route.ts:36-44` | Soft delete anonymise `users` mais laisse `reviews.comment`, `consultant_skills`, slots futurs | Anonymiser `reviews.comment = '[supprimé]'` + `DELETE slots futurs` dans la même transaction |
 | S15 | `user/me/route.ts:37` | `password_hash = ''` — chaîne vide bypass si une logique teste `!== ''` | `encode(gen_random_bytes(32), 'hex')` côté SQL |
 | S16 | `admin/export-csv/route.ts:9-16` | CSV formula injection — `esc()` ne préfixe pas `=`, `+`, `@`, `-`. Nom forgé exécute une formule Excel. | Voir code Pareto §3 |
-| S11 | `support/chat/public/route.ts` | ~~Chat public sans auth~~ → **partiellement résolu** : WEEKLY_LIMIT=2 per IP via table `chat_limits`. N1 (budget IA) reste le vrai risque. | Bloquer si N1 non résolu |
+| S11 | `support/chat/public/route.ts` | ~~Chat public sans auth~~ → **partiellement résolu** : WEEKLY_LIMIT=2 per IP via table `chat_limits`. MAIS `.catch(() => null)` à la ligne 43 : si DB indisponible, le rate limit est contourné silencieusement. N1 (budget IA) reste le vrai risque. | Supprimer le `.catch(() => null)` ou gérer explicitement l'erreur DB. Bloquer si N1 non résolu. |
 | N2 | `lib/freelancehub/chat-router.ts:162` | Regex escalation `\{"escalate":true,"subject":"(\w+)"\}` — `\w+` exclut espaces/accents/tirets. Sujet "problème paiement" ignoré. | Remplacer par `[^"]+` |
 | N3 | `lib/freelancehub/chat-router.ts:143-145` | Catch silencieux sur dispatcher LLM | `console.error('[chat-router] dispatcher failed:', err)` |
 | S10 | `consultant/slots/route.ts:58` | `Date.parse()` redondant après regex | Garder uniquement `/^\d{4}-\d{2}-\d{2}$/` |
 | S8 | `app/freelancehub/register/page.tsx` | Pas de token CSRF explicite | Next.js App Router + SameSite=Lax atténue ; token CSRF optionnel post-C5 |
+| S17 | `lib/freelancehub/auth-queries.ts:51` | **Google OAuth : rôle `consultant` par défaut** — `upsertOAuthUser` crée tous les nouveaux utilisateurs OAuth avec `role = 'consultant'`. Un utilisateur souhaitant s'inscrire comme `client` via Google se retrouve consultant, sans sélection de rôle. | Ajouter un paramètre `role?: UserRole` dans `upsertOAuthUser` ou une page de sélection de rôle post-OAuth (`/freelancehub/oauth-setup`). |
 
 ---
 
