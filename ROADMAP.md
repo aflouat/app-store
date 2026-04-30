@@ -36,15 +36,15 @@
 ## Roadmap — Cycles à livrer
 
 
-### Cycle 4 — Lancement public 🚀
+### Cycle 4 — Lancement public 🚀 *(Livré 30/04/2026)*
 **30 avril 2026**
 
-Priorités ordonnées par valeur client (confiance → acquisition → rétention) :
+> **Bilan** : ~75% des fonctionnalités métier livrées. 3 items critiques de sécurité reportés en post-lancement immédiat (voir refacto.md). KYC, NDA, EA Booster, Landing CTA et SSO Google sont opérationnels.
 
-**🔴 Sécurité — Bloquants lancement (J-2, voir refacto.md)**
-- [ ] **[C1] Fix montant réservation côté serveur** — calculer `amount_ht` depuis `consultants.daily_rate` en DB, ignorer les champs financiers du JSON client dans `client/bookings/route.ts` · `business_value: 100` · `value_type: strategic_positioning`
-- [ ] **[C2] Fix notification fonds libérés** — remplacer `booking.consultant_id` par `booking.consultant_user_id` dans `reviews/route.ts:123` · `business_value: 90` · `value_type: ux_improvement`
-- [ ] **[N1] Enforcer monthlyCap agents IA** — stocker consommation mensuelle en DB, fallback statique si cap atteint · `business_value: 85` · `value_type: cost_reduction`
+**🔴 Sécurité — Post-lancement immédiat (voir refacto.md §4)**
+- [ ] **[C1] Fix montant réservation côté serveur** — calculer `amount_ht` depuis `consultants.daily_rate` en DB, ignorer les champs financiers du JSON client dans `client/bookings/route.ts` · `business_value: 100` · `value_type: strategic_positioning` · 🔴 **Production live — fraude active possible**
+- [ ] **[C2] Fix notification fonds libérés** — remplacer `booking.consultant_id` par `booking.consultant_user_id` dans `reviews/route.ts:124` · `business_value: 90` · `value_type: ux_improvement` · 🔴 **Notification orpheline en production**
+- [ ] **[N1] Enforcer monthlyCap agents IA** — stocker consommation mensuelle en DB, fallback statique si cap atteint · `business_value: 85` · `value_type: cost_reduction` · 🔴 **Coût API Claude illimité**
 - [ ] **[S16] CSV formula injection** — préfixer `=+-@` dans `esc()` · `business_value: 70` · `value_type: strategic_positioning`
 - [ ] **[S12] Valider clé S3 presign** — `key.startsWith('kyc/')` + `!key.includes('..')` · `business_value: 70` · `value_type: strategic_positioning`
 - [ ] **[S13] Gérer charge.refunded** — UPDATE payment + notification client · `business_value: 68` · `value_type: ux_improvement`
@@ -53,21 +53,22 @@ Priorités ordonnées par valeur client (confiance → acquisition → rétentio
 - [ ] **[S15] Fix password_hash vide** — `encode(gen_random_bytes(32), 'hex')` au lieu de `''` · `business_value: 60` · `value_type: strategic_positioning`
 
 **🔴 Confiance client — Lancement crédible**
-- [ ] **Onboarding consultant KYC** — upload KBIS/URSSAF dans MinIO ✅ (upload OK), validation admin avant activation du profil (badge "Vérifié") · `business_value: 92` · `value_type: user_acquisition`
-- [ ] **NDA automatique Phase 1** — checkbox + signature horodatée avant 1ère mission, stockée dans `freelancehub.signatures` · `business_value: 80` · `value_type: strategic_positioning`
-- [ ] **Offre Early Adopter** — commission 10% (au lieu de 15%) + badge "Fondateur" pour les 20 premiers consultants · `business_value: 88` · `value_type: user_acquisition`
+- [x] **Onboarding consultant KYC** — upload KBIS/URSSAF dans MinIO + validation admin + badge "Vérifié" · `business_value: 92` · `value_type: user_acquisition`
+- [x] **NDA automatique Phase 1** — checkbox + signature horodatée avant 1ère mission, stockée dans `freelancehub.signatures` · `business_value: 80` · `value_type: strategic_positioning`
+- [x] **Offre Early Adopter** — commission 10% (au lieu de 15%) + badge "Fondateur" pour les 20 premiers consultants (EA booster commit 7349c6c) · `business_value: 88` · `value_type: user_acquisition`
+- [x] **SSO Google** — NextAuth v5 + Google OAuth, migration 017, upsert consultant automatique · `business_value: 82` · `value_type: user_acquisition`
 
 **🟠 Acquisition — Signal de lancement**
-- [ ] **Landing page → portail** — bouton CTA vers `/freelancehub/register` sur perform-learn.fr · `business_value: 95` · `value_type: user_acquisition`
-- [ ] **Email de lancement** aux inscrits waitlist (Brevo) — J-3 teasing, J-0 go-live · `business_value: 88` · `value_type: user_acquisition`
+- [x] **Landing page → portail** — bouton CTA vers `/freelancehub/register` sur perform-learn.fr, page pre-launch supprimée · `business_value: 95` · `value_type: user_acquisition`
+- [ ] **Email de lancement** aux inscrits waitlist (Brevo) · `business_value: 88` · `value_type: user_acquisition` · ❌ Non livré — reporter J+7
 
 **🟡 Rétention — Post-lancement immédiat**
-- [ ] **Facture PDF** générée automatiquement après paiement (nom client, n° réservation, montant HT/TVA/TTC, mentions légales) → stockée MinIO, accessible depuis "Mes paiements" · `business_value: 76` · `value_type: ux_improvement`
+- [ ] **Facture PDF** générée automatiquement après paiement (nom client, n° réservation, montant HT/TVA/TTC, mentions légales) → stockée MinIO, accessible depuis "Mes paiements" · `business_value: 76` · `value_type: ux_improvement` · ❌ Non livré
 
-**🔵 Refactoring technique — Fondations avant scaling**
-- [ ] **`constants.ts`** — centraliser `BOOKING_STATUS_MAP`, `PAYMENT_STATUS_MAP`, `BOOKING_TRANSITIONS`, types `BookingStatus`/`PaymentStatus`, constantes rôles (élimine 5+ duplications de STATUS_MAP) · `business_value: 70` · `value_type: technical_debt`
-- [ ] **`pricing.ts`** — déplacer `computePricing()` depuis `matching.ts`, supprimer `buildPricing()` de `BookingModal`, unifier le calcul dans `payment-intent/route.ts`, ajouter `fmtEur(cents)` (élimine 19+ conversions inline `cents/100`) · `business_value: 65` · `value_type: technical_debt`
-- [ ] **Centraliser `types.ts`** — déplacer `BookingRow`, `PaymentRow`, `AvailableSlot` depuis les composants vers `lib/freelancehub/types.ts` · `business_value: 60` · `value_type: technical_debt`
+**🔵 Refactoring technique — Reporté en Cycle 5**
+- [ ] **`constants.ts`** — centraliser `BOOKING_STATUS_MAP`, `PAYMENT_STATUS_MAP`, `BOOKING_TRANSITIONS` · `business_value: 70` · `value_type: technical_debt`
+- [ ] **`pricing.ts`** — déplacer `computePricing()`, supprimer `buildPricing()`, ajouter `fmtEur(cents)` · `business_value: 65` · `value_type: technical_debt`
+- [ ] **Centraliser `types.ts`** — déplacer `BookingRow`, `PaymentRow`, `AvailableSlot` depuis les composants · `business_value: 60` · `value_type: technical_debt`
 
 **KPIs cibles** : 3+ experts Ready-to-book au 30/04 · 5+ clients inscrits · **100€ CA au 31/05** (7 sessions × 15% commission)
 
@@ -154,6 +155,18 @@ Priorités ordonnées par valeur client (confiance → acquisition → rétentio
 ---
 
 ## Historique des releases
+
+### v1.4.0 — Lancement public perform-learn.fr
+**30 avril 2026**
+
+- Offre Early Adopter : commission 10% + badge "Fondateur" pour les 20 premiers consultants validés KYC (EA booster)
+- SSO Google via NextAuth v5 + migration oauth_provider (017)
+- KYC complet : upload MinIO + validation admin + badge "Vérifié"
+- NDA Phase 1 : signature checkbox horodatée (IP/UA) dans `freelancehub.signatures`
+- Landing page mise à jour : suppression page pre-launch, SEO, CTA portail
+- Chat public rate-limited (2/semaine/IP) avec agents IA multi-provider
+- Webhooks Stripe idempotents (table `webhook_events`)
+- ⚠️ 3 items critiques reportés en post-lancement : C1 (montant), C2 (notification), N1 (budget IA)
 
 ### v1.3.0 — FreelanceHub V1.3
 **16 avril 2026**
