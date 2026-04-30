@@ -18,14 +18,13 @@ const BASE = 'https://portal.perform-learn.fr'
 
 interface WaitlistRow {
   email: string
-  name: string | null
   user_type: string
   source: string | null
 }
 
 async function main() {
   const { rows } = await pool.query<WaitlistRow>(
-    `SELECT email, name, user_type, source
+    `SELECT email, user_type, source
      FROM store.waitlist
      WHERE marketing_consent = true
      ORDER BY created_at ASC`
@@ -64,7 +63,6 @@ async function main() {
       await new Promise(res => setTimeout(res, DELAY_MS))
     }
 
-    const name = r.name ?? ''
     const isConsultant = r.segment === 'consultant'
 
     try {
@@ -75,8 +73,8 @@ async function main() {
           ? '[perform-learn.fr] C\'est live — places Fondateur ouvertes'
           : '[perform-learn.fr] Consultants ERP/D365/SAP vérifiés — accès immédiat',
         html: isConsultant
-          ? buildConsultantHtml(name)
-          : buildClientHtml(name),
+          ? buildConsultantHtml()
+          : buildClientHtml(),
       })
       sent++
       if (sent % 10 === 0) console.log(`[launch-email] ${sent} envoyés…`)
@@ -90,8 +88,7 @@ async function main() {
   await pool.end()
 }
 
-function buildConsultantHtml(name: string): string {
-  const greeting = name ? `Bonjour ${name},` : 'Bonjour,'
+function buildConsultantHtml(): string {
   return `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><style>
     body{font-family:Arial,sans-serif;background:#f7f5f3;margin:0;padding:20px}
     .card{background:#fff;border-radius:12px;max-width:520px;margin:0 auto;padding:32px;border:1px solid #e2deda}
@@ -105,7 +102,7 @@ function buildConsultantHtml(name: string): string {
   </style></head><body><div class="card">
     <div class="logo">FH · FreelanceHub</div>
     <h1>perform-learn.fr est en ligne ✓</h1>
-    <p>${greeting}</p>
+    <p>Bonjour,</p>
     <p>C'est le moment d'agir — les places Fondateur partent vite.</p>
     <div class="box">
       <p style="font-size:13px;font-weight:700;color:#b45309;margin:0 0 8px">★ PLACES FONDATEUR LIMITÉES</p>
@@ -128,8 +125,7 @@ function buildConsultantHtml(name: string): string {
   </div></body></html>`
 }
 
-function buildClientHtml(name: string): string {
-  const greeting = name ? `Bonjour ${name},` : 'Bonjour,'
+function buildClientHtml(): string {
   return `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><style>
     body{font-family:Arial,sans-serif;background:#f7f5f3;margin:0;padding:20px}
     .card{background:#fff;border-radius:12px;max-width:520px;margin:0 auto;padding:32px;border:1px solid #e2deda}
@@ -143,7 +139,7 @@ function buildClientHtml(name: string): string {
   </style></head><body><div class="card">
     <div class="logo">FH · FreelanceHub</div>
     <h1>perform-learn.fr est opérationnel ✓</h1>
-    <p>${greeting}</p>
+    <p>Bonjour,</p>
     <p>Trouvez votre consultant expert en 5 minutes.</p>
     <div class="box">
       <div class="row"><span style="color:#968e89">✓ KYC vérifié</span><span>KBIS ou URSSAF obligatoire</span></div>
