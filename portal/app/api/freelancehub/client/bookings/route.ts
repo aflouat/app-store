@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { withTransaction, queryOneTx, queryTx } from '@/lib/freelancehub/db'
+import { computePricing, DEFAULT_HOURLY_RATE } from '@/lib/freelancehub/matching'
 
 export async function POST(req: NextRequest) {
   const session = await auth()
@@ -14,9 +15,6 @@ export async function POST(req: NextRequest) {
     slot_id,
     matching_score,
     notes,
-    amount_ht,
-    commission,
-    consultant_net,
   } = await req.json()
 
   if (client_id !== session.user.id) {
@@ -39,12 +37,17 @@ export async function POST(req: NextRequest) {
         throw Object.assign(new Error('Ce créneau n\'est plus disponible.'), { status: 409 })
       }
 
-      // Get skill_requested
-      const [skillRow] = await queryTx<{ skill_id: number }>(
+      // Fetch consultant daily_rate from DB — never trust client-side amounts
+      const consultantRow = await queryOneTx<{ daily_rate: number | null; skill_id: number | null }>(
         client,
-        `SELECT skill_id FROM freelancehub.consultant_skills WHERE consultant_id = $1 LIMIT 1`,
+        `SELECT c.daily_rate,
+                (SELECT cs.skill_id FROM freelancehub.consultant_skills cs WHERE cs.consultant_id = c.id LIMIT 1) AS skill_id
+         FROM freelancehub.consultants c WHERE c.id = $1`,
         [consultant_id]
       )
+      if (!consultantRow) throw Object.assign(new Error('Consultant introuvable.'), { status: 404 })
+
+      const { htCents, commCents, netCents } = computePricing(consultantRow.daily_rate ?? DEFAULT_HOURLY_RATE)
 
       // Create booking
       const newBooking = await queryOneTx<{ id: string }>(
@@ -58,12 +61,12 @@ export async function POST(req: NextRequest) {
           client_id,
           consultant_id,
           slot_id,
-          skillRow?.skill_id ?? null,
+          consultantRow.skill_id ?? null,
           matching_score,
           notes || null,
-          amount_ht,
-          commission,
-          consultant_net,
+          htCents,
+          commCents,
+          netCents,
         ]
       )
 

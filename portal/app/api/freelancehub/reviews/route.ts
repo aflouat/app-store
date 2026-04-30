@@ -121,7 +121,7 @@ export async function POST(req: NextRequest) {
           )
         }
         await createNotification(
-          booking.consultant_id,
+          booking.consultant_user_id,
           'fund_released',
           'Paiement versé',
           `${(fundInfo.consultant_net / 100).toFixed(0)} € transférés sur votre compte.`,

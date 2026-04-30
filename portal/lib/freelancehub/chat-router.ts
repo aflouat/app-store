@@ -4,6 +4,7 @@
 import { AGENTS, estimateCost } from './agents'
 import { runAgent } from './agent-client'
 import type { AgentMessage } from './agent-client'
+import { queryOne } from './db'
 
 export type ChatAgentId = 'onboarding' | 'matching' | 'sales' | 'support' | 'supportPublic'
 
@@ -153,10 +154,39 @@ export async function routeMessage(
   // Si public mais agent choisi = support (pas supportPublic), utiliser supportPublic
   const agentId: ChatAgentId = (isPublic && chosen === 'support') ? 'supportPublic' : chosen
 
-  // ── Phase 5 : exécuter l'agent choisi ──────────────────────────
+  // ── Phase 5 : vérifier budget mensuel avant d'appeler le LLM ───
   const agent = AGENTS[agentId]
+  const monthStart = new Date().toISOString().slice(0, 8) + '01'
+  const agentIdentifier = `agent:${agentId}`
+
+  const accumulated = await queryOne<{ count: number }>(
+    `SELECT count FROM freelancehub.chat_limits WHERE identifier = $1 AND week_start = $2`,
+    [agentIdentifier, monthStart]
+  ).catch(() => null)
+
+  if ((accumulated?.count ?? 0) >= agent.monthlyCap) {
+    return {
+      agentId,
+      content: 'Le service de chat est temporairement indisponible. Écrivez-nous à contact@perform-learn.fr.',
+      escalate: false,
+      subject: 'autre',
+      costCents: 0,
+    }
+  }
+
+  // ── Phase 6 : exécuter l'agent choisi ──────────────────────────
   const result = await runAgent(agent, messages)
   const costCents = estimateCost(agent, result.inputTokens, result.outputTokens)
+
+  // Enregistrer le coût dans chat_limits (identifier = agent:agentId, week_start = 1er du mois)
+  await queryOne<{ count: number }>(
+    `INSERT INTO freelancehub.chat_limits (identifier, week_start, count)
+     VALUES ($1, $2, $3)
+     ON CONFLICT (identifier, week_start) DO UPDATE
+       SET count = freelancehub.chat_limits.count + $3
+     RETURNING count`,
+    [agentIdentifier, monthStart, costCents]
+  ).catch(() => null)
 
   // Parse escalation marker {"escalate":true,"subject":"..."}
   const escalateMatch = result.content.match(/\{"escalate":true,"subject":"(\w+)"\}/)

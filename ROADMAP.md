@@ -42,11 +42,11 @@
 Priorités ordonnées par valeur client (confiance → acquisition → rétention) :
 
 **🔴 Sécurité — Bloquants lancement (J-2, voir refacto.md)**
-- [ ] **[C1] Fix montant réservation côté serveur** — calculer `amount_ht` depuis `consultants.daily_rate` en DB, ignorer les champs financiers du JSON client dans `client/bookings/route.ts` · `business_value: 100` · `value_type: strategic_positioning`
-- [ ] **[C2] Fix notification fonds libérés** — remplacer `booking.consultant_id` par `booking.consultant_user_id` dans `reviews/route.ts:123` · `business_value: 90` · `value_type: ux_improvement`
-- [ ] **[N1] Enforcer monthlyCap agents IA** — stocker consommation mensuelle en DB, fallback statique si cap atteint · `business_value: 85` · `value_type: cost_reduction`
-- [ ] **[S16] CSV formula injection** — préfixer `=+-@` dans `esc()` · `business_value: 70` · `value_type: strategic_positioning`
-- [ ] **[S12] Valider clé S3 presign** — `key.startsWith('kyc/')` + `!key.includes('..')` · `business_value: 70` · `value_type: strategic_positioning`
+- [x] **[C1] Fix montant réservation côté serveur** — calculer `amount_ht` depuis `consultants.daily_rate` en DB, ignorer les champs financiers du JSON client dans `client/bookings/route.ts` · `business_value: 100` · `value_type: strategic_positioning` ✅ 30/04
+- [x] **[C2] Fix notification fonds libérés** — remplacer `booking.consultant_id` par `booking.consultant_user_id` dans `reviews/route.ts:124` · `business_value: 90` · `value_type: ux_improvement` ✅ 30/04
+- [x] **[N1] Enforcer monthlyCap agents IA** — consommation mensuelle enregistrée dans `chat_limits (identifier=agent:X)`, fallback statique si cap atteint · `business_value: 85` · `value_type: cost_reduction` ✅ 30/04
+- [x] **[S16] CSV formula injection** — préfixe `'` sur formules `=+-@` dans `esc()` · `business_value: 70` · `value_type: strategic_positioning` ✅ 30/04
+- [x] **[S12] Valider clé S3 presign** — `key.startsWith('kyc/')` + `!key.includes('..')` + guard `\0` · `business_value: 70` · `value_type: strategic_positioning` ✅ 30/04
 - [ ] **[S13] Gérer charge.refunded** — UPDATE payment + notification client · `business_value: 68` · `value_type: ux_improvement`
 - [ ] **[S6] Réduire metadata Stripe** — garder uniquement `booking_id` + `amount_ttc` · `business_value: 65` · `value_type: strategic_positioning`
 - [ ] **[S9] Logger erreurs email** — remplacer `.catch(() => null)` silencieux · `business_value: 60` · `value_type: technical_debt`
@@ -84,9 +84,12 @@ Priorités ordonnées par valeur client (confiance → acquisition → rétentio
 
 **Dette technique — Performance & Sécurité**
 - [ ] **Rate limiting persistant** — Upstash Redis ou KV Vercel sur auth + payment-intent (remplace in-memory Edge) · `business_value: 80` · `value_type: strategic_positioning`
+- [ ] **Système referral `?ref=`** — `referrer_id` UUID en DB + `-2% commission 3 mois` pour filleul · `business_value: 85` · `value_type: user_acquisition`
+- [ ] **GTM custom events** — intégrer `trackEvent()` dans `register/page.tsx`, `BookingModal.tsx`, `SearchClient.tsx` · `business_value: 78` · `value_type: user_acquisition`
+- [ ] **Export données utilisateur (Art. 20 RGPD)** — `GET /api/freelancehub/user/me/export` ZIP · `business_value: 70` · `value_type: strategic_positioning`
 - [ ] **Stripe singleton** — `lib/freelancehub/stripe.ts` partagé (évite réinstanciation par requête) · `business_value: 60` · `value_type: technical_debt`
-- [ ] **CSP Headers** — `next.config.ts` avec `Content-Security-Policy`, `X-Frame-Options` · `business_value: 72` · `value_type: strategic_positioning`
-- [ ] **Pool connexions PostgreSQL** — `max: 2` immédiat + PgBouncer C6 (évite saturation 100 conx) · `business_value: 78` · `value_type: technical_debt`
+- [x] **CSP Headers + HSTS** — `next.config.mjs` avec `Content-Security-Policy` + `Strict-Transport-Security` · `business_value: 72` · `value_type: strategic_positioning` ✅ 30/04
+- [x] **Pool connexions PostgreSQL** — `max: 2` immédiat + PgBouncer C6 (évite saturation 100 conx) · `business_value: 78` · `value_type: technical_debt` ✅ 30/04
 - [ ] **Tests automatisés** — Vitest (unit: computePricing, matching) + Playwright (E2E booking flow) · `business_value: 85` · `value_type: technical_debt`
 - [ ] **Fix timezone dates** — remplacer `'T00:00:00'` par `'T00:00:00Z'` dans email.ts et cron · `business_value: 65` · `value_type: technical_debt`
 - [ ] **Skills sync transactionnel** — batch INSERT `unnest` dans `consultant/profile/route.ts` · `business_value: 60` · `value_type: technical_debt`

@@ -43,7 +43,7 @@ services:
       - pg_data:/var/lib/postgresql/data
       - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
     ports:
-      - "5432:5432"  # Exposé sur IP publique pour Vercel (protégé par mot de passe PG)
+      - "127.0.0.1:5432:5432"  # Lié à localhost uniquement — Vercel passe par DATABASE_URL TCP
     networks:
       - app-network
     healthcheck:

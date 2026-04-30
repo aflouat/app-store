@@ -9,7 +9,7 @@ api.perform-learn.fr {
 
 	header {
 		# CORS pour les fronts Vercel
-		Access-Control-Allow-Origin https://perform-learn.fr https://*.vercel.app
+		Access-Control-Allow-Origin https://perform-learn.fr https://portal.perform-learn.fr
 		Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
 		Access-Control-Allow-Headers "Content-Type, Authorization"
 	}

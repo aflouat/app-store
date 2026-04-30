@@ -383,3 +383,68 @@ function buildKycRejectedEmail(d: { name: string; notes: string }): string {
     <a href="${BASE}/freelancehub/consultant/kyc" class="cta">Re-soumettre mon KYC →</a>
   `)
 }
+
+// ─── Email de lancement waitlist ─────────────────────────────
+
+export async function sendLaunchEmail(
+  email:    string,
+  name:     string,
+  userType: 'consultant' | 'client'
+) {
+  const isConsultant = userType === 'consultant'
+  const subject = isConsultant
+    ? '[perform-learn.fr] C\'est live — places Fondateur ouvertes'
+    : '[perform-learn.fr] Consultants ERP/D365/SAP vérifiés — accès immédiat'
+
+  await getResend().emails.send({
+    from:    FROM,
+    to:      email,
+    subject,
+    html:    isConsultant
+      ? buildLaunchConsultantEmail({ name: name || 'Expert' })
+      : buildLaunchClientEmail({ name: name || '' }),
+  })
+}
+
+function buildLaunchConsultantEmail(d: { name: string }): string {
+  return baseTemplate('C\'est live — places Fondateur ouvertes', `
+    <h1>perform-learn.fr est en ligne ✓</h1>
+    <p>Bonjour ${d.name},</p>
+    <p>Vous avez rejoint notre liste d'attente. C'est le moment d'agir.</p>
+    <div class="info-box" style="border-left:3px solid #b45309">
+      <p style="font-size:13px;font-weight:700;color:#b45309;margin:0 0 8px">★ PLACES FONDATEUR LIMITÉES</p>
+      <p style="font-size:13px;color:#5c5956;margin:0">Les 20 premiers consultants KYC validés obtiennent :<br>
+      — Commission <strong>10% à vie</strong> (vs 15% standard)<br>
+      — Badge <strong>Fondateur</strong> visible sur votre profil<br>
+      — Priorité dans le matching</p>
+    </div>
+    <p>L'inscription prend 10 minutes :</p>
+    <div class="info-box">
+      <div class="info-row"><span>Étape 1</span><span>Créez votre compte (email ou Google)</span></div>
+      <div class="info-row"><span>Étape 2</span><span>Complétez votre profil + compétences</span></div>
+      <div class="info-row"><span>Étape 3</span><span>Soumettez votre KYC — validation 48h</span></div>
+    </div>
+    <a href="${BASE}/freelancehub/register" class="cta">Créer mon compte Fondateur →</a>
+    <hr>
+    <p style="font-size:12px;color:#968e89">Questions : <a href="mailto:contact@perform-learn.fr" style="color:#B9958D">contact@perform-learn.fr</a></p>
+  `)
+}
+
+function buildLaunchClientEmail(d: { name: string }): string {
+  const greeting = d.name ? `Bonjour ${d.name},` : 'Bonjour,'
+  return baseTemplate('Consultants B2B vérifiés — perform-learn.fr', `
+    <h1>perform-learn.fr est opérationnel ✓</h1>
+    <p>${greeting}</p>
+    <p>Trouvez votre consultant expert en 5 minutes — sans les frictions habituelles.</p>
+    <div class="info-box">
+      <div class="info-row"><span>✓ KYC vérifié</span><span>KBIS ou URSSAF obligatoire</span></div>
+      <div class="info-row"><span>✓ Paiement séquestre</span><span>Libéré après votre validation</span></div>
+      <div class="info-row"><span>✓ Commission 15%</span><span>vs 25-40% en agence</span></div>
+      <div class="info-row"><span>✓ Sans engagement</span><span>À l'heure, pas de contrat long</span></div>
+    </div>
+    <p>Domaines disponibles : ERP D365, SAP, Supply Chain, Management de projet, Data, Formation.</p>
+    <a href="${BASE}/freelancehub/register" class="cta">Accéder à la plateforme →</a>
+    <hr>
+    <p style="font-size:12px;color:#968e89">Questions : <a href="mailto:contact@perform-learn.fr" style="color:#B9958D">contact@perform-learn.fr</a></p>
+  `)
+}

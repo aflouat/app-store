@@ -37,6 +37,10 @@ export async function GET(req: NextRequest) {
   }
   const key = docUrl.slice(keyStart + bucketPrefix.length)
 
+  if (!key.startsWith('kyc/') || key.includes('..') || key.includes('%2e') || key.includes('%2E') || key.includes('\0')) {
+    return NextResponse.json({ error: 'URL de document invalide.' }, { status: 400 })
+  }
+
   const signedUrl = await getSignedUrl(
     s3,
     new GetObjectCommand({ Bucket: BUCKET, Key: key }),

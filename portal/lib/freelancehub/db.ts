@@ -4,7 +4,7 @@ import { Pool, PoolClient } from 'pg'
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  max: 10,
+  max: 2,  // Serverless: each invocation is isolated — 10 would exhaust PG on Vercel
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 5000,
 })
