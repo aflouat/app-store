@@ -53,13 +53,13 @@ Priorités ordonnées par valeur client (confiance → acquisition → rétentio
 - [ ] **[S15] Fix password_hash vide** — `encode(gen_random_bytes(32), 'hex')` au lieu de `''` · `business_value: 60` · `value_type: strategic_positioning`
 
 **🔴 Confiance client — Lancement crédible**
-- [ ] **Onboarding consultant KYC** — upload KBIS/URSSAF dans MinIO ✅ (upload OK), validation admin avant activation du profil (badge "Vérifié") · `business_value: 92` · `value_type: user_acquisition`
-- [ ] **NDA automatique Phase 1** — checkbox + signature horodatée avant 1ère mission, stockée dans `freelancehub.signatures` · `business_value: 80` · `value_type: strategic_positioning`
-- [ ] **Offre Early Adopter** — commission 10% (au lieu de 15%) + badge "Fondateur" pour les 20 premiers consultants · `business_value: 88` · `value_type: user_acquisition`
+- [x] **Onboarding consultant KYC** — upload KBIS/URSSAF dans MinIO ✅ (upload OK), validation admin avant activation du profil (badge "Vérifié") · `business_value: 92` · `value_type: user_acquisition` ✅ 30/04
+- [x] **NDA automatique Phase 1** — checkbox + signature horodatée avant 1ère mission, stockée dans `freelancehub.signatures` · `business_value: 80` · `value_type: strategic_positioning` ✅ 30/04
+- [x] **Offre Early Adopter** — commission 10% (au lieu de 15%) + badge "Fondateur" pour les 20 premiers consultants · `business_value: 88` · `value_type: user_acquisition` ✅ 30/04
 
 **🟠 Acquisition — Signal de lancement**
-- [ ] **Landing page → portail** — bouton CTA vers `/freelancehub/register` sur perform-learn.fr · `business_value: 95` · `value_type: user_acquisition`
-- [ ] **Email de lancement** aux inscrits waitlist (Brevo) — J-3 teasing, J-0 go-live · `business_value: 88` · `value_type: user_acquisition`
+- [x] **Landing page → portail** — bouton CTA vers `/freelancehub/register` sur perform-learn.fr · `business_value: 95` · `value_type: user_acquisition` ✅ 30/04
+- [x] **Email de lancement** aux inscrits waitlist — segment consultant + client, script batch, envoyé J0 (1 destinataire marketing_consent=true) · `business_value: 88` · `value_type: user_acquisition` ✅ 30/04
 
 **🟡 Rétention — Post-lancement immédiat**
 - [ ] **Facture PDF** générée automatiquement après paiement (nom client, n° réservation, montant HT/TVA/TTC, mentions légales) → stockée MinIO, accessible depuis "Mes paiements" · `business_value: 76` · `value_type: ux_improvement`

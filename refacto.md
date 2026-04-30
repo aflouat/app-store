@@ -1,21 +1,24 @@
 # refacto.md — Analyse quotidienne perform-learn.fr
-**Date** : 2026-04-30 · **Contexte** : Jour du lancement public (C4) · **Analyste** : Claude Agent DG
+**Date** : 2026-04-30 · **Contexte** : Bilan J0 post-lancement · **Analyste** : Claude Agent DG
 
 ---
 
 ## TL;DR
 
-**Lancement J0 — 6 bloquants critiques corrigés dans cette session. Lançable immédiatement.**
+**J0 — Lancement réalisé. 14 fixes/features déployés. Email waitlist envoyé (1/1). Infrastructure sécurisée.**
 
-Fixes appliqués : C1 (montant serveur), C2 (notification orpheline), N1 (budget cap IA), S12 (path traversal KYC), S16 (CSV injection), CORS wildcard, port PostgreSQL public, headers CSP+HSTS. Nouveau : OG image dynamique, GTM portail, email de lancement waitlist, analytics.ts.
+Fixes critiques appliqués : C1 (montant serveur), C2 (notification orpheline), N1 (budget cap IA), S12 (path traversal KYC), S16 (CSV injection), CORS wildcard, port PostgreSQL public, headers CSP+HSTS, pool PG max:2.
+Features livrées : OG image dynamique, GTM-5CWFL95D portail, analytics.ts, email lancement waitlist, script batch, Caddyfile sécurisé.
 
-**Risques résiduels** : rate limiting in-memory Vercel (non persistant entre cold starts) — à résoudre C5 avec Upstash Redis.
+**État prod** : 9 users · 2 consultants KYC validés · 71 créneaux dispo · 1 inscrit waitlist notifié.
+
+**Risques résiduels** : rate limiting in-memory Vercel (non persistant cold starts) · S15 password_hash vide · S9 erreurs email silencieuses.
 
 ---
 
 ## 1. Sécurité OWASP
 
-### Critiques résolus aujourd'hui ✅
+### Critiques résolus ✅
 
 | ID | OWASP Cat. | Fichier | Statut |
 |---|---|---|---|
@@ -24,8 +27,8 @@ Fixes appliqués : C1 (montant serveur), C2 (notification orpheline), N1 (budget
 | N1 | A09 Security Logging | `chat-router.ts` | ✅ Budget cap mensuel enregistré + vérifié dans `chat_limits` avant appel LLM |
 | S12 | A01 Broken Access | `admin/kyc-presign/route.ts:38` | ✅ Guard path traversal (`kyc/` + `..` + `%2e` + `\0`) |
 | S16 | A03 Injection | `admin/export-csv/route.ts:9` | ✅ Préfixe `'` sur caractères formula injection Excel |
-| CORS | A05 Misconfig | `Caddyfile:13` | ✅ `*.vercel.app` → `portal.perform-learn.fr` uniquement |
-| PG-PORT | A05 Misconfig | `docker-compose.yml:46` | ✅ `5432:5432` → `127.0.0.1:5432:5432` |
+| CORS | A05 Misconfig | `caddy/Caddyfile` | ✅ `*.vercel.app` → `portal.perform-learn.fr` uniquement (Docker-mounted) |
+| PG-PORT | A05 Misconfig | `docker-compose.yml:46` | ✅ `5432:5432` → `127.0.0.1:5432:5432` — vérifié en prod |
 
 ### Hautes — À corriger C5
 
@@ -49,7 +52,7 @@ Fixes appliqués : C1 (montant serveur), C2 (notification orpheline), N1 (budget
 
 | Incident | Description | Action requise |
 |---|---|---|
-| CRED-01 | `.env.local` sur disque contient credentials live (hors git, non exposé) | Rotation préventive Stripe + xAI + root VPS recommandée |
+| CRED-01 | `.env.local` sur disque contient credentials live (hors git, non exposé) | Rotation préventive Stripe live + xAI + root VPS recommandée — non faite à ce jour |
 
 ---
 
@@ -96,6 +99,9 @@ Zero Vitest/Playwright. Flow booking → paiement → review → libération fon
 #### DT-07 — Timezone `T00:00:00` non UTC
 `email.ts:36` et cron utilisent timezone locale au lieu de `Z`. Risque si timezone VPS change.
 
+#### DT-08 — `trackEvent()` non intégré dans composants
+`portal/lib/freelancehub/analytics.ts` créé mais non appelé depuis `register/page.tsx`, `BookingModal.tsx`, `SearchClient.tsx`, `consultant/kyc/page.tsx`. Events GTM/Umami manquants.
+
 ---
 
 ## 3. Agilité & Processus
@@ -107,6 +113,8 @@ Zero Vitest/Playwright. Flow booking → paiement → review → libération fon
 - CLAUDE.md complet et à jour
 - ROADMAP.md priorisée avec `business_value` et `value_type`
 - Système de gouvernance en DB
+- Script `launch-email.ts` opérationnel et testé
+- Email J0 envoyé avec succès (1 destinataire waitlist marketing_consent=true)
 
 ### Points d'amélioration
 
@@ -128,19 +136,20 @@ Tests en production Stripe live. Pas d'environnement preview avec test keys.
 
 | Livraison | Fichier | Statut |
 |---|---|---|
-| OG image dynamique 1200×630 | `portal/app/og-image.png/route.tsx` | ✅ Créé |
+| OG image dynamique 1200×630 | `portal/app/og-image.png/route.tsx` | ✅ Créé (next/og ImageResponse) |
 | GTM-5CWFL95D dans portail Next.js | `portal/app/layout.tsx` | ✅ Ajouté |
-| Analytics client (GTM + Umami) | `portal/lib/freelancehub/analytics.ts` | ✅ Créé — à intégrer dans composants |
+| Analytics client (GTM + Umami) | `portal/lib/freelancehub/analytics.ts` | ✅ Créé — non intégré dans composants |
 | Email lancement consultant segment | `portal/lib/freelancehub/email.ts` | ✅ `sendLaunchEmail()` |
-| Script batch waitlist | `portal/scripts/launch-email.ts` | ✅ Créé — `npx tsx` |
-| CORS sécurisé | `Caddyfile:13` | ✅ Déployé |
+| Script batch waitlist | `portal/scripts/launch-email.ts` | ✅ Envoyé (1/1 destinataire) |
+| CORS sécurisé | `caddy/Caddyfile` | ✅ Déployé + rechargé Caddy |
+| PostgreSQL port fermé | `docker-compose.yml:46` | ✅ `127.0.0.1:5432` en prod |
 
 ### Gaps growth restants (C5)
 
 | Gap | Action | Effort |
 |---|---|---|
+| `trackEvent()` dans composants | Intégrer dans `register/page.tsx` + `BookingModal` + `SearchClient` + KYC | 2h |
 | Referral `?ref=CONSULTANT_ID` | Migration 018 + route register | 3h |
-| Custom events GTM dans composants | Intégrer `trackEvent()` dans register/page.tsx + BookingModal + SearchClient | 2h |
 | FAQ landing page | Section FAQ dans `front.html` | 1h |
 | Pages SEO par domaine (`/consultants/erp-d365`) | Nouvelles pages Next.js | 4h |
 
@@ -148,31 +157,30 @@ Tests en production Stripe live. Pas d'environnement preview avec test keys.
 
 ## 5. Plan d'action post-lancement
 
-### J0 — Aujourd'hui
+### Immédiat (J+1 — 1er mai)
 
 | Priorité | Action | Responsable | Durée |
 |---|---|---|---|
 | 🔴 P0 | Révoquer Stripe live + xAI + root VPS (si pas fait) | Abdel | 15 min |
-| 🔴 P0 | Déployer VPS : `ssh -p 2222 abdel@37.59.125.159 'cd /appli/app-store && git pull && docker compose exec caddy caddy reload --config /etc/caddy/Caddyfile'` | Abdel | 5 min |
-| 🔴 P0 | Envoyer email lancement : `npx tsx portal/scripts/launch-email.ts --dry-run` puis réel | Abdel | 30 min |
 | 🟠 P1 | Poster LinkedIn post J0 (angle fondateur) | Abdel | 20 min |
 | 🟠 P1 | Outreach DM 10 consultants ERP/D365 sur LinkedIn | Abdel | 2h |
-
-### J+1 (1er mai)
-
-| Priorité | Action | Durée |
-|---|---|---|
-| 🟠 P1 | Intégrer `trackEvent()` dans `register/page.tsx` + `BookingModal.tsx` | 1h |
-| 🟠 P1 | Configurer Upstash Redis (créer compte + variables Vercel) | 30 min |
-| 🟠 P1 | Valider KYC premiers consultants inscrits | Admin |
-| 🟡 P2 | Poster LinkedIn post J+3 (angle KYC confiance) | 20 min |
+| 🟠 P1 | Intégrer `trackEvent()` dans `register/page.tsx` + `BookingModal.tsx` | Claude | 1h |
+| 🟠 P1 | Configurer Upstash Redis (créer compte + variables Vercel) | Abdel/Claude | 30 min |
+| 🟠 P1 | Valider KYC premiers consultants inscrits | Abdel (admin) | — |
 
 ### Semaine 1
 
 - Fix S15 `password_hash` vide (`user/me/route.ts:40`)
 - Fix S9 logger erreurs email
+- Fix S13 webhook Stripe `charge.refunded`
 - Migration 018 referral + `?ref=` dashboard consultant
 - GitHub Actions CI (tsc + eslint)
+
+### Semaine 2
+
+- Upstash Redis rate limiting persistant
+- `constants.ts` — centraliser STATUS_MAP
+- `pricing.ts` — déplacer `computePricing()`
 
 ---
 
@@ -185,6 +193,7 @@ Tests en production Stripe live. Pas d'environnement preview avec test keys.
 | Erreurs API 5xx | Vercel Logs | > 5 en 1h |
 | CPU VPS | Netdata `monitor.perform-learn.fr` | > 80% pendant > 5min |
 | Budget IA | `SELECT identifier, count FROM freelancehub.chat_limits WHERE identifier LIKE 'agent:%'` | count > monthlyCap × 0.8 |
+| Emails délivrés | Resend Dashboard | taux livraison < 95% |
 
 ---
 
@@ -197,14 +206,14 @@ Tests en production Stripe live. Pas d'environnement preview avec test keys.
 | Fix N1 budget cap IA | ✅ Corrigé |
 | Fix S12 path traversal KYC | ✅ Corrigé |
 | Fix S16 CSV formula injection | ✅ Corrigé |
-| Fix CORS wildcard | ✅ Corrigé |
+| Fix CORS wildcard | ✅ Corrigé (caddy/Caddyfile) |
 | Fix port PostgreSQL public | ✅ Corrigé |
 | Headers HSTS + CSP | ✅ Ajouté |
 | Pool PG max:2 | ✅ Corrigé |
 | OG image | ✅ Route dynamique créée |
 | GTM portail Next.js | ✅ Ajouté |
-| Email lancement waitlist | ✅ Script prêt |
-| Onboarding KYC consultant | ✅ Upload + validation admin |
+| Email lancement waitlist | ✅ Envoyé (1/1) |
+| Onboarding KYC consultant | ✅ Upload + validation admin opérationnel |
 | NDA automatique Phase 1 | ✅ Endpoint opérationnel |
 | Offre Early Adopter (UI) | ✅ EarlyAdopterBand + badge |
 | Landing page → portail CTA | ✅ front.html → `/freelancehub/register` |
@@ -212,7 +221,11 @@ Tests en production Stripe live. Pas d'environnement preview avec test keys.
 | Facture PDF post-paiement | ❌ Planifié C5 |
 | `constants.ts` | ❌ Planifié C5 |
 | `pricing.ts` | ❌ Planifié C5 |
+| S13 charge.refunded | ❌ Planifié C5 |
+| S6 Metadata Stripe | ❌ Planifié C5 |
+| S9 Logger erreurs email | ❌ Semaine 1 |
+| S15 password_hash vide | ❌ Semaine 1 |
 
 ---
 
-*Généré par Agent DG perform-learn.fr · Session du 30 avril 2026*
+*Généré par Agent DG perform-learn.fr · Session J0 post-lancement du 30 avril 2026*
