@@ -1,5 +1,11 @@
 api.perform-learn.fr {
 	reverse_proxy app:3000
+
+	header {
+		Access-Control-Allow-Origin https://perform-learn.fr https://portal.perform-learn.fr
+		Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+		Access-Control-Allow-Headers "Content-Type, Authorization"
+	}
 }
 
 s3.perform-learn.fr {
@@ -16,6 +22,10 @@ analytics.perform-learn.fr {
 
 monitor.perform-learn.fr {
 	reverse_proxy netdata:19999
+
+	basicauth * {
+		{$MONITOR_USER:admin} {$MONITOR_HASH}
+	}
 }
 
 perform-learn.fr {
