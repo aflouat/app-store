@@ -87,8 +87,8 @@ Priorités ordonnées par valeur client (confiance → acquisition → rétentio
 
 **Dette technique — Performance & Sécurité**
 - [ ] **Rate limiting persistant** — Upstash Redis ou KV Vercel sur auth + payment-intent (remplace in-memory Edge) · `business_value: 80` · `value_type: strategic_positioning`
-- [ ] **Système referral `?ref=`** — `referrer_id` UUID en DB + `-2% commission 3 mois` pour filleul · `business_value: 85` · `value_type: user_acquisition`
-- [x] **GTM custom events** — `trackEvent()` intégré dans `register/page.tsx` (register) + `BookingModal.tsx` (booking_paid) ; `SearchClient.tsx` restant · `business_value: 78` · `value_type: user_acquisition` ✅ 01/05 (partiel)
+- [x] **Système referral `?ref=`** — migration 018 `referrer_id` + `referrer_commission_until` ; commission 13% si parrainage actif ; register lit `?ref=` ; dashboard consultant : lien + compteur filleuls · `business_value: 85` · `value_type: user_acquisition` ✅ 01/05
+- [x] **GTM custom events** — `trackEvent()` : register, booking_paid, search_consultant, select_consultant · `business_value: 78` · `value_type: user_acquisition` ✅ 01/05
 - [ ] **Export données utilisateur (Art. 20 RGPD)** — `GET /api/freelancehub/user/me/export` ZIP · `business_value: 70` · `value_type: strategic_positioning`
 - [ ] **Stripe singleton** — `lib/freelancehub/stripe.ts` partagé (évite réinstanciation par requête) · `business_value: 60` · `value_type: technical_debt`
 - [x] **CSP Headers + HSTS** — `next.config.mjs` avec `Content-Security-Policy` + `Strict-Transport-Security` · `business_value: 72` · `value_type: strategic_positioning` ✅ 30/04

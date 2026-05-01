@@ -5,7 +5,7 @@
 
 ## TL;DR
 
-**J+1 — 6 items livrés : S13 (refund handler), S15 (password_hash NULL), trackEvent (register + booking_paid), suppression waitlist Navbar+AppCard, GitHub Actions CI.**
+**J+1 — 11 items livrés : S13 (refund handler), S15 (password_hash NULL), S9 (email/notif isolation), trackEvent (register + booking_paid + search_consultant), suppression waitlist Navbar+AppCard, GitHub Actions CI, migration 018 referral (?ref= complet), DoD + tnr.sh.**
 
 État prod inchangé depuis J0 : 9 users · 2 consultants KYC validés · 28 endpoints API actifs.
 
@@ -163,8 +163,8 @@ Tests Stripe live uniquement. **C5** : Variables Vercel preview + schema test ou
 | 🔴 P0 | Révoquer Stripe live + xAI + root VPS (si pas fait) | Abdel |
 | 🟠 P1 | Poster LinkedIn post J+1 (angle fondateur) | Abdel |
 | 🟠 P1 | Outreach DM 10 consultants ERP/D365 LinkedIn | Abdel |
-| 🟠 P1 | Fix S9 : retry/log erreurs email | Claude |
-| 🟡 P2 | Migration 018 referral `?ref=` | Claude |
+| ✅ | Fix S9 : email isolé + notifications garanties | Claude |
+| ✅ | Migration 018 referral `?ref=` — complet | Claude |
 
 ### Semaine 1 (2–7 mai)
 
@@ -200,14 +200,14 @@ Tests Stripe live uniquement. **C5** : Variables Vercel preview + schema test ou
 | Feature | Statut |
 |---|---|
 | Rate limiting persistant (Upstash) | ❌ Semaine 2 |
-| Referral `?ref=` | ❌ Semaine 1 |
-| GTM custom events (`trackEvent()`) | ✅ register + booking_paid (SearchClient restant) |
+| Referral `?ref=` | ✅ 01/05 — migration 018 + commission 13% + dashboard + register |
+| GTM custom events (`trackEvent()`) | ✅ register + booking_paid + search_consultant + select_consultant |
 | Facture PDF post-paiement | ❌ C5 |
 | `constants.ts` STATUS_MAP | ❌ Semaine 2 |
 | `pricing.ts` | ❌ Semaine 2 |
 | S13 `charge.refunded` | ✅ Livré J+1 |
 | S15 `password_hash` vide | ✅ Livré J+1 |
-| S9 logger erreurs email | ❌ Semaine 1 |
+| S9 logger erreurs email | ✅ 01/05 — email isolé `.catch()`, notifications garanties |
 | CI/CD GitHub Actions | ✅ Livré J+1 — tsc + vitest + build |
 | Suppression page waitlist | ✅ Livré J+1 — Navbar + AppCard |
 
