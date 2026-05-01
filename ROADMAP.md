@@ -51,6 +51,7 @@ Priorités ordonnées par valeur client (confiance → acquisition → rétentio
 - [ ] **[S6] Réduire metadata Stripe** — garder uniquement `booking_id` + `amount_ttc` · `business_value: 65` · `value_type: strategic_positioning`
 - [ ] **[S9] Logger erreurs email** — remplacer `.catch(() => null)` silencieux · `business_value: 60` · `value_type: technical_debt`
 - [ ] **[S15] Fix password_hash vide** — `encode(gen_random_bytes(32), 'hex')` au lieu de `''` · `business_value: 60` · `value_type: strategic_positioning`
+- [ ] **[S17] Fix race condition Early Adopter KYC** — UPDATE atomique SQL avec `FOR UPDATE` au lieu de COUNT() + JS ; empêche attribution badge à > 20 consultants en cas de KYC concurrent · `business_value: 75` · `value_type: strategic_positioning`
 
 **🔴 Confiance client — Lancement crédible**
 - [x] **Onboarding consultant KYC** — upload KBIS/URSSAF dans MinIO ✅ (upload OK), validation admin avant activation du profil (badge "Vérifié") · `business_value: 92` · `value_type: user_acquisition` ✅ 30/04
@@ -83,6 +84,7 @@ Priorités ordonnées par valeur client (confiance → acquisition → rétentio
 - [ ] **Sous-traitants** — DPA (Data Processing Agreement) Stripe, Resend, Vercel, OVH documentés · `business_value: 55` · `value_type: strategic_positioning`
 
 **Dette technique — Performance & Sécurité**
+- [ ] **[S18] Compléter CSP headers** — ajouter `object-src 'none'`, `form-action 'self'`, `frame-ancestors 'none'`, supprimer `data:` de `img-src` · `business_value: 68` · `value_type: strategic_positioning`
 - [ ] **Rate limiting persistant** — Upstash Redis ou KV Vercel sur auth + payment-intent (remplace in-memory Edge) · `business_value: 80` · `value_type: strategic_positioning`
 - [ ] **Système referral `?ref=`** — `referrer_id` UUID en DB + `-2% commission 3 mois` pour filleul · `business_value: 85` · `value_type: user_acquisition`
 - [ ] **GTM custom events** — intégrer `trackEvent()` dans `register/page.tsx`, `BookingModal.tsx`, `SearchClient.tsx` · `business_value: 78` · `value_type: user_acquisition`
@@ -94,6 +96,7 @@ Priorités ordonnées par valeur client (confiance → acquisition → rétentio
 - [ ] **Fix timezone dates** — remplacer `'T00:00:00'` par `'T00:00:00Z'` dans email.ts et cron · `business_value: 65` · `value_type: technical_debt`
 - [ ] **Skills sync transactionnel** — batch INSERT `unnest` dans `consultant/profile/route.ts` · `business_value: 60` · `value_type: technical_debt`
 - [ ] **`validators.ts`** — centraliser `isValidDate()` et `isValidTime()` (dupliqués dans `slots/route.ts` + `slots/bulk/route.ts`) · `business_value: 55` · `value_type: technical_debt`
+- [ ] **Zod validation** — migrer validation d'entrée manuelle vers Zod en commençant par les routes d'authentification (`register`, `login`) · `business_value: 62` · `value_type: technical_debt`
 
 **Valeur client — Récurrence & revenus**
 - [ ] **Stripe Connect** — reversement automatique consultant (supprime la gestion manuelle) · `business_value: 90` · `value_type: cost_reduction`
