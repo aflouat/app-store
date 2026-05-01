@@ -91,6 +91,7 @@ Priorités ordonnées par valeur client (confiance → acquisition → rétentio
 **Dette technique — Performance & Sécurité**
 - [ ] **Transaction isolation payment** — `withTransaction()` dans `client/bookings/[id]/pay/route.ts` (UPDATE booking + INSERT payment atomiques) + `SELECT FOR UPDATE` dans `payment-intent/route.ts` · `business_value: 95` · `value_type: strategic_positioning`
 - [ ] **Timing-safe CRON_SECRET** — remplacer `===` par `crypto.timingSafeEqual()` dans 3 routes (govern/tasks/notify, govern/smoke-test, cron/reminders) · `business_value: 75` · `value_type: strategic_positioning`
+- [ ] **[S-08] Atomicité chat budget cap** — `SELECT count` + `INSERT ON CONFLICT` non-atomic dans `lib/freelancehub/chat-router.ts:162-189` → race condition bypasse `monthlyCap` ; corriger avec requête atomique unique conditionnelle · `business_value: 55` · `value_type: cost_reduction`
 - [ ] **Rate limiting persistant** — Upstash Redis ou KV Vercel sur auth + payment-intent (remplace in-memory Edge) · `business_value: 80` · `value_type: strategic_positioning`
 - [x] **Système referral `?ref=`** — migration 018 `referrer_id` + `referrer_commission_until` ; commission 13% si parrainage actif ; register lit `?ref=` ; dashboard consultant : lien + compteur filleuls · `business_value: 85` · `value_type: user_acquisition` ✅ 01/05
 - [x] **GTM custom events** — `trackEvent()` : register, booking_paid, search_consultant, select_consultant · `business_value: 78` · `value_type: user_acquisition` ✅ 01/05
