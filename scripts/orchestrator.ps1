@@ -46,8 +46,17 @@ if (-not $GhAvailable) {
 
 $CurrentBranch = git branch --show-current
 if ($CurrentBranch -ne "main") { Fail "Partir de main (branche courante : $CurrentBranch)" }
+
+# Vérifier que le working directory est propre (sinon le diff du Reviewer sera pollué)
+$DirtyFiles = git status --porcelain
+if ($DirtyFiles) {
+    Write-Host "`n  Fichiers non commités détectés :" -ForegroundColor Red
+    Write-Host $DirtyFiles -ForegroundColor Yellow
+    Fail "Working directory non propre — commiter ou stasher ces changements avant de lancer l'orchestrateur"
+}
+
 git pull origin main --quiet
-Ok "Prérequis OK · branche : main"
+Ok "Prérequis OK · branche : main · working directory propre"
 
 # ── ÉTAPE 1 : Agent DG ──────────────────────────────────────────────────────
 Step "Étape 1 — Agent DG (priorisation)"
