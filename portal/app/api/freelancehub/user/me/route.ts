@@ -37,7 +37,7 @@ export async function DELETE() {
     `UPDATE freelancehub.users
      SET email      = 'deleted_' || id || '@anon.local',
          name       = 'Utilisateur supprimé',
-         password_hash = '',
+         password_hash = NULL,
          deleted_at = NOW()
      WHERE id = $1`,
     [userId]

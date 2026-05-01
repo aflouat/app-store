@@ -4,6 +4,7 @@ import { useState, FormEvent } from 'react'
 import { signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import ChatWidget from '@/components/freelancehub/ChatWidget'
+import { trackEvent } from '@/lib/freelancehub/analytics'
 
 type Role = 'consultant' | 'client' | null
 
@@ -47,6 +48,7 @@ export default function RegisterPage() {
       return
     }
 
+    trackEvent('register', { role: activeRole })
     router.push(`/freelancehub/${activeRole}`)
     router.refresh()
   }

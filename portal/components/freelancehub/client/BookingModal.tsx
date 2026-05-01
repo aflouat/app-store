@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { loadStripe } from '@stripe/stripe-js'
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js'
 import type { MatchingResult } from '@/lib/freelancehub/types'
+import { trackEvent } from '@/lib/freelancehub/analytics'
 
 interface AvailableSlot { id: string; slot_time: string; duration_min: number }
 
@@ -397,7 +398,7 @@ export default function BookingModal({ match, clientId, notes, onClose, onBooked
               <StripeForm
                 bookingId={bookingId!}
                 priceTTC={pricing.priceTTC}
-                onSuccess={() => setStep('done')}
+                onSuccess={() => { trackEvent('booking_paid', { amount_ht: pricing.priceHTCents }); setStep('done') }}
                 onBack={() => setStep('confirm')}
               />
             </Elements>

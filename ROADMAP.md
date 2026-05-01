@@ -6,7 +6,8 @@
 > **Lancement public** : 30 avril 2026
 > **Version courante** : `v1.3.0`
 >
-> **Pour les features déjà livrées, voir `HOWTO.md` → section 5.**
+> **Pour les features déjà livrées, voir `HOWTO.md` , pour chaque feature livrée, les supprimer de ce fichier
+
 
 ---
 
@@ -20,6 +21,8 @@
 | Coût infra | ~6 €/mois (VPS OVH) + Vercel tier gratuit |
 | DEV | Basé sur IA Claude 90%, assistance humaine minimale |
 | Ressources humaines | Étudiant BTP 1h/j (commercial/finance) + Chef de projet 1-2h/j |
+| agent DG autonome | agent dev| agent devops|agent testeur| agent humain Étudiant BTP 1h/j (finance) + Chef de projet 1-2h/j |
+
 
 ---
 
@@ -47,10 +50,10 @@ Priorités ordonnées par valeur client (confiance → acquisition → rétentio
 - [x] **[N1] Enforcer monthlyCap agents IA** — consommation mensuelle enregistrée dans `chat_limits (identifier=agent:X)`, fallback statique si cap atteint · `business_value: 85` · `value_type: cost_reduction` ✅ 30/04
 - [x] **[S16] CSV formula injection** — préfixe `'` sur formules `=+-@` dans `esc()` · `business_value: 70` · `value_type: strategic_positioning` ✅ 30/04
 - [x] **[S12] Valider clé S3 presign** — `key.startsWith('kyc/')` + `!key.includes('..')` + guard `\0` · `business_value: 70` · `value_type: strategic_positioning` ✅ 30/04
-- [ ] **[S13] Gérer charge.refunded** — UPDATE payment + notification client · `business_value: 68` · `value_type: ux_improvement`
+- [x] **[S13] Gérer charge.refunded** — UPDATE payment + booking cancelled + notifications client+consultant · `business_value: 68` · `value_type: ux_improvement` ✅ 01/05
 - [ ] **[S6] Réduire metadata Stripe** — garder uniquement `booking_id` + `amount_ttc` · `business_value: 65` · `value_type: strategic_positioning`
 - [ ] **[S9] Logger erreurs email** — remplacer `.catch(() => null)` silencieux · `business_value: 60` · `value_type: technical_debt`
-- [ ] **[S15] Fix password_hash vide** — `encode(gen_random_bytes(32), 'hex')` au lieu de `''` · `business_value: 60` · `value_type: strategic_positioning`
+- [x] **[S15] Fix password_hash vide** — NULL au lieu de `''` sur soft-delete · `business_value: 60` · `value_type: strategic_positioning` ✅ 01/05
 
 **🔴 Confiance client — Lancement crédible**
 - [x] **Onboarding consultant KYC** — upload KBIS/URSSAF dans MinIO ✅ (upload OK), validation admin avant activation du profil (badge "Vérifié") · `business_value: 92` · `value_type: user_acquisition` ✅ 30/04
@@ -85,7 +88,7 @@ Priorités ordonnées par valeur client (confiance → acquisition → rétentio
 **Dette technique — Performance & Sécurité**
 - [ ] **Rate limiting persistant** — Upstash Redis ou KV Vercel sur auth + payment-intent (remplace in-memory Edge) · `business_value: 80` · `value_type: strategic_positioning`
 - [ ] **Système referral `?ref=`** — `referrer_id` UUID en DB + `-2% commission 3 mois` pour filleul · `business_value: 85` · `value_type: user_acquisition`
-- [ ] **GTM custom events** — intégrer `trackEvent()` dans `register/page.tsx`, `BookingModal.tsx`, `SearchClient.tsx` · `business_value: 78` · `value_type: user_acquisition`
+- [x] **GTM custom events** — `trackEvent()` intégré dans `register/page.tsx` (register) + `BookingModal.tsx` (booking_paid) ; `SearchClient.tsx` restant · `business_value: 78` · `value_type: user_acquisition` ✅ 01/05 (partiel)
 - [ ] **Export données utilisateur (Art. 20 RGPD)** — `GET /api/freelancehub/user/me/export` ZIP · `business_value: 70` · `value_type: strategic_positioning`
 - [ ] **Stripe singleton** — `lib/freelancehub/stripe.ts` partagé (évite réinstanciation par requête) · `business_value: 60` · `value_type: technical_debt`
 - [x] **CSP Headers + HSTS** — `next.config.mjs` avec `Content-Security-Policy` + `Strict-Transport-Security` · `business_value: 72` · `value_type: strategic_positioning` ✅ 30/04
@@ -191,14 +194,4 @@ Priorités ordonnées par valeur client (confiance → acquisition → rétentio
 - Flow complet : recherche → booking → paiement Stripe → révélation identité
 - Emails transactionnels Resend
 
-### v0.2.0 — Module gouvernance
-**Avril 2026**
 
-- Schéma PostgreSQL `governance`
-- Hiérarchie Vision → Cycle → Epic → User Story → Task
-
-### v0.1.0 — Infra & Landing
-**Mars – début avril 2026**
-
-- VPS OVH, Docker Compose, PostgreSQL 16, MinIO, Umami, Netdata, Caddy
-- Landing page avec waitlist segmentée

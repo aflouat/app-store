@@ -76,7 +76,45 @@ export async function POST(req: NextRequest) {
 
       case 'charge.refunded': {
         const charge = event.data.object as Stripe.Charge
-        console.log('[stripe-webhook] charge.refunded:', charge.id)
+        const piId = typeof charge.payment_intent === 'string'
+          ? charge.payment_intent
+          : charge.payment_intent?.id
+        if (!piId) break
+
+        const row = await queryOne<{ payment_id: string; booking_id: string; client_id: string; consultant_user_id: string }>(
+          `SELECT p.id AS payment_id, p.booking_id, b.client_id, c.user_id AS consultant_user_id
+           FROM freelancehub.payments p
+           JOIN freelancehub.bookings b ON b.id = p.booking_id
+           JOIN freelancehub.consultants c ON c.id = b.consultant_id
+           WHERE p.stripe_payment_id = $1`,
+          [piId]
+        )
+        if (!row) {
+          console.warn('[stripe-webhook] charge.refunded: payment not found for pi', piId)
+          break
+        }
+
+        await queryOne(
+          `UPDATE freelancehub.payments SET status = 'refunded', updated_at = NOW() WHERE id = $1`,
+          [row.payment_id]
+        )
+        await queryOne(
+          `UPDATE freelancehub.bookings SET status = 'cancelled', updated_at = NOW() WHERE id = $1`,
+          [row.booking_id]
+        )
+        await createNotification(
+          row.client_id,
+          'booking_cancelled',
+          'Remboursement effectué',
+          'Votre paiement a été remboursé et la réservation annulée.'
+        )
+        await createNotification(
+          row.consultant_user_id,
+          'booking_cancelled',
+          'Réservation annulée',
+          'Une réservation a été remboursée et annulée par Stripe.'
+        )
+        console.log('[stripe-webhook] charge.refunded handled: booking', row.booking_id, 'cancelled')
         break
       }
     }
