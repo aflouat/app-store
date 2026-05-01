@@ -15,6 +15,9 @@ services:
       - "80:80"
       - "443:443"
       - "443:443/udp"  # HTTP/3
+    environment:
+      MONITOR_USER: ${MONITOR_USER:-admin}
+      MONITOR_HASH: ${MONITOR_HASH}
     volumes:
       - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
