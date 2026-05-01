@@ -63,7 +63,12 @@ export async function POST(req: NextRequest) {
 
   for (const b of bookings) {
     try {
-      // Email reminders
+      const skill   = b.skill_name ?? 'votre mission'
+      const dateStr = new Date(b.slot_date + 'T00:00:00Z')
+        .toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
+      const timeStr = b.slot_time.slice(0, 5)
+
+      // Email: isolated failure — notifications still fire
       if (process.env.RESEND_API_KEY) {
         await sendBookingReminder({
           bookingId:       b.booking_id,
@@ -71,34 +76,34 @@ export async function POST(req: NextRequest) {
           clientEmail:     b.client_email,
           consultantName:  b.consultant_name ?? 'Consultant',
           consultantEmail: b.consultant_email,
-          skillName:       b.skill_name ?? 'Expertise',
+          skillName:       skill,
           slotDate:        b.slot_date,
-          slotTime:        b.slot_time.slice(0, 5),
+          slotTime:        timeStr,
           amountHt:        0,
-        })
+        }).catch((err: unknown) =>
+          console.error(`[cron/reminders] email failed for booking ${b.booking_id}`, {
+            client: b.client_email, consultant: b.consultant_email, err: String(err),
+          })
+        )
       }
 
-      // In-app notifications
-      const skill    = b.skill_name ?? 'votre mission'
-      const dateStr  = new Date(b.slot_date + 'T00:00:00Z')
-        .toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
-      const timeStr  = b.slot_time.slice(0, 5)
-
-      await createNotification(
-        b.client_id,
-        'reminder',
-        'Rappel — mission demain',
-        `${skill} le ${dateStr} à ${timeStr}.`,
-        { booking_id: b.booking_id }
-      )
-
-      await createNotification(
-        b.consultant_user_id,
-        'reminder',
-        'Rappel — mission demain',
-        `${skill} le ${dateStr} à ${timeStr}.`,
-        { booking_id: b.booking_id }
-      )
+      // Notifications: always run regardless of email result
+      await Promise.all([
+        createNotification(
+          b.client_id,
+          'reminder',
+          'Rappel — mission demain',
+          `${skill} le ${dateStr} à ${timeStr}.`,
+          { booking_id: b.booking_id }
+        ),
+        createNotification(
+          b.consultant_user_id,
+          'reminder',
+          'Rappel — mission demain',
+          `${skill} le ${dateStr} à ${timeStr}.`,
+          { booking_id: b.booking_id }
+        ),
+      ])
 
       sent++
     } catch (err) {

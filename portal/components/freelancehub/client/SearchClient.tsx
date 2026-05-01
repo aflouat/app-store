@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import type { Skill, MatchingResult } from '@/lib/freelancehub/types'
 import BookingModal from './BookingModal'
+import { trackEvent } from '@/lib/freelancehub/analytics'
 
 type AvailFilter = 'all' | 'week' | 'month'
 
@@ -47,7 +48,9 @@ export default function SearchClient({ skills, clientId }: Props) {
       return
     }
     const data = await res.json()
-    setResults(data.matches ?? [])
+    const matches: MatchingResult[] = data.matches ?? []
+    setResults(matches)
+    trackEvent('search_consultant', { skill_id: Number(skillId), results_count: matches.length })
   }
 
   // Grouper les compétences par catégorie
@@ -180,7 +183,7 @@ export default function SearchClient({ skills, clientId }: Props) {
                       key={r.slot.id}
                       result={r}
                       rank={i + 1}
-                      onBook={() => setSelected(r)}
+                      onBook={() => { trackEvent('select_consultant', { rank: i + 1 }); setSelected(r) }}
                     />
                   ))}
                 </div>

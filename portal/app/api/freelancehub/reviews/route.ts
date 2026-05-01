@@ -98,62 +98,75 @@ export async function POST(req: NextRequest) {
        WHERE booking_id = $1 AND status = 'captured'`,
       [booking_id]
     )
-    // Notify consultant of fund release (fire-and-forget)
-    try {
-      const fundInfo = await queryOne<{
-        consultant_email: string; consultant_name: string | null; consultant_net: number
-      }>(
-        `SELECT uc2.email AS consultant_email, uc2.name AS consultant_name,
-                b.consultant_amount AS consultant_net
-         FROM freelancehub.bookings b
-         JOIN freelancehub.consultants c ON c.id = b.consultant_id
-         JOIN freelancehub.users uc2 ON uc2.id = c.user_id
-         WHERE b.id = $1`,
-        [booking_id]
-      )
-      if (fundInfo) {
-        if (process.env.RESEND_API_KEY) {
-          await sendFundRelease(
-            fundInfo.consultant_email,
-            fundInfo.consultant_name ?? 'Consultant',
-            fundInfo.consultant_net,
-            booking_id
-          )
-        }
-        await createNotification(
-          booking.consultant_user_id,
-          'fund_released',
-          'Paiement versé',
-          `${(fundInfo.consultant_net / 100).toFixed(0)} € transférés sur votre compte.`,
-          { booking_id }
+    // Notify consultant of fund release — notification must-run, email can-fail
+    const fundInfo = await queryOne<{
+      consultant_email: string; consultant_name: string | null; consultant_net: number
+    }>(
+      `SELECT uc2.email AS consultant_email, uc2.name AS consultant_name,
+              b.consultant_amount AS consultant_net
+       FROM freelancehub.bookings b
+       JOIN freelancehub.consultants c ON c.id = b.consultant_id
+       JOIN freelancehub.users uc2 ON uc2.id = c.user_id
+       WHERE b.id = $1`,
+      [booking_id]
+    ).catch(() => null)
+
+    if (fundInfo) {
+      // Email: isolated failure — notification still fires
+      if (process.env.RESEND_API_KEY) {
+        await sendFundRelease(
+          fundInfo.consultant_email,
+          fundInfo.consultant_name ?? 'Consultant',
+          fundInfo.consultant_net,
+          booking_id
+        ).catch((err: unknown) =>
+          console.error('[reviews] sendFundRelease failed — fallback to notification only', {
+            booking_id, email: fundInfo.consultant_email, err: String(err),
+          })
         )
       }
-    } catch (emailErr) { console.error('[reviews] fund/notif error:', emailErr) }
+      // Notification: always runs regardless of email result
+      await createNotification(
+        booking.consultant_user_id,
+        'fund_released',
+        'Paiement versé',
+        `${(fundInfo.consultant_net / 100).toFixed(0)} € transférés sur votre compte.`,
+        { booking_id }
+      ).catch((err: unknown) =>
+        console.error('[reviews] createNotification fund_released failed', { booking_id, err: String(err) })
+      )
+    }
   } else {
-    // Send review request to the other party (fire-and-forget)
-    try {
-      const otherUserId  = reviewer_role === 'client' ? booking.consultant_user_id : booking.client_id
-      const otherUser = await queryOne<{ id: string; email: string; name: string | null; role: string }>(
-        `SELECT u.id, u.email, u.name,
-                CASE WHEN u.id = (SELECT user_id FROM freelancehub.consultants WHERE id = $2)
-                  THEN 'consultant' ELSE 'client' END AS role
-         FROM freelancehub.users u WHERE u.id = $1`,
-        [otherUserId, booking.consultant_id]
-      )
-      if (otherUser) {
-        const otherRole = otherUser.role as 'client' | 'consultant'
-        if (process.env.RESEND_API_KEY) {
-          await sendReviewRequest(booking_id, otherUser.email, otherUser.name ?? '', otherRole)
-        }
-        await createNotification(
-          otherUser.id,
-          'review_request',
-          'Évaluez votre mission',
-          'Votre mission est terminée. Partagez votre expérience.',
-          { booking_id }
-        )
+    // Review request — notification must-run, email can-fail
+    const otherUserId = reviewer_role === 'client' ? booking.consultant_user_id : booking.client_id
+    const otherUser = await queryOne<{ id: string; email: string; name: string | null; role: string }>(
+      `SELECT u.id, u.email, u.name,
+              CASE WHEN u.id = (SELECT user_id FROM freelancehub.consultants WHERE id = $2)
+                THEN 'consultant' ELSE 'client' END AS role
+       FROM freelancehub.users u WHERE u.id = $1`,
+      [otherUserId, booking.consultant_id]
+    ).catch(() => null)
+
+    if (otherUser) {
+      const otherRole = otherUser.role as 'client' | 'consultant'
+      if (process.env.RESEND_API_KEY) {
+        await sendReviewRequest(booking_id, otherUser.email, otherUser.name ?? '', otherRole)
+          .catch((err: unknown) =>
+            console.error('[reviews] sendReviewRequest failed — fallback to notification only', {
+              booking_id, email: otherUser.email, err: String(err),
+            })
+          )
       }
-    } catch (emailErr) { console.error('[reviews] email error:', emailErr) }
+      await createNotification(
+        otherUser.id,
+        'review_request',
+        'Évaluez votre mission',
+        'Votre mission est terminée. Partagez votre expérience.',
+        { booking_id }
+      ).catch((err: unknown) =>
+        console.error('[reviews] createNotification review_request failed', { booking_id, err: String(err) })
+      )
+    }
   }
 
   return NextResponse.json({ success: true, review_id: review?.id })
