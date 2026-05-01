@@ -132,7 +132,7 @@ TEST_STATUS: pass/fail
 NOTES: [observations importantes]
 "@
 
-Info "Lancement Agent DEV..."
+Info "Lancement Agent DEV (itération 1)..."
 $DEVOutput = claude -p $DEVPrompt
 Write-Host $DEVOutput
 
@@ -143,17 +143,31 @@ if ($BuildStatus -ne "pass") { Fail "Build KO — corrige les erreurs TypeScript
 if ($TestStatus  -ne "pass") { Fail "Tests KO — corrige les tests Vitest avant de continuer" }
 Ok "DEV terminé · Build OK · Tests OK"
 
-# ── ÉTAPE 3 : Agent Reviewer (Option B — session fraîche) ───────────────────
-Step "Étape 3 — Agent Reviewer (session fraîche)"
+# ── ÉTAPE 3 : Boucle Reviewer ↔ DEV (max 3 tentatives) ─────────────────────
+Step "Étape 3 — Boucle Reviewer ↔ DEV (max 3 itérations)"
 
-$Diff         = git diff "main...$FeatureBranch" 2>$null
-$ChangedFiles = git diff --name-only "main...$FeatureBranch" 2>$null
-$Commits      = git log "main..$FeatureBranch" --pretty=format:"- %s" 2>$null
+$MaxReviewIterations = 3
+$ReviewApproved      = $false
+$ReviewerFeedback    = ""
 
-$ReviewerPrompt = @"
+for ($Iteration = 1; $Iteration -le $MaxReviewIterations; $Iteration++) {
+
+    Info "Reviewer — itération $Iteration / $MaxReviewIterations"
+
+    $Diff         = git diff "main...$FeatureBranch" 2>$null
+    $ChangedFiles = git diff --name-only "main...$FeatureBranch" 2>$null
+    $Commits      = git log "main..$FeatureBranch" --pretty=format:"- %s" 2>$null
+
+    $FeedbackSection = if ($ReviewerFeedback) {
+        "CORRECTIONS DEMANDÉES À L'ITÉRATION PRÉCÉDENTE (à vérifier) :`n$ReviewerFeedback`n"
+    } else { "" }
+
+    $ReviewerPrompt = @"
 Tu es Agent Reviewer indépendant pour perform-learn.fr.
 Tu n'as aucun contexte de la session précédente — tu pars de zéro.
+Itération : $Iteration / $MaxReviewIterations
 
+$FeedbackSection
 RÈGLES DE SÉCURITÉ (violation = CHANGES_REQUIRED automatique) :
 - Ne jamais calculer le montant Stripe côté client (toujours depuis la DB)
 - Ne jamais exposer name/email/bio/linkedin_url sans vérifier revealed_at IS NOT NULL
@@ -187,16 +201,78 @@ CHANGES_REQUIRED:
 2. ...
 "@
 
-Info "Lancement Agent Reviewer (session fraîche avec diff injecté)..."
-$ReviewOutput = claude -p $ReviewerPrompt
-Write-Host $ReviewOutput
+    $ReviewOutput = claude -p $ReviewerPrompt
+    Write-Host $ReviewOutput
 
-if ($ReviewOutput -notmatch "^APPROVED") {
-    git checkout main
-    git branch -D $FeatureBranch 2>$null
-    Fail "Review KO — corrections requises. Branche $FeatureBranch supprimée."
+    if ($ReviewOutput -match "^APPROVED") {
+        $ReviewApproved = $true
+        break
+    }
+
+    # Reviewer a demandé des corrections
+    $ReviewerFeedback = $ReviewOutput -replace "^CHANGES_REQUIRED:\s*", ""
+    Warn "Reviewer KO (itération $Iteration) — relance DEV avec le feedback"
+
+    if ($Iteration -lt $MaxReviewIterations) {
+
+        $DEVFixPrompt = @"
+Tu es Agent DEV pour perform-learn.fr.
+Tu travailles sur la branche $FeatureBranch.
+
+Le Reviewer a rejeté ton implémentation (itération $Iteration).
+Voici les corrections demandées :
+
+$ReviewerFeedback
+
+RÈGLES STRICTES :
+- Corriger UNIQUEMENT les points listés ci-dessus
+- Ne pas modifier d'autres fichiers
+- Après correction : npm run build && npm test (les deux doivent passer)
+- Commiter les corrections : git add [fichiers] && git commit -m "fix(review): correction itération $Iteration"
+
+Réponds avec :
+BUILD_STATUS: pass/fail
+TEST_STATUS: pass/fail
+FIXES_APPLIED: [liste des corrections effectuées]
+"@
+
+        Info "Agent DEV — correction itération $($Iteration + 1)..."
+        $DEVFixOutput = claude -p $DEVFixPrompt
+        Write-Host $DEVFixOutput
+
+        $BuildStatus = ($DEVFixOutput -split "`n" | Where-Object { $_ -match "^BUILD_STATUS:" }) -replace "BUILD_STATUS:\s*", ""
+        $TestStatus  = ($DEVFixOutput -split "`n" | Where-Object { $_ -match "^TEST_STATUS:" })  -replace "TEST_STATUS:\s*", ""
+
+        if ($BuildStatus -ne "pass") {
+            Warn "Build KO après correction — abandon de la boucle"
+            break
+        }
+        if ($TestStatus -ne "pass") {
+            Warn "Tests KO après correction — abandon de la boucle"
+            break
+        }
+    }
 }
-Ok "Review approuvée"
+
+if (-not $ReviewApproved) {
+    # Conserver la branche pour reprise manuelle
+    git checkout main
+    Write-Host ""
+    Write-Host "╔══════════════════════════════════════════════════════╗" -ForegroundColor Yellow
+    Write-Host "║  REVIEW KO après $MaxReviewIterations itérations — intervention manuelle  ║" -ForegroundColor Yellow
+    Write-Host "╠══════════════════════════════════════════════════════╣" -ForegroundColor Yellow
+    Write-Host "║  Branche conservée : $FeatureBranch" -ForegroundColor Yellow
+    Write-Host "║                                                      ║" -ForegroundColor Yellow
+    Write-Host "║  Pour corriger manuellement :                        ║" -ForegroundColor Yellow
+    Write-Host "║  git checkout $FeatureBranch" -ForegroundColor Cyan
+    Write-Host "║  # ... corriger les points du Reviewer ...           ║" -ForegroundColor Cyan
+    Write-Host "║  git commit -m 'fix: corrections review manuelle'    ║" -ForegroundColor Cyan
+    Write-Host "║  .\scripts\orchestrator.ps1 -ForceUS '$SelectedUS'" -ForegroundColor Cyan
+    Write-Host "╚══════════════════════════════════════════════════════╝" -ForegroundColor Yellow
+    exit 1
+}
+
+Ok "Review approuvée (itération $Iteration)"
 
 # ── ÉTAPE 4 : Merge sur main ────────────────────────────────────────────────
 Step "Étape 4 — Merge sur main"
