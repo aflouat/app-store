@@ -68,6 +68,19 @@ export default async function ConsultantDashboard() {
     [userId]
   )
 
+  const referralStats = await query<{ referred_count: number; commission_until: string | null }>(
+    `SELECT
+       COUNT(u2.id)::int AS referred_count,
+       u.referrer_commission_until AS commission_until
+     FROM freelancehub.users u
+     LEFT JOIN freelancehub.users u2 ON u2.referrer_id = u.id
+     WHERE u.id = $1
+     GROUP BY u.referrer_commission_until`,
+    [userId]
+  )
+  const referralCount  = referralStats[0]?.referred_count ?? 0
+  const commissionUntil = referralStats[0]?.commission_until ?? null
+
   const name = session.user.name || session.user.email
 
   return (
@@ -146,6 +159,9 @@ export default async function ConsultantDashboard() {
           </div>
         )}
       </section>
+
+      {/* Referral section */}
+      <ReferralSection userId={userId} referralCount={referralCount} commissionUntil={commissionUntil} />
 
       <style>{`
         .fh-page { display: flex; flex-direction: column; gap: 2rem; max-width: 900px; }
@@ -255,6 +271,45 @@ function KpiCard({ label, value, color }: { label: string; value: string; color:
         .fh-kpi-label { font-size: .8rem; color: var(--text-light); font-weight: 500; text-transform: uppercase; letter-spacing: .04em; }
       `}</style>
     </div>
+  )
+}
+
+function ReferralSection({ userId, referralCount, commissionUntil }: {
+  userId: string
+  referralCount: number
+  commissionUntil: string | null
+}) {
+  const baseUrl = process.env.NEXTAUTH_URL ?? 'https://portal.perform-learn.fr'
+  const link = `${baseUrl}/freelancehub/register?ref=${userId}`
+  const isActive = commissionUntil ? new Date(commissionUntil) > new Date() : false
+  const untilStr = commissionUntil
+    ? new Date(commissionUntil).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+    : null
+
+  return (
+    <section className="fh-section">
+      <h2 className="fh-section-title">Parrainage</h2>
+      <div style={{ background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: '1.2rem 1.4rem', display: 'flex', flexDirection: 'column', gap: '.9rem' }}>
+        <p style={{ fontSize: '.88rem', color: 'var(--text-mid)', margin: 0 }}>
+          Invitez des consultants : ils bénéficient d'une commission réduite à <strong>13 %</strong> (au lieu de 15 %) pendant 3 mois.
+        </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem', flexWrap: 'wrap' }}>
+          <code style={{ flex: 1, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '6px', padding: '.45rem .8rem', fontSize: '.82rem', color: 'var(--text)', wordBreak: 'break-all' }}>
+            {link}
+          </code>
+        </div>
+        <div style={{ display: 'flex', gap: '1.2rem', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '.88rem', color: 'var(--text-mid)' }}>
+            Filleuls inscrits : <strong>{referralCount}</strong>
+          </span>
+          {isActive && untilStr && (
+            <span style={{ fontSize: '.82rem', background: '#f0fdf4', color: '#166534', border: '1px solid #86efac', borderRadius: '20px', padding: '.15em .7em', fontWeight: 600 }}>
+              Commission réduite active jusqu'au {untilStr}
+            </span>
+          )}
+        </div>
+      </div>
+    </section>
   )
 }
 

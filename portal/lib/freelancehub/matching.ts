@@ -16,10 +16,11 @@ import { query } from './db'
 import type { MatchingResult } from './types'
 
 // ─── Helpers calcul prix (centimes) ──────────────────────────
-export function computePricing(hourlyRateEur: number) {
+// commissionRate : 0.15 par défaut, 0.13 si parrainage actif (referrer_commission_until > NOW)
+export function computePricing(hourlyRateEur: number, commissionRate = 0.15) {
   const htCents   = Math.round(hourlyRateEur * 100)
   const ttcCents  = Math.round(htCents * 1.20)
-  const commCents = Math.round(htCents * 0.15)
+  const commCents = Math.round(htCents * commissionRate)
   const netCents  = htCents - commCents
   return { htCents, ttcCents, commCents, netCents }
 }

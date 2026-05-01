@@ -6,7 +6,7 @@ import { sendWelcomeConsultant } from '@/lib/freelancehub/email'
 // POST /api/freelancehub/auth/register
 // Body: { name, email, password, role: 'consultant' | 'client' }
 export async function POST(req: NextRequest) {
-  const { name, email, password, role, cgu_accepted, marketing_consent } = await req.json()
+  const { name, email, password, role, cgu_accepted, marketing_consent, ref } = await req.json()
 
   if (!email || !password || !role) {
     return NextResponse.json({ error: 'Champs obligatoires manquants.' }, { status: 400 })
@@ -53,6 +53,22 @@ export async function POST(req: NextRequest) {
      VALUES ($1, 'CGU', '1.0', $2, $3, 'checkbox')`,
     [user.id, ip, ua]
   )
+
+  // Referral: validate ref UUID format before hitting the DB
+  if (ref && typeof ref === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(ref)) {
+    const referrer = await queryOne<{ id: string }>(
+      `SELECT id FROM freelancehub.users WHERE id = $1`,
+      [ref]
+    )
+    if (referrer && referrer.id !== user.id) {
+      await queryOne(
+        `UPDATE freelancehub.users
+         SET referrer_id = $1, referrer_commission_until = NOW() + INTERVAL '3 months'
+         WHERE id = $2`,
+        [ref, user.id]
+      )
+    }
+  }
 
   if (role === 'consultant') {
     sendWelcomeConsultant(user.email, name?.trim() || '').catch(() => null)

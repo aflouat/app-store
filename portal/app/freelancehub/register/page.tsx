@@ -2,7 +2,7 @@
 
 import { useState, FormEvent } from 'react'
 import { signIn } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import ChatWidget from '@/components/freelancehub/ChatWidget'
 import { trackEvent } from '@/lib/freelancehub/analytics'
 
@@ -10,6 +10,8 @@ type Role = 'consultant' | 'client' | null
 
 export default function RegisterPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const ref = searchParams.get('ref') ?? undefined
   const [activeRole, setActiveRole] = useState<Role>(null)
   const [name,       setName]       = useState('')
   const [email,      setEmail]      = useState('')
@@ -28,7 +30,7 @@ export default function RegisterPage() {
     const res = await fetch('/api/freelancehub/auth/register', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ name, email, password, role: activeRole, cgu_accepted: true, marketing_consent: marketingConsent }),
+      body:    JSON.stringify({ name, email, password, role: activeRole, cgu_accepted: true, marketing_consent: marketingConsent, ref }),
     })
 
     if (!res.ok) {
@@ -62,6 +64,12 @@ export default function RegisterPage() {
         </div>
         <h1 className="reg-title">Rejoindre la plateforme</h1>
         <p className="reg-sub">Choisissez votre profil pour démarrer</p>
+
+        {ref && (
+          <div className="reg-referral-banner">
+            Vous avez été parrainé — commission réduite à <strong>13 %</strong> pendant 3 mois.
+          </div>
+        )}
 
         {/* Two panels */}
         <div className="reg-panels">
@@ -231,6 +239,7 @@ export default function RegisterPage() {
         .reg-login-link { text-align: center; font-size: .88rem; color: var(--text-mid); }
         .reg-login-link a { color: var(--c1); font-weight: 600; text-decoration: none; }
         .reg-login-link a:hover { text-decoration: underline; }
+        .reg-referral-banner { background: #f0fdf4; border: 1px solid #86efac; color: #166534; border-radius: var(--radius-sm); padding: .65rem 1rem; font-size: .88rem; }
       `}</style>
     </div>
   )

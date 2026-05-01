@@ -37,17 +37,33 @@ export async function POST(req: NextRequest) {
         throw Object.assign(new Error('Ce créneau n\'est plus disponible.'), { status: 409 })
       }
 
-      // Fetch consultant daily_rate from DB — never trust client-side amounts
-      const consultantRow = await queryOneTx<{ daily_rate: number | null; skill_id: number | null }>(
+      // Fetch consultant daily_rate + referral discount from DB — never trust client-side amounts
+      const consultantRow = await queryOneTx<{
+        daily_rate: number | null
+        skill_id: number | null
+        referrer_commission_until: string | null
+      }>(
         client,
         `SELECT c.daily_rate,
-                (SELECT cs.skill_id FROM freelancehub.consultant_skills cs WHERE cs.consultant_id = c.id LIMIT 1) AS skill_id
-         FROM freelancehub.consultants c WHERE c.id = $1`,
+                (SELECT cs.skill_id FROM freelancehub.consultant_skills cs WHERE cs.consultant_id = c.id LIMIT 1) AS skill_id,
+                u.referrer_commission_until
+         FROM freelancehub.consultants c
+         JOIN freelancehub.users u ON u.id = c.user_id
+         WHERE c.id = $1`,
         [consultant_id]
       )
       if (!consultantRow) throw Object.assign(new Error('Consultant introuvable.'), { status: 404 })
 
-      const { htCents, commCents, netCents } = computePricing(consultantRow.daily_rate ?? DEFAULT_HOURLY_RATE)
+      // Apply referral discount (-2% commission) if parrainage active
+      const hasReferralDiscount = consultantRow.referrer_commission_until
+        ? new Date(consultantRow.referrer_commission_until) > new Date()
+        : false
+      const commissionRate = hasReferralDiscount ? 0.13 : 0.15
+
+      const { htCents, commCents, netCents } = computePricing(
+        consultantRow.daily_rate ?? DEFAULT_HOURLY_RATE,
+        commissionRate
+      )
 
       // Create booking
       const newBooking = await queryOneTx<{ id: string }>(
