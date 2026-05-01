@@ -225,6 +225,16 @@ export async function sendKycRejected(email: string, name: string, notes: string
   })
 }
 
+export async function sendPasswordReset(email: string, token: string) {
+  const resetUrl = `${BASE}/freelancehub/reset-password?token=${token}`
+  await getResend().emails.send({
+    from:    FROM,
+    to:      email,
+    subject: 'Réinitialisation de votre mot de passe FreelanceHub',
+    html:    buildPasswordResetEmail({ resetUrl }),
+  })
+}
+
 // ─── HTML templates ───────────────────────────────────────────
 
 function baseTemplate(title: string, body: string): string {
@@ -444,6 +454,20 @@ function buildLaunchClientEmail(d: { name: string }): string {
     </div>
     <p>Domaines disponibles : ERP D365, SAP, Supply Chain, Management de projet, Data, Formation.</p>
     <a href="${BASE}/freelancehub/register" class="cta">Accéder à la plateforme →</a>
+    <hr>
+    <p style="font-size:12px;color:#968e89">Questions : <a href="mailto:contact@perform-learn.fr" style="color:#B9958D">contact@perform-learn.fr</a></p>
+  `)
+}
+
+function buildPasswordResetEmail(d: { resetUrl: string }): string {
+  return baseTemplate('Réinitialisation mot de passe', `
+    <h1>Réinitialisation de mot de passe</h1>
+    <p>Vous avez demandé à réinitialiser votre mot de passe FreelanceHub.</p>
+    <p>Cliquez sur le bouton ci-dessous dans l'heure qui suit pour définir un nouveau mot de passe :</p>
+    <a href="${d.resetUrl}" class="cta">Réinitialiser mon mot de passe →</a>
+    <div class="info-box">
+      <p style="font-size:13px;color:#5c5956;margin:0">Ce lien expire dans <strong>1 heure</strong>. Si vous n'avez pas fait cette demande, ignorez cet email — votre compte est en sécurité.</p>
+    </div>
     <hr>
     <p style="font-size:12px;color:#968e89">Questions : <a href="mailto:contact@perform-learn.fr" style="color:#B9958D">contact@perform-learn.fr</a></p>
   `)

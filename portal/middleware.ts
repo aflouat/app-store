@@ -66,10 +66,14 @@ export default auth((req: NextRequest & { auth: { user?: { role?: string } } | n
   if (!pathname.startsWith('/freelancehub') ||
        pathname.startsWith('/freelancehub/login') ||
        pathname.startsWith('/freelancehub/register') ||
+       pathname.startsWith('/freelancehub/forgot-password') ||
+       pathname.startsWith('/freelancehub/reset-password') ||
        pathname.startsWith('/freelancehub/cgu') ||
        pathname.startsWith('/freelancehub/privacy') ||
        pathname.startsWith('/freelancehub/support') ||
        pathname.startsWith('/api/auth') ||
+       pathname.startsWith('/api/freelancehub/auth/forgot-password') ||
+       pathname.startsWith('/api/freelancehub/auth/reset-password') ||
        pathname.startsWith('/api/freelancehub/support/chat/public')) {
     return NextResponse.next()
   }

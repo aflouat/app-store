@@ -21,6 +21,7 @@ function LoginForm() {
 
   const [email,    setEmail]    = useState('')
   const [password, setPassword] = useState('')
+  const resetSuccess = searchParams.get('reset') === '1'
   const [error,    setError]    = useState(
     errorParam ? (GOOGLE_ERROR_MESSAGES[errorParam] ?? 'Erreur de connexion. Réessayez.') : ''
   )
@@ -101,7 +102,12 @@ function LoginForm() {
             />
           </div>
 
+          {resetSuccess && <p className="fh-login-success">Mot de passe mis à jour. Connectez-vous avec votre nouveau mot de passe.</p>}
           {error && <p className="fh-login-error">{error}</p>}
+
+          <div className="fh-forgot-link">
+            <a href="/freelancehub/forgot-password">Mot de passe oublié ?</a>
+          </div>
 
           <button type="submit" className="fh-btn-primary" disabled={loading}>
             {loading ? 'Connexion…' : 'Se connecter'}
@@ -210,6 +216,10 @@ function LoginForm() {
           color: var(--c1); font-weight: 600; text-decoration: none;
         }
         .fh-login-register-link:hover { text-decoration: underline; }
+        .fh-forgot-link { text-align: right; margin-top: -.3rem; }
+        .fh-forgot-link a { font-size: .82rem; color: var(--text-light); text-decoration: none; }
+        .fh-forgot-link a:hover { color: var(--c1); text-decoration: underline; }
+        .fh-login-success { color: #166534; font-size: .85rem; background: #f0fdf4; border: 1px solid #86efac; padding: .5rem .75rem; border-radius: 6px; }
         .fh-btn-google {
           display: flex; align-items: center; justify-content: center; gap: .6rem;
           width: 100%; padding: .72rem 1.2rem;
