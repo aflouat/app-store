@@ -1,0 +1,82 @@
+name: Release Gate
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release-gate:
+    name: Release Gate — ${{ github.ref_name }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: portal
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: portal/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: TypeScript check
+        run: npx tsc --noEmit
+
+      - name: Tests
+        run: npm test
+
+      - name: Check for hardcoded secrets
+        run: |
+          if grep -rn "sk_live_\|re_live_\|whsec_live_" app lib components \
+            --include="*.ts" --include="*.tsx" 2>/dev/null; then
+            echo "❌ Secret live hardcodé détecté — release bloquée"
+            exit 1
+          fi
+          echo "✅ Aucun secret live dans le code"
+        working-directory: portal
+
+      - name: Build
+        run: npm run build
+        env:
+          NEXTAUTH_SECRET: ci-nextauth-secret-padding-32chars-ok
+          NEXTAUTH_URL: https://portal.perform-learn.fr
+          NEXT_PUBLIC_API_URL: https://api.perform-learn.fr
+          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: pk_test_ci_placeholder
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+          RESEND_API_KEY: re_test_ci_placeholder
+          STRIPE_SECRET_KEY: sk_test_ci_placeholder
+          STRIPE_WEBHOOK_SECRET: whsec_ci_placeholder
+          CRON_SECRET: ci-cron-secret-placeholder
+
+      - name: Smoke test — URLs publiques
+        run: |
+          echo "Vérification des URLs publiques..."
+          curl -sf --max-time 10 https://portal.perform-learn.fr > /dev/null \
+            && echo "✅ portal.perform-learn.fr OK" \
+            || echo "⚠️  portal.perform-learn.fr non joignable (déploiement en cours ?)"
+          curl -sf --max-time 10 https://api.perform-learn.fr/health > /dev/null \
+            && echo "✅ api.perform-learn.fr/health OK" \
+            || echo "⚠️  api.perform-learn.fr non joignable"
+        working-directory: portal
+
+      - name: Release summary
+        run: |
+          echo ""
+          echo "================================================"
+          echo "  ✅ RELEASE GATE PASSÉ — ${{ github.ref_name }}"
+          echo "  Commit : ${{ github.sha }}"
+          echo "  Date   : $(date '+%Y-%m-%d %H:%M UTC')"
+          echo "================================================"
+          echo ""
+          echo "Étapes manuelles restantes (DONE.md §7-§11) :"
+          echo "  1. ./scripts/deploy-agent.sh  — déploiement VPS"
+          echo "  2. Smoke tests manuels Vercel"
+          echo "  3. Vérifier monitoring J0 (Umami, Netdata, Vercel logs)"
