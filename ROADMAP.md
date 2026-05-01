@@ -93,7 +93,8 @@ Priorités ordonnées par valeur client (confiance → acquisition → rétentio
 - [ ] **Stripe singleton** — `lib/freelancehub/stripe.ts` partagé (évite réinstanciation par requête) · `business_value: 60` · `value_type: technical_debt`
 - [x] **CSP Headers + HSTS** — `next.config.mjs` avec `Content-Security-Policy` + `Strict-Transport-Security` · `business_value: 72` · `value_type: strategic_positioning` ✅ 30/04
 - [x] **Pool connexions PostgreSQL** — `max: 2` immédiat + PgBouncer C6 (évite saturation 100 conx) · `business_value: 78` · `value_type: technical_debt` ✅ 30/04
-- [ ] **Tests automatisés** — Vitest (unit: computePricing, matching) + Playwright (E2E booking flow) · `business_value: 85` · `value_type: technical_debt`
+- [x] **CI/CD GitHub Actions** — `.github/workflows/ci.yml` : tsc + vitest + next build sur push main · `business_value: 80` · `value_type: technical_debt` ✅ 01/05
+- [ ] **Tests automatisés** — Vitest unit: computePricing, matching (base CI existante) + Playwright E2E booking flow · `business_value: 85` · `value_type: technical_debt`
 - [ ] **Fix timezone dates** — remplacer `'T00:00:00'` par `'T00:00:00Z'` dans email.ts et cron · `business_value: 65` · `value_type: technical_debt`
 - [ ] **Skills sync transactionnel** — batch INSERT `unnest` dans `consultant/profile/route.ts` · `business_value: 60` · `value_type: technical_debt`
 - [ ] **`validators.ts`** — centraliser `isValidDate()` et `isValidTime()` (dupliqués dans `slots/route.ts` + `slots/bulk/route.ts`) · `business_value: 55` · `value_type: technical_debt`

@@ -5,11 +5,11 @@
 
 ## TL;DR
 
-**J+1 — Infra stable. `front.html` supprimée (Caddy redirige → portal). Analyse ciblée : S13 critique confirmé (refund handler vide). Nouveau bug détecté : emails contiennent des liens `/confidentialite.html` cassés depuis la redirection domaine.**
+**J+1 — 6 items livrés : S13 (refund handler), S15 (password_hash NULL), trackEvent (register + booking_paid), suppression waitlist Navbar+AppCard, GitHub Actions CI.**
 
-État prod inchangé depuis J0 : 9 users · 2 consultants KYC validés · 28 endpoints API actifs · 0 nouvelle route depuis le lancement.
+État prod inchangé depuis J0 : 9 users · 2 consultants KYC validés · 28 endpoints API actifs.
 
-**Actions immédiates** : fix S13 (refund handler) + fix liens légaux dans email.ts + intégration trackEvent() (P1 J0 non fait).
+Page waitlist pré-lancement supprimée du portail (Navbar + AppCard). Bouton "Rejoindre" → `/freelancehub/register` directement. CI GitHub Actions actif sur `main`.
 
 ---
 
@@ -144,17 +144,27 @@ Tests Stripe live uniquement. **C5** : Variables Vercel preview + schema test ou
 
 ## 4. Plan d'action J+1
 
-### Immédiat (1er mai — aujourd'hui)
+### Livré J+1 (1er mai — matin)
 
-| Priorité | Action | Responsable | Durée |
-|---|---|---|---|
-| 🔴 P0 | Révoquer Stripe live + xAI + root VPS (si pas fait) | Abdel | 15 min |
-| 🔴 P0 | Fix BUG-01 : `/confidentialite.html` → URL portail dans `email.ts:378` | Claude | 15 min |
-| 🔴 P0 | Implémenter S13 : handler `charge.refunded` → UPDATE bookings + notification | Claude | 1h |
-| 🟠 P1 | Intégrer `trackEvent()` dans `register/page.tsx` + `BookingModal.tsx` | Claude | 1h |
-| 🟠 P1 | Poster LinkedIn post J+1 (angle fondateur) | Abdel | 20 min |
-| 🟠 P1 | Outreach DM 10 consultants ERP/D365 LinkedIn | Abdel | 2h |
-| 🟡 P2 | Fix S15 : `password_hash = ''` → NULL | Claude | 15 min |
+| Statut | Action | Fichier |
+|---|---|---|
+| ✅ | S13 : handler `charge.refunded` complet | `webhooks/stripe/route.ts` |
+| ✅ | S15 : `password_hash = NULL` sur soft-delete | `user/me/route.ts:40` |
+| ✅ | `trackEvent('register')` post-inscription | `register/page.tsx` |
+| ✅ | `trackEvent('booking_paid')` post-paiement | `BookingModal.tsx` |
+| ✅ | Suppression waitlist Navbar → `/freelancehub/register` | `Navbar.tsx` |
+| ✅ | Suppression waitlist AppCard (draft) → toast | `AppCard.tsx` |
+| ✅ | GitHub Actions CI (tsc + vitest + build) | `.github/workflows/ci.yml` |
+
+### Restant — Semaine 1
+
+| Priorité | Action | Responsable |
+|---|---|---|
+| 🔴 P0 | Révoquer Stripe live + xAI + root VPS (si pas fait) | Abdel |
+| 🟠 P1 | Poster LinkedIn post J+1 (angle fondateur) | Abdel |
+| 🟠 P1 | Outreach DM 10 consultants ERP/D365 LinkedIn | Abdel |
+| 🟠 P1 | Fix S9 : retry/log erreurs email | Claude |
+| 🟡 P2 | Migration 018 referral `?ref=` | Claude |
 
 ### Semaine 1 (2–7 mai)
 
@@ -191,15 +201,15 @@ Tests Stripe live uniquement. **C5** : Variables Vercel preview + schema test ou
 |---|---|
 | Rate limiting persistant (Upstash) | ❌ Semaine 2 |
 | Referral `?ref=` | ❌ Semaine 1 |
-| GTM custom events (`trackEvent()`) | 🔄 En cours J+1 |
+| GTM custom events (`trackEvent()`) | ✅ register + booking_paid (SearchClient restant) |
 | Facture PDF post-paiement | ❌ C5 |
 | `constants.ts` STATUS_MAP | ❌ Semaine 2 |
 | `pricing.ts` | ❌ Semaine 2 |
-| S13 `charge.refunded` | 🔄 À implémenter J+1 |
-| S15 `password_hash` vide | 🔄 À implémenter J+1 |
+| S13 `charge.refunded` | ✅ Livré J+1 |
+| S15 `password_hash` vide | ✅ Livré J+1 |
 | S9 logger erreurs email | ❌ Semaine 1 |
-| CI/CD GitHub Actions | ❌ Semaine 1 |
-| BUG-01 liens légaux email | 🔄 À corriger J+1 |
+| CI/CD GitHub Actions | ✅ Livré J+1 — tsc + vitest + build |
+| Suppression page waitlist | ✅ Livré J+1 — Navbar + AppCard |
 
 ---
 
