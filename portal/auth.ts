@@ -9,10 +9,6 @@ import type { UserRole } from '@/lib/freelancehub/types'
 export const { handlers, signIn, signOut, auth } = NextAuth({
   ...authConfig,
   providers: [
-    Google({
-      clientId:     process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-    }),
     Credentials({
       name: 'credentials',
       credentials: {
@@ -20,7 +16,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         password: { label: 'Password', type: 'password' },
       },
       async authorize(credentials) {
-        const email    = credentials?.email    as string | undefined
+        // Normalize email — register stores lowercase, must match here
+        const email    = (credentials?.email as string | undefined)?.toLowerCase().trim()
         const password = credentials?.password as string | undefined
 
         if (!email || !password) return null
@@ -39,6 +36,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         }
       },
     }),
+    // Google only when credentials configured — undefined env var crashes NextAuth v5 init
+    ...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
+      ? [Google({ clientId: process.env.GOOGLE_CLIENT_ID, clientSecret: process.env.GOOGLE_CLIENT_SECRET })]
+      : []),
   ],
   callbacks: {
     ...authConfig.callbacks,

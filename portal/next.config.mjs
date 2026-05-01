@@ -30,7 +30,7 @@ const nextConfig = {
             value: [
               "default-src 'self'",
               "script-src 'self' 'unsafe-inline' https://js.stripe.com https://www.googletagmanager.com",
-              "connect-src 'self' https://api.stripe.com https://api.perform-learn.fr https://analytics.perform-learn.fr",
+              "connect-src 'self' https://api.stripe.com https://api.perform-learn.fr https://analytics.perform-learn.fr https://www.google-analytics.com https://analytics.google.com https://region1.google-analytics.com",
               "frame-src https://js.stripe.com",
               "img-src 'self' data: https:",
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
