@@ -1,8 +1,11 @@
 # scripts/orchestrator.ps1 — Software Factory · perform-learn.fr
 #
 # Usage :
-#   .\scripts\orchestrator.ps1              -> sélectionne automatiquement les prochaines US
-#   .\scripts\orchestrator.ps1 "BUG-01"    -> force un item précis
+#   .\scripts\orchestrator.ps1                                        -> DG choisit automatiquement
+#   .\scripts\orchestrator.ps1 -ForceUS "BUG-01"                     -> force un item précis
+#   .\scripts\orchestrator.ps1 -ResumeBranch "feat/BUG-01-xxx" -ResumeUS "BUG-01"
+#                                                                     -> reprend après correction manuelle
+#                                                                        (saute DG + DEV, repart au Reviewer)
 #
 # Prérequis :
 #   - claude CLI (Claude Code) dans le PATH
@@ -11,7 +14,9 @@
 #   - npm disponible dans portal/
 
 param(
-    [string]$ForceUS = ""
+    [string]$ForceUS       = "",
+    [string]$ResumeBranch  = "",   # branche existante à reprendre après correction manuelle
+    [string]$ResumeUS      = ""    # ID US correspondant (ex: BUG-01)
 )
 
 $ErrorActionPreference = 'Stop'
@@ -44,21 +49,41 @@ if (-not $GhAvailable) {
     Warn "Pour l'installer : winget install --id GitHub.cli"
 }
 
-$CurrentBranch = git branch --show-current
-if ($CurrentBranch -ne "main") { Fail "Partir de main (branche courante : $CurrentBranch)" }
-
-# Vérifier que le working directory est propre (sinon le diff du Reviewer sera pollué)
-$DirtyFiles = git status --porcelain
-if ($DirtyFiles) {
-    Write-Host "`n  Fichiers non commités détectés :" -ForegroundColor Red
-    Write-Host $DirtyFiles -ForegroundColor Yellow
-    Fail "Working directory non propre — commiter ou stasher ces changements avant de lancer l'orchestrateur"
+# ── Mode reprise : valider la branche existante ─────────────────────────────
+if ($ResumeBranch) {
+    if (-not $ResumeUS) { Fail "-ResumeUS obligatoire avec -ResumeBranch (ex: -ResumeUS BUG-01)" }
+    $BranchExists = git branch --list $ResumeBranch
+    if (-not $BranchExists) { Fail "Branche '$ResumeBranch' introuvable — vérifier le nom exact avec : git branch" }
+    git checkout $ResumeBranch --quiet
+    $DirtyFiles = git status --porcelain
+    if ($DirtyFiles) {
+        Write-Host "`n  Fichiers non commités sur $ResumeBranch :" -ForegroundColor Yellow
+        Write-Host $DirtyFiles -ForegroundColor Yellow
+        Fail "Commiter les corrections avant de relancer (git add [fichiers] && git commit -m 'fix: ...')"
+    }
+    $FeatureBranch = $ResumeBranch
+    $SelectedUS    = $ResumeUS
+    $ScopeSummary  = "Reprise après correction manuelle de $ResumeUS"
+    git checkout main --quiet
+    Ok "Mode reprise · branche : $FeatureBranch · US : $SelectedUS"
+    # Sauter directement à la boucle Reviewer (étapes 1+2 inutiles)
+    $SkipToDEVReview = $true
+} else {
+    $SkipToDEVReview = $false
+    $CurrentBranch = git branch --show-current
+    if ($CurrentBranch -ne "main") { Fail "Partir de main (branche courante : $CurrentBranch)" }
+    $DirtyFiles = git status --porcelain
+    if ($DirtyFiles) {
+        Write-Host "`n  Fichiers non commités détectés :" -ForegroundColor Red
+        Write-Host $DirtyFiles -ForegroundColor Yellow
+        Fail "Working directory non propre — commiter ou stasher ces changements avant de lancer l'orchestrateur"
+    }
+    git pull origin main --quiet
+    Ok "Prérequis OK · branche : main · working directory propre"
 }
 
-git pull origin main --quiet
-Ok "Prérequis OK · branche : main · working directory propre"
-
 # ── ÉTAPE 1 : Agent DG ──────────────────────────────────────────────────────
+if (-not $SkipToDEVReview) {
 Step "Étape 1 — Agent DG (priorisation)"
 
 $ForceUSLine = if ($ForceUS) { "US forcée par l'orchestrateur : $ForceUS — sélectionner uniquement celle-ci." } else { "" }
@@ -142,6 +167,8 @@ $TestStatus  = ($DEVOutput -split "`n" | Where-Object { $_ -match "^TEST_STATUS:
 if ($BuildStatus -ne "pass") { Fail "Build KO — corrige les erreurs TypeScript avant de continuer" }
 if ($TestStatus  -ne "pass") { Fail "Tests KO — corrige les tests Vitest avant de continuer" }
 Ok "DEV terminé · Build OK · Tests OK"
+
+} # fin if (-not $SkipToDEVReview) — étapes 1+2
 
 # ── ÉTAPE 3 : Boucle Reviewer ↔ DEV (max 3 tentatives) ─────────────────────
 Step "Étape 3 — Boucle Reviewer ↔ DEV (max 3 itérations)"
@@ -255,20 +282,23 @@ FIXES_APPLIED: [liste des corrections effectuées]
 }
 
 if (-not $ReviewApproved) {
-    # Conserver la branche pour reprise manuelle
     git checkout main
     Write-Host ""
-    Write-Host "╔══════════════════════════════════════════════════════╗" -ForegroundColor Yellow
-    Write-Host "║  REVIEW KO après $MaxReviewIterations itérations — intervention manuelle  ║" -ForegroundColor Yellow
-    Write-Host "╠══════════════════════════════════════════════════════╣" -ForegroundColor Yellow
+    Write-Host "╔══════════════════════════════════════════════════════════════╗" -ForegroundColor Yellow
+    Write-Host "║  REVIEW KO après $MaxReviewIterations itérations — intervention manuelle requise" -ForegroundColor Yellow
+    Write-Host "╠══════════════════════════════════════════════════════════════╣" -ForegroundColor Yellow
     Write-Host "║  Branche conservée : $FeatureBranch" -ForegroundColor Yellow
-    Write-Host "║                                                      ║" -ForegroundColor Yellow
-    Write-Host "║  Pour corriger manuellement :                        ║" -ForegroundColor Yellow
-    Write-Host "║  git checkout $FeatureBranch" -ForegroundColor Cyan
-    Write-Host "║  # ... corriger les points du Reviewer ...           ║" -ForegroundColor Cyan
-    Write-Host "║  git commit -m 'fix: corrections review manuelle'    ║" -ForegroundColor Cyan
-    Write-Host "║  .\scripts\orchestrator.ps1 -ForceUS '$SelectedUS'" -ForegroundColor Cyan
-    Write-Host "╚══════════════════════════════════════════════════════╝" -ForegroundColor Yellow
+    Write-Host "║  Dernier feedback Reviewer :" -ForegroundColor Yellow
+    ($ReviewerFeedback -split "`n") | ForEach-Object { Write-Host "║    $_" -ForegroundColor White }
+    Write-Host "║" -ForegroundColor Yellow
+    Write-Host "║  ÉTAPES DE REPRISE :" -ForegroundColor Yellow
+    Write-Host "║  1. Corriger sur la branche :" -ForegroundColor Cyan
+    Write-Host "║     git checkout $FeatureBranch" -ForegroundColor Cyan
+    Write-Host "║     # appliquer les corrections listées ci-dessus" -ForegroundColor Cyan
+    Write-Host "║     git add [fichiers] && git commit -m 'fix: correction review'" -ForegroundColor Cyan
+    Write-Host "║  2. Reprendre le pipeline à partir du Reviewer :" -ForegroundColor Cyan
+    Write-Host "║     .\scripts\orchestrator.ps1 -ResumeBranch '$FeatureBranch' -ResumeUS '$SelectedUS'" -ForegroundColor Green
+    Write-Host "╚══════════════════════════════════════════════════════════════╝" -ForegroundColor Yellow
     exit 1
 }
 
