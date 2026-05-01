@@ -64,6 +64,9 @@ Priorités ordonnées par valeur client (confiance → acquisition → rétentio
 - [x] **Landing page → portail** — bouton CTA vers `/freelancehub/register` sur perform-learn.fr · `business_value: 95` · `value_type: user_acquisition` ✅ 30/04
 - [x] **Email de lancement** aux inscrits waitlist — segment consultant + client, script batch, envoyé J0 (1 destinataire marketing_consent=true) · `business_value: 88` · `value_type: user_acquisition` ✅ 30/04
 
+**🟢 Sécurité — Post-lancement**
+- [x] **Mot de passe oublié** — flow complet : token 1h (migration 019), API `/auth/forgot-password` + `/auth/reset-password`, pages UI, email Resend · `business_value: 85` · `value_type: ux_improvement` ✅ 01/05
+
 **🟡 Rétention — Post-lancement immédiat**
 - [ ] **Facture PDF** générée automatiquement après paiement (nom client, n° réservation, montant HT/TVA/TTC, mentions légales) → stockée MinIO, accessible depuis "Mes paiements" · `business_value: 76` · `value_type: ux_improvement`
 
@@ -86,6 +89,8 @@ Priorités ordonnées par valeur client (confiance → acquisition → rétentio
 - [ ] **Sous-traitants** — DPA (Data Processing Agreement) Stripe, Resend, Vercel, OVH documentés · `business_value: 55` · `value_type: strategic_positioning`
 
 **Dette technique — Performance & Sécurité**
+- [ ] **Transaction isolation payment** — `withTransaction()` dans `client/bookings/[id]/pay/route.ts` (UPDATE booking + INSERT payment atomiques) + `SELECT FOR UPDATE` dans `payment-intent/route.ts` · `business_value: 95` · `value_type: strategic_positioning`
+- [ ] **Timing-safe CRON_SECRET** — remplacer `===` par `crypto.timingSafeEqual()` dans 3 routes (govern/tasks/notify, govern/smoke-test, cron/reminders) · `business_value: 75` · `value_type: strategic_positioning`
 - [ ] **Rate limiting persistant** — Upstash Redis ou KV Vercel sur auth + payment-intent (remplace in-memory Edge) · `business_value: 80` · `value_type: strategic_positioning`
 - [x] **Système referral `?ref=`** — migration 018 `referrer_id` + `referrer_commission_until` ; commission 13% si parrainage actif ; register lit `?ref=` ; dashboard consultant : lien + compteur filleuls · `business_value: 85` · `value_type: user_acquisition` ✅ 01/05
 - [x] **GTM custom events** — `trackEvent()` : register, booking_paid, search_consultant, select_consultant · `business_value: 78` · `value_type: user_acquisition` ✅ 01/05
@@ -98,6 +103,7 @@ Priorités ordonnées par valeur client (confiance → acquisition → rétentio
 - [ ] **Fix timezone dates** — remplacer `'T00:00:00'` par `'T00:00:00Z'` dans email.ts et cron · `business_value: 65` · `value_type: technical_debt`
 - [ ] **Skills sync transactionnel** — batch INSERT `unnest` dans `consultant/profile/route.ts` · `business_value: 60` · `value_type: technical_debt`
 - [ ] **`validators.ts`** — centraliser `isValidDate()` et `isValidTime()` (dupliqués dans `slots/route.ts` + `slots/bulk/route.ts`) · `business_value: 55` · `value_type: technical_debt`
+- [ ] **Épingler NextAuth v5** — supprimer le `^` dans `package.json` (`"next-auth": "5.0.0-beta.30"` sans caret) pour éviter les mises à jour auto-breaking · `business_value: 70` · `value_type: technical_debt`
 
 **Valeur client — Récurrence & revenus**
 - [ ] **Stripe Connect** — reversement automatique consultant (supprime la gestion manuelle) · `business_value: 90` · `value_type: cost_reduction`

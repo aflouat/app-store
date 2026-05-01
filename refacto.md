@@ -1,216 +1,231 @@
-# refacto.md — Analyse quotidienne perform-learn.fr
-**Date** : 2026-05-01 · **Contexte** : J+1 post-lancement · **Analyste** : Claude Agent DG
+# refacto.md — perform-learn.fr · Analyse technique quotidienne
+
+> **Date** : 2026-05-01 · **Version** : v1.3.0 · **Analyste** : Claude Sonnet 4.6
+>
+> Ce fichier est régénéré à chaque session. Il est la **baseline** de l'état technique courant.
+> Toute dette non listée ici est considérée **non connue** — ajouter avant de fixer.
 
 ---
 
-## TL;DR
+## Synthèse exécutive
 
-**J+1 — 11 items livrés : S13 (refund handler), S15 (password_hash NULL), S9 (email/notif isolation), trackEvent (register + booking_paid + search_consultant), suppression waitlist Navbar+AppCard, GitHub Actions CI, migration 018 referral (?ref= complet), DoD + tnr.sh.**
+| Catégorie | Haute | Moyenne | Basse |
+|---|---|---|---|
+| Sécurité OWASP | 2 | 3 | 1 |
+| Dette technique | 3 | 2 | 2 |
+| **Total** | **5** | **5** | **3** |
 
-État prod inchangé depuis J0 : 9 users · 2 consultants KYC validés · 28 endpoints API actifs.
-
-Page waitlist pré-lancement supprimée du portail (Navbar + AppCard). Bouton "Rejoindre" → `/freelancehub/register` directement. CI GitHub Actions actif sur `main`.
+**Blocants scalabilité** : S-01 (double paiement), S-02 (transaction isolation), T-01 (logique métier éparpillée → régressions garanties)
 
 ---
 
 ## 1. Sécurité OWASP
 
-### Critiques résolus ✅ (rappel J0)
+### S-01 — Race condition double PaymentIntent ❌ HAUTE
+**Fichier** : `portal/app/api/freelancehub/client/bookings/[id]/payment-intent/route.ts` (lignes 52–66)
 
-| ID | OWASP Cat. | Fichier | Statut |
-|---|---|---|---|
-| C1 | A04 | `client/bookings/route.ts` | ✅ Montant côté serveur |
-| C2 | A01 | `reviews/route.ts:124` | ✅ Notification fonds corrigée |
-| N1 | A09 | `chat-router.ts` | ✅ Budget cap mensuel |
-| S12 | A01 | `admin/kyc-presign/route.ts:38` | ✅ Path traversal bloqué |
-| S16 | A03 | `admin/export-csv/route.ts:9` | ✅ Formula injection |
-| CORS | A05 | `caddy/Caddyfile` | ✅ Domaines explicites |
-| PG-PORT | A05 | `docker-compose.yml:46` | ✅ 127.0.0.1 uniquement |
+Le lookup d'un PI existant et la création d'un nouveau PI ne sont pas atomiques. Deux requêtes concurrentes peuvent toutes deux trouver «aucun PI existant» et créer deux charges Stripe pour la même réservation.
 
-### Critiques — À traiter J+1
+**Fix C5** : `SELECT stripe_payment_id FROM freelancehub.payments WHERE booking_id=$1 FOR UPDATE` dans une transaction.
 
-| ID | OWASP Cat. | Description | Fichier | Impact |
-|---|---|---|---|---|
-| S13 | A04 Insecure Design | `charge.refunded` handler vide — log uniquement, aucune MAJ DB ni notification | `portal/app/api/webhooks/stripe/route.ts:77-81` | Incohérence comptable : fonds remboursés sans trace DB ; client + consultant non notifiés |
+---
 
-**Code actuel S13** :
+### S-02 — Transaction manquante booking+payment ❌ HAUTE
+**Fichier** : `portal/app/api/freelancehub/client/bookings/[id]/pay/route.ts` (lignes 71–88)
+
+`UPDATE bookings SET status='confirmed'` + `INSERT INTO payments` sont deux requêtes séparées. Si l'INSERT échoue, le booking est `confirmed` sans paiement → état corrompu irréversible.
+
+**Fix C5** : Envelopper dans `withTransaction()` — les deux opérations en bloc atomique.
+
+---
+
+### S-03 — Timing attack sur CRON_SECRET ❌ HAUTE
+**Fichiers** :
+- `portal/app/api/govern/tasks/notify/route.ts:11`
+- `portal/app/api/govern/smoke-test/route.ts:11`
+- `portal/app/api/freelancehub/cron/reminders/route.ts:28`
+
+Comparaison `bearer === \`Bearer ${secret}\`` via `===` vulnérable à l'analyse temporelle.
+
+**Fix C5** :
 ```typescript
-case 'charge.refunded': {
-  const charge = event.data.object as Stripe.Charge
-  console.log('[stripe-webhook] charge.refunded:', charge.id)
-  break  // ← rien d'autre
-}
+import { timingSafeEqual } from 'crypto'
+const ok = timingSafeEqual(Buffer.from(bearer ?? ''), Buffer.from(`Bearer ${secret}`))
 ```
 
-### Hautes — Planifiées C5
+---
 
-| ID | OWASP Cat. | Description | Fichier |
-|---|---|---|---|
-| S3/C3 | A08 | Rate limiting in-memory Map (réinitialisée cold start) — cleanup déclenché seulement au-delà de 500 entrées | `portal/middleware.ts:16-49` |
-| S9 | A09 | Erreurs email catchées + loguées (console.error) mais sans retry ni monitoring externe | `reviews/route.ts:131,156` |
-| S6 | A05 | Metadata Stripe : uniquement `booking_id` — pas de `client_id` ni timestamp pour audit Stripe | `client/bookings/[id]/pay/route.ts:55` |
+### S-04 — Path traversal KYC partiel ⚠️ MOYENNE
+**Fichier** : `portal/app/api/freelancehub/admin/kyc-presign/route.ts:40`
 
-### Moyennes — Semaine 1
+Guard vérifie `..`, `%2e`, `%2E`, `\0` mais pas `%252e` (double encodage) ni équivalents Unicode.
 
-| ID | Description | Fichier |
-|---|---|---|
-| S15 | `password_hash = ''` sur soft-delete (chaîne vide, pas NULL) — risque bypass RGPD | `user/me/route.ts:40` |
-| S7 | Webhook deduplication `webhook_events` sans TTL — croissance non bornée | `webhooks/stripe/route.ts` |
-| S8 | Audit trail admin absent — KYC/statuts sans log | `admin/consultants/[id]/route.ts` |
-| N2 | Regex `\w+` exclut accents/tirets dans chat-router | `chat-router.ts:162` |
+**Fix C5** : Valider contre `^kyc\/[a-zA-Z0-9_\-]+\/[a-zA-Z0-9_\-\.]+$` après `decodeURIComponent()`.
 
-### Vérification BUG-01 — Infirmé
+---
 
-Aucun lien vers `/confidentialite.html` dans `email.ts`. Les templates email utilisent `${BASE}/freelancehub/*` (URL portail dynamique). Pas d'action requise.
+### S-05 — Race condition Early Adopter ❌ MOYENNE
+**Fichier** : `portal/app/api/freelancehub/admin/consultants/[id]/kyc/route.ts` (lignes 46–51)
+
+`COUNT(*)` et `UPDATE is_early_adopter` ne sont pas atomiques → deux validations simultanées peuvent dépasser le plafond de 20 consultants fondateurs.
+
+**Fix C5** : Sous-requête atomique dans le UPDATE :
+```sql
+UPDATE freelancehub.consultants
+SET kyc_status = 'validated',
+    is_early_adopter = (SELECT COUNT(*) < 20 FROM freelancehub.consultants WHERE kyc_status = 'validated')
+WHERE id = $1
+```
+
+---
+
+### S-06 — Notes KYC interpolées dans notification ❌ BASSE
+**Fichier** : `portal/app/api/freelancehub/admin/consultants/[id]/kyc/route.ts:81`
+
+`notes.trim()` (saisie admin) directement interpolé dans le message de notification. Risque XSS stocké si le système d'email renvoie du HTML non sanitisé.
+
+**Fix C5** : Sanitiser `notes` ou utiliser un template avec placeholder non-interpolé.
 
 ---
 
 ## 2. Dette technique
 
-### Critique
+### T-01 — Logique métier éparpillée ❌ HAUTE (cause principale des régressions)
 
-#### DT-01 — Rate limiting in-memory `portal/middleware.ts`
+Trois items ROADMAP ❌ depuis C4 créent une dette en cascade :
+
+| Manquant | Impact |
+|---|---|
+| `constants.ts` | `STATUS_MAP` dupliqué dans 5+ fichiers — modifier un endroit ne propage pas aux autres |
+| `pricing.ts` | `computePricing()` dans `matching.ts` ET `BookingModal.tsx`, `buildPricing()` doublon — prix incohérents possibles |
+| `types.ts` incomplet | `BookingRow`, `PaymentRow`, `AvailableSlot` définis localement par composant |
+
+**Fix C5 (priorité absolue)** :
+1. `portal/lib/freelancehub/constants.ts` — migrer tous les STATUS_MAP + BOOKING_TRANSITIONS
+2. `portal/lib/freelancehub/pricing.ts` — `computePricing()` unique + `fmtEur(cents)`
+3. Compléter `portal/lib/freelancehub/types.ts` — déplacer les types locaux
+
+---
+
+### T-02 — Emails fire-and-forget silencieux ❌ HAUTE
+**Fichiers** : `portal/app/api/webhooks/stripe/route.ts:50–61`, `portal/app/api/freelancehub/cron/reminders/route.ts:71–74`, et 10+ autres routes
+
+`.catch(() => null)` partout → pannes d'envoi d'email jamais remontées. Impossible de diagnostiquer un échec entre sessions. Item S9 ROADMAP C4 ❌ non livré.
+
+**Fix C5** :
 ```typescript
-// Problème : Map réinitialisée à chaque cold start Vercel + cleanup uniquement > 500 entrées
-const RL_MAP = new Map<string, { count: number; resetAt: number }>()
+.catch((err) => console.error('[email:error]', { template, to, err: err.message }))
 ```
-**Fix C5** : Upstash Redis `@upstash/ratelimit` sliding window.
 
-#### DT-02 — `computePricing()` sans `pricing.ts` centralisé
-Défini dans `matching.ts:19-25`, importé dans `client/bookings/route.ts`. Calcul 85% dupliqué dans `email.ts:292` (`Math.round(Number(d.amount) * 0.85)`).
-**Fix C5** : extraire vers `lib/freelancehub/pricing.ts`.
+---
 
-### Haute
+### T-03 — Aucun test sur les flux critiques ❌ HAUTE
 
-#### DT-03 — `STATUS_MAP` dupliqué 4 fois (identique)
+Le CI vérifie `tsc` + `next build` mais aucun test couvre :
+- Flow booking → payment → review → fund release
+- Auth (login, forgot-password, Google OAuth)
+- Algorithme de matching
 
-| Fichier | Lignes |
+**Preuve** : La régression login introduite par `feat(forgot-password)` (commit 7a71300) aurait été détectée par un test auth basique.
+
+**Fix C5** :
+1. Vitest unit : `computePricing()`, `matching score`, transitions de statut
+2. Playwright E2E minimal : login + booking + payment (cartes test Stripe)
+
+---
+
+### T-04 — Rate limiting in-memory inefficace ⚠️ MOYENNE
+**Fichier** : `portal/middleware.ts:25–50`
+
+Rate limiter en mémoire Edge → reset à chaque redéploiement Vercel. Un attaquant attend simplement un deploy pour contourner les limites. Déjà planifié ROADMAP C5.
+
+**Fix C5** : Upstash Redis ou Vercel KV.
+
+---
+
+### T-05 — NextAuth v5 beta en production ⚠️ MOYENNE
+**Fichier** : `portal/package.json` → `"next-auth": "^5.0.0-beta.30"`
+
+API instable entre versions beta. Le `^` permet des mises à jour auto-breaking lors d'un `npm install`.
+
+**Fix immédiat** : Épingler à `"5.0.0-beta.30"` (supprimer le `^`).
+
+---
+
+### T-06 — Index manquants sur FK ⚠️ BASSE
+**Fichier** : `migrations/006_freelancehub_v1.sql`
+
+Colonnes sans index : `payments.booking_id`, `reviews.booking_id`, `reviews.reviewer_id`, `reviews.reviewee_id`.
+
+**Fix C6** : `020_missing_indexes.sql` avec `CREATE INDEX CONCURRENTLY`.
+
+---
+
+### T-07 — Contraintes FK sans action de suppression ⚠️ BASSE
+**Fichier** : `migrations/006_freelancehub_v1.sql`
+
+`bookings`, `payments`, `reviews` ont des FK sans `ON DELETE` explicite → impossible de supprimer un utilisateur même pour effacement RGPD.
+
+**Fix C6** : Définir la politique `ON DELETE` explicitement selon la rétention RGPD choisie.
+
+---
+
+## 3. Agilité & processus
+
+### A-01 — Triangle auth fragile non documenté (cause des régressions auth)
+
+Le lien `auth.config.ts (Edge)` → `auth.ts (Node.js)` → `middleware.ts` n'est pas explicitement documenté comme zone à risque. Toute modification de `auth.ts` peut casser le middleware Edge.
+
+**Règle à ajouter dans CLAUDE.md** : Avant tout commit touchant `auth.ts`, valider `npm run build` et tester le login manuellement.
+
+### A-02 — refacto.md absent entre sessions
+
+Ce fichier sert de baseline à chaque session. S'il est absent, Claude n'a pas de contexte sur les dettes connues et risque de réintroduire des problèmes déjà identifiés.
+
+**Règle** : Régénérer ce fichier en début de session si absent ou daté de > 48h.
+
+### A-03 — FEATURES.md éditable sans commit
+
+FEATURES.md était modifié (annotations parasites) sans commit à l'ouverture de cette session. Claude peut lire des règles divergentes du code déployé.
+
+**Règle** : Ne jamais laisser FEATURES.md en état `modified` non commité.
+
+---
+
+## 4. État du repo à cette date
+
+```
+Branche       : main
+Dernier commit: e9e01ea feat(portal): mot de passe oublié — flow complet
+Migrations    : 001 → 019 appliquées
+Nettoyage     : mon_fichier.md supprimé ✅, FEATURES.md restauré ✅
+```
+
+### Items C4 — état réel
+
+| Item | Statut |
 |---|---|
-| `admin/page.tsx` | :148 |
-| `client/page.tsx` | :134 |
-| `consultant/bookings/page.tsx` | :64 |
-| `components/freelancehub/admin/BookingsTable.tsx` | :27 |
-
-**Fix C5** : `lib/freelancehub/constants.ts` — source unique.
-
-#### DT-04 — Pool PG max:2 — PgBouncer absent
-50 requêtes concurrentes = 100 connexions. PgBouncer en transaction pooling requis C6.
-
-#### DT-05 — Composants monolithiques
-
-| Composant | Lignes | Refactoring |
-|---|---|---|
-| `BookingModal.tsx` | ~500 | `<SlotPicker>`, `<PriceSummary>`, `<StripePaymentStep>` — C6 |
-| `SearchClient.tsx` | ~400 | `<SearchForm>` — C6 |
-| `AgendaCalendar.tsx` | ~305 | Hook `useAgendaSlots()` — C6 |
-| `BookingsTable.tsx` | ~293 | `<BookingsFilters>` + `<BookingsTotals>` — C6 |
-
-### Moyenne
-
-#### DT-06 — `trackEvent()` non intégré (analytics dead code)
-`portal/lib/freelancehub/analytics.ts` créé J0 — non appelé nulle part dans les composants. GTM/Umami initialisés mais aucun event personnalisé tiré.
-
-**C5 priorité P1** : intégrer dans `register/page.tsx` + `BookingModal.tsx` + `SearchClient.tsx` + `consultant/kyc/page.tsx`.
-
-#### DT-07 — Timezone ✅ RÉSOLU
-`email.ts` utilise `T00:00:00Z` — UTC explicite. Pas d'action requise.
-
-#### DT-08 — CGU/confidentialité HTML hors portail
-`cgu.html` et `confidentialite.html` à la racine du repo ne sont plus servis directement (Caddy redirige tout vers portal). Le portail dispose de `/freelancehub/cgu` et `/freelancehub/privacy`. Les fichiers `.html` à la racine peuvent être supprimés lors d'un prochain nettoyage.
-
----
-
-## 3. Agilité & Processus
-
-### Points positifs ✅
-
-- J0 livré dans les délais : 14 fixes/features + email waitlist envoyé
-- Architecture repo stable, conventions de commit respectées
-- Caddy opérationnel, CORS restreint, port PG sécurisé
-- GTM + Umami actifs sur le portail (instrumentation de base)
-
-### Points d'amélioration
-
-#### AG-01 — Pas de CI/CD
-**C5** : `.github/workflows/ci.yml` avec `tsc --noEmit` + `eslint` + `vitest --run`.
-
-#### AG-02 — Pas de staging
-Tests Stripe live uniquement. **C5** : Variables Vercel preview + schema test ou DB séparée.
-
-#### AG-03 — Onboarding développeur incomplet
-**C5** : `scripts/dev-setup.sh`.
-
----
-
-## 4. Plan d'action J+1
-
-### Livré J+1 (1er mai — matin)
-
-| Statut | Action | Fichier |
-|---|---|---|
-| ✅ | S13 : handler `charge.refunded` complet | `webhooks/stripe/route.ts` |
-| ✅ | S15 : `password_hash = NULL` sur soft-delete | `user/me/route.ts:40` |
-| ✅ | `trackEvent('register')` post-inscription | `register/page.tsx` |
-| ✅ | `trackEvent('booking_paid')` post-paiement | `BookingModal.tsx` |
-| ✅ | Suppression waitlist Navbar → `/freelancehub/register` | `Navbar.tsx` |
-| ✅ | Suppression waitlist AppCard (draft) → toast | `AppCard.tsx` |
-| ✅ | GitHub Actions CI (tsc + vitest + build) | `.github/workflows/ci.yml` |
-
-### Restant — Semaine 1
-
-| Priorité | Action | Responsable |
-|---|---|---|
-| 🔴 P0 | Révoquer Stripe live + xAI + root VPS (si pas fait) | Abdel |
-| 🟠 P1 | Poster LinkedIn post J+1 (angle fondateur) | Abdel |
-| 🟠 P1 | Outreach DM 10 consultants ERP/D365 LinkedIn | Abdel |
-| ✅ | Fix S9 : email isolé + notifications garanties | Claude |
-| ✅ | Migration 018 referral `?ref=` — complet | Claude |
-
-### Semaine 1 (2–7 mai)
-
-- Fix S9 : retry ou monitoring webhook email
-- Fix S6 : enrichir metadata Stripe
-- Migration 018 referral + `?ref=` dashboard consultant
-- GitHub Actions CI
-- Supprimer `cgu.html` + `confidentialite.html` de la racine (plus servies)
-
-### Semaine 2 (8–15 mai)
-
-- Upstash Redis rate limiting
-- `constants.ts` centraliser STATUS_MAP
-- `pricing.ts` extraire computePricing
-
----
-
-## 5. Métriques à surveiller J0–J7
-
-| Métrique | Source | Alerte si |
-|---|---|---|
-| Signups | Umami `/freelancehub/register` | < 5 en 24h |
-| Consultants KYC soumis | `SELECT COUNT(*) FROM freelancehub.consultants WHERE kyc_status='submitted'` | 0 après 48h |
-| Erreurs API 5xx | Vercel Logs | > 5 en 1h |
-| CPU VPS | Netdata `monitor.perform-learn.fr` | > 80% pendant > 5min |
-| Budget IA | `SELECT identifier, count FROM freelancehub.chat_limits WHERE identifier LIKE 'agent:%'` | count > monthlyCap × 0.8 |
-| Emails délivrés | Resend Dashboard | taux livraison < 95% |
-
----
-
-## 6. Statut ROADMAP C5
-
-| Feature | Statut |
-|---|---|
-| Rate limiting persistant (Upstash) | ❌ Semaine 2 |
-| Referral `?ref=` | ✅ 01/05 — migration 018 + commission 13% + dashboard + register |
-| GTM custom events (`trackEvent()`) | ✅ register + booking_paid + search_consultant + select_consultant |
-| Facture PDF post-paiement | ❌ C5 |
-| `constants.ts` STATUS_MAP | ❌ Semaine 2 |
-| `pricing.ts` | ❌ Semaine 2 |
-| S13 `charge.refunded` | ✅ Livré J+1 |
-| S15 `password_hash` vide | ✅ Livré J+1 |
-| S9 logger erreurs email | ✅ 01/05 — email isolé `.catch()`, notifications garanties |
-| CI/CD GitHub Actions | ✅ Livré J+1 — tsc + vitest + build |
-| Suppression page waitlist | ✅ Livré J+1 — Navbar + AppCard |
-
----
-
-*Généré par Agent DG perform-learn.fr · Session J+1 post-lancement du 1er mai 2026*
+| Fix montant côté serveur [C1] | ✅ 30/04 |
+| Fix notification fonds [C2] | ✅ 30/04 |
+| Enforcer monthlyCap IA [N1] | ✅ 30/04 |
+| CSV injection [S16] | ✅ 30/04 |
+| S3 presign validation [S12] | ✅ 30/04 |
+| Refund handler [S13] | ✅ 01/05 |
+| Fix password_hash [S15] | ✅ 01/05 |
+| KYC consultant | ✅ 30/04 |
+| NDA Phase 1 | ✅ 30/04 |
+| Early Adopter | ✅ 30/04 |
+| Landing page CTA | ✅ 30/04 |
+| Email lancement | ✅ 30/04 |
+| Système referral (migration 018) | ✅ 01/05 |
+| GTM events | ✅ 01/05 |
+| CSP + HSTS | ✅ 30/04 |
+| Pool PostgreSQL | ✅ 30/04 |
+| CI/CD GitHub Actions | ✅ 01/05 |
+| **Mot de passe oublié (migration 019)** | ✅ 01/05 *(non listé ROADMAP → à ajouter)* |
+| Réduire metadata Stripe [S6] | ❌ → reporter C5 |
+| Logger erreurs email [S9] | ❌ → C5 (voir T-02) |
+| Facture PDF | ❌ → C5 |
+| constants.ts | ❌ → C5 priorité haute |
+| pricing.ts | ❌ → C5 priorité haute |
+| types.ts consolidation | ❌ → C5 |
