@@ -19,9 +19,6 @@ services:
       - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
-      - ./front.html:/srv/index.html:ro
-      - ./cgu.html:/srv/cgu.html:ro
-      - ./confidentialite.html:/srv/confidentialite.html:ro
 
     networks:
       - app-network
