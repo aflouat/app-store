@@ -1,188 +1,191 @@
-# DONE.md — Critères of Done · perform-learn.fr
+# DONE.md — Release Notes + Definition of Done · perform-learn.fr
 
-> Checklist obligatoire avant tout tag de version ou merge de release.
-> Stratégie de branches : CLAUDE.md §7 · Scripts : `scripts/deploy-agent.sh`
-
----
-
-## 0. Déclencheur de release
-
-- [ ] Décision explicite d'Abdel (jamais automatique)
-- [ ] Tous les items du cycle ROADMAP.md : marqués `✅` ou explicitement reportés avec raison
-- [ ] `version courante` dans ROADMAP.md mis à jour → `vX.Y.Z`
+> Ce fichier a deux rôles :
+> 1. **§1 — Dernière release** : notes générées automatiquement par `scripts/release-notes.sh`, mises à jour à chaque release.
+> 2. **§2 — Definition of Done** : checklist de gates que l'Agent RELEASE exécute avant tout tag.
+>
+> Référence : `CLAUDE.md §5` (protocole Agent RELEASE) · `scripts/release-notes.sh`
 
 ---
 
-## 1. Code — Qualité
+## 1. Dernière release — v1.3.0 (01 mai 2026)
 
-### 1.1 TypeScript
+> *Section mise à jour automatiquement par `scripts/release-notes.sh vX.Y.Z`. Ne pas éditer manuellement.*
+
+### Nouveautés
+
+- **Mot de passe oublié** — flow complet : token 1h, pages UI, email Resend sécurisé
+- **Système referral `?ref=`** — commission 13% si parrainage actif, dashboard consultant avec lien + compteur filleuls
+- **GTM custom events** — `trackEvent()` sur register, booking_paid, search_consultant, select_consultant
+
+### Corrections de sécurité
+
+- **Fix montant réservation côté serveur** — `amount_ht` calculé depuis `consultants.daily_rate` en DB (ignoré côté client)
+- **Fix notification fonds libérés** — `booking.consultant_user_id` corrigé dans `reviews/route.ts`
+- **Fix password_hash vide** — NULL au lieu de `''` sur soft-delete utilisateur
+- **Fix Stripe `charge.refunded`** — UPDATE payment + booking cancelled + notifications client+consultant
+- **CSV formula injection** — préfixe `'` sur formules `=+-@` dans `esc()`
+- **Valider clé S3 presign** — `key.startsWith('kyc/')` + `!key.includes('..')` + guard `\0`
+
+### Infrastructure
+
+- **CI/CD GitHub Actions** — tsc + vitest + next build sur push main
+- **CSP Headers + HSTS** — `Content-Security-Policy` + `Strict-Transport-Security`
+- **Pool PostgreSQL** — `max: 2` immédiat (évite saturation 100 connexions Vercel)
+- **Enforcer monthlyCap agents IA** — `chat_limits (identifier=agent:X)`, fallback statique si cap atteint
+
+### Migrations SQL
+
+- `019_password_reset_tokens.sql` — table `freelancehub.password_reset_tokens`
+- `018_referral.sql` — `referrer_id`, `referrer_commission_until` sur `freelancehub.users`
+
+---
+
+## 2. Definition of Done — Checklist Agent RELEASE
+
+> L'Agent RELEASE exécute cette checklist dans l'ordre. Chaque section doit être ✅ avant de passer à la suivante.
+> Si un item est KO : STOP → notifier Abdel → corriger → reprendre depuis le début.
+
+---
+
+### Gate 1 — Code qualité
+
 ```bash
-cd portal && npx tsc --noEmit
+cd portal
+npx tsc --noEmit          # 0 erreur TypeScript
+npm test                  # Vitest : tous verts, pas de .skip/.only oublié
+npm run build             # Build Next.js sans erreur ni warning critique
 ```
-- [ ] 0 erreur TypeScript
 
-### 1.2 Tests unitaires
+Vérifications manuelles :
 ```bash
-cd portal && npm test
-```
-- [ ] Tous les tests Vitest verts
-- [ ] Pas de `.skip` ou `.only` oublié dans les tests
+# Secrets hardcodés
+grep -rn "sk_live_\|re_live_\|whsec_live_\|xai-live" portal/app portal/lib portal/components --include="*.ts" --include="*.tsx"
 
-### 1.3 Build Next.js
-```bash
-cd portal && npm run build
-```
-- [ ] Build sans erreur ni warning critique
-
-### 1.4 Lint
-> ESLint non configuré (Next.js 16 a supprimé `next lint`). Tâche C5 : ajouter `eslint` + config `@eslint/eslintrc`.
-- [x] ~~Lint~~ — non applicable tant qu'ESLint n'est pas installé
-
-### 1.5 Vérifications manuelles
-```bash
-# Pas de secret hardcodé
-grep -rn "sk_live_\|re_live_\|whsec_live_\|xai-live" portal/app portal/lib --include="*.ts" --include="*.tsx"
-
-# Pas de console.log de debug dans les routes API
+# console.log dans routes API (interdit — seulement console.error/warn)
 grep -rn "console\.log" portal/app/api --include="*.ts"
 
-# Pas de TODO bloquant
+# TODO bloquants
 grep -rn "TODO\|FIXME\|HACK" portal/app portal/lib --include="*.ts" --include="*.tsx"
 ```
+
+- [ ] 0 erreur TypeScript
+- [ ] Vitest : tous tests verts
+- [ ] Build Next.js réussi
 - [ ] Aucun secret `*_live_*` dans le code
-- [ ] Pas de `console.log` dans les routes API (seulement `console.error`/`console.warn`)
-- [ ] TODO/FIXME recensés — aucun bloquant pour la release
+- [ ] Pas de `console.log` dans les routes API
+- [ ] Aucun TODO/FIXME bloquant
 
 ---
 
-## 2. CI Gate — GitHub Actions
+### Gate 2 — CI GitHub Actions
 
 URL : `https://github.com/aflouat/app-store/actions`
 
-- [ ] Pipeline `CI` vert sur le dernier commit `main` (tsc + vitest + build + lint)
-- [ ] Pipeline `Release Gate` vert sur le tag `vX.Y.Z` (si créé)
+- [ ] Pipeline `CI` vert sur le dernier commit `main` (tsc + vitest + build + E2E)
 - [ ] Aucun job `skipped` inattendu
 
 ---
 
-## 3. Sécurité
+### Gate 3 — Tests E2E
 
-- [ ] `refacto.md` : aucun item **Critique** sans mitigation documentée
+```bash
+cd portal
+E2E_BASE_URL=https://<preview-url>.vercel.app npx playwright test
+```
+
+- [ ] `auth.spec.ts` vert — login credentials + Google OAuth
+- [ ] `booking.spec.ts` vert — search → book → Stripe test card → reveal consultant
+- [ ] `consultant.spec.ts` vert — voir booking → soumettre review → fonds libérés
+
+---
+
+### Gate 4 — Sécurité
+
+- [ ] `DECISIONS.md` : aucun item **Critique** sans mitigation documentée
 - [ ] Secrets Vercel à jour : `vercel env ls --environment=production`
-- [ ] `caddy/Caddyfile` CORS : seuls `perform-learn.fr` et `portal.perform-learn.fr` autorisés
-- [ ] Variables d'env Vercel checklist (CLAUDE.md §variables) :
+- [ ] Variables prod vérifiées :
   - [ ] `DATABASE_URL` ✅
   - [ ] `NEXTAUTH_SECRET` ✅ (≥ 32 chars)
-  - [ ] `STRIPE_SECRET_KEY` ✅ (`sk_live_`)
-  - [ ] `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` ✅ (`pk_live_`)
+  - [ ] `STRIPE_SECRET_KEY` ✅ (`sk_live_…`)
+  - [ ] `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` ✅ (`pk_live_…`)
   - [ ] `RESEND_API_KEY` ✅
   - [ ] `STRIPE_WEBHOOK_SECRET` ✅
   - [ ] `CRON_SECRET` ✅
 
 ---
 
-## 4. Base de données
+### Gate 5 — Base de données
 
-- [ ] Migrations SQL numérotées séquentiellement (pas de saut entre la dernière appliquée en prod et la nouvelle)
-- [ ] Chaque migration nouvelle listée dans les release notes (section §10)
-- [ ] Ordre de déploiement respecté (DEV.md §2) :
-  - `migration avant push` si le code attend une nouvelle colonne/table
-  - `migration après push` si suppression d'une colonne encore utilisée
+- [ ] Migrations SQL numérotées séquentiellement (pas de saut)
+- [ ] Chaque nouvelle migration listée dans §1 (release notes)
+- [ ] Ordre de déploiement respecté (migration avant push si code attend nouvelle colonne)
 
 ```bash
-# Appliquer une migration sur le VPS
+# Appliquer une migration
 ssh -p 2222 abdel@37.59.125.159 \
   'docker exec -i postgres psql -U appstore -d appstore' \
-  < migrations/00X_nom.sql
+  < migrations/0XX_nom.sql
 ```
 
 ---
 
-## 5. Git — Nettoyage
+### Gate 6 — Git propre
 
 ```bash
-# 5.1 Synchroniser et nettoyer les refs obsolètes
 git fetch --prune
-
-# 5.2 Lister les branches mergées à supprimer
-git branch -a
-
-# 5.3 Supprimer les branches feature mergées
-# (jamais de branch feature selon CLAUDE.md — vérifier s'il en traîne)
-git branch -d <nom> && git push origin --delete <nom>
-
-# 5.4 Vérifier l'état du working tree
 git status       # doit être clean
 git stash list   # doit être vide
-
-# 5.5 Vérifier les 20 derniers commits
-git log --oneline -20
+git log --oneline -10
+git branch -a    # aucune branche feature pendante
 ```
 
-- [ ] `git status` : clean (aucun fichier non commité)
-- [ ] `git stash list` : vide
+- [ ] Working tree propre
+- [ ] Stash vide
 - [ ] Aucune branche feature pendante
-- [ ] Les 20 derniers commits respectent la convention `feat|fix|refactor|chore|docs(scope):`
-- [ ] Pas de commit `wip` ou `temp` non squashé
+- [ ] Commits respectent la convention `feat|fix|refactor|chore|docs(scope):`
 
 ---
 
-## 6. TNR local (obligatoire avant déploiement)
+### Gate 7 — TNR local
 
 ```bash
 ./scripts/tnr.sh
 ```
 
-- [ ] Build ✅
-- [ ] Tests Vitest ✅
-- [ ] Lint ✅ (ou sauté si pas de config — acceptable si CI vert)
-- [ ] Routes API comptées (nombre stable ou en hausse)
-- [ ] Migrations SQL présentes
+- [ ] 7/7 étapes vertes
 
 ---
 
-## 7. Déploiement VPS
+### Gate 8 — Déploiement VPS
 
 ```bash
 ./scripts/deploy-agent.sh
-# Ou avec options :
-./scripts/deploy-agent.sh --skip-migrations   # si pas de migration
-./scripts/deploy-agent.sh --skip-caddy        # si Caddyfile inchangé
 ```
 
-- [ ] `git pull` sur le VPS : up-to-date avec `main`
-- [ ] `docker compose up -d --build` : tous les containers `running`
-- [ ] Caddy rechargé (si Caddyfile modifié)
-- [ ] Migrations appliquées (si nouvelles)
-
-### Health checks VPS
 ```bash
+# Health checks
 curl -sf https://api.perform-learn.fr/health && echo API_OK
 curl -sf https://portal.perform-learn.fr && echo PORTAL_OK
 curl -sf https://analytics.perform-learn.fr && echo ANALYTICS_OK
 ```
-- [ ] API `/health` répond 200
-- [ ] Portal respond 200
-- [ ] Containers : `postgres`, `minio`, `umami`, `caddy`, `netdata`, `app` tous `Up`
+
+- [ ] `git pull` VPS up-to-date
+- [ ] Containers `postgres`, `minio`, `umami`, `caddy`, `netdata` tous `Up`
+- [ ] API `/health` → 200
+- [ ] Portal → 200
 
 ---
 
-## 8. Déploiement Vercel
-
-> Vercel redéploie automatiquement sur push `main` (2-3 min).
-
-- [ ] Build Vercel vert dans le dashboard : https://vercel.com/aflouat/portal
-- [ ] Pas d'erreur runtime dans les logs Vercel (vérifier 5 min après deploy)
-
-### Smoke tests manuels post-Vercel (golden paths)
+### Gate 9 — Smoke tests Vercel (golden paths)
 
 | Flow | URL | Attendu |
 |---|---|---|
 | Homepage | `https://portal.perform-learn.fr` | Charge, EarlyAdopterBand visible |
-| Register consultant | `/freelancehub/register` | Formulaire fonctionnel, pas de modal waitlist |
-| Login | `/freelancehub/login` | Auth credentials + Google SSO visible |
-| Dashboard admin | `/freelancehub/admin` | Accès avec compte `admin@perform-learn.fr` |
-| Recherche consultant | `/freelancehub/client` | Résultats de matching visibles |
+| Login | `/freelancehub/login` | Credentials + Google SSO visible |
+| Register | `/freelancehub/register` | Formulaire fonctionnel |
+| Dashboard admin | `/freelancehub/admin` | Accès avec `admin@perform-learn.fr` |
+| Recherche consultant | `/freelancehub/client` | Résultats matching visibles |
 | API health | `https://api.perform-learn.fr/health` | `{"status":"ok"}` |
 
 - [ ] Tous les smoke tests passent
@@ -190,76 +193,54 @@ curl -sf https://analytics.perform-learn.fr && echo ANALYTICS_OK
 
 ---
 
-## 9. Tag Git
+### Gate 10 — Tag + Release GitHub
 
 ```bash
-VERSION=v1.X.0   # remplacer par la version réelle
+VERSION=vX.Y.Z
 
-# Créer le tag annoté
+# Générer les release notes et créer la release GitHub
+./scripts/release-notes.sh "$VERSION" "$(git describe --tags --abbrev=0 HEAD^)"
+
+# Tag annoté
 git tag -a "$VERSION" -m "Release $VERSION — $(date '+%Y-%m-%d')"
-
-# Pousser le tag (déclenche le workflow Release Gate sur GitHub Actions)
 git push origin "$VERSION"
 ```
 
-- [ ] Tag créé sur le dernier commit de `main`
-- [ ] Tag poussé sur origin
+- [ ] Release notes générées et relues
+- [ ] §1 de DONE.md mis à jour avec les nouvelles notes
+- [ ] HOWTO.md mis à jour si nouvelles fonctionnalités utilisateur
+- [ ] Tag créé et poussé
 - [ ] Workflow `Release Gate` vert sur GitHub Actions
+- [ ] `version courante` mis à jour dans ROADMAP.md
 
 ---
 
-## 10. Documentation
+### Gate 11 — Monitoring post-release (J0 → J7)
 
-### Release notes dans ROADMAP.md
-Ajouter une section dans `## Historique des releases` :
-
-```markdown
-### vX.Y.Z — <Titre du cycle>
-**JJ mois AAAA**
-
-- Feature 1 — description courte
-- Fix 1 — description courte
-- Migrations : 00X_nom.sql (si applicable)
-```
-
-- [ ] Section release notes ajoutée à ROADMAP.md
-- [ ] `version courante` mis à jour dans l'en-tête ROADMAP.md
-- [ ] `refacto.md` : analyse post-release générée (bilan cycle, risques résiduels, plan C+1)
-- [ ] `CLAUDE.md` : nouvelles décisions architecturales ajoutées si pertinentes
-- [ ] `DEV.md` : procédures techniques mises à jour si nécessaire
+| Métrique | Source | Alerte si |
+|---|---|---|
+| Signups | Umami `analytics.perform-learn.fr` | < 5/24h |
+| Erreurs 5xx | Vercel Logs | > 5/h |
+| CPU VPS | Netdata `monitor.perform-learn.fr` | > 80% pendant > 5 min |
+| Budget IA | `SELECT identifier, count FROM freelancehub.chat_limits WHERE identifier LIKE 'agent:%'` | > 80% du cap |
+| Emails | Dashboard Resend | taux livraison < 95% |
+| Paiements | Dashboard Stripe → Payments | `charge.refunded` non géré |
+| KYC | `SELECT COUNT(*) FROM freelancehub.consultants WHERE kyc_status='submitted'` | 0 après 48h |
 
 ---
 
-## 11. Monitoring post-release (J0 → J7)
-
-À surveiller dans les 7 jours suivant la release :
-
-| Métrique | Source | Commande / URL | Alerte si |
-|---|---|---|---|
-| Signups | Umami | `analytics.perform-learn.fr` | < 5/24h |
-| Erreurs 5xx | Vercel Logs | Dashboard Vercel → Logs | > 5/h |
-| CPU VPS | Netdata | `monitor.perform-learn.fr` | > 80% pendant > 5 min |
-| Budget IA | DB | `SELECT identifier, count FROM freelancehub.chat_limits WHERE identifier LIKE 'agent:%'` | > 80% du cap |
-| Emails Resend | Resend | Dashboard Resend | taux livraison < 95% |
-| Paiements Stripe | Stripe | Dashboard → Payments | webhook `charge.refunded` non géré |
-| Consultants KYC | DB | `SELECT COUNT(*) FROM freelancehub.consultants WHERE kyc_status='submitted'` | 0 après 48h post-release |
-
----
-
-## Résumé — Ordre d'exécution
+### Résumé — Ordre d'exécution Agent RELEASE
 
 ```
-1. Code prêt (tsc + tests + build + lint) ✅
-2. CI GitHub Actions vert ✅
-3. Sécurité vérifiée ✅
-4. Git clean (status + stash + branches) ✅
-5. DB migrations identifiées + appliquées ✅
-6. TNR local ✅  →  ./scripts/tnr.sh
-7. Deploy VPS ✅  →  ./scripts/deploy-agent.sh
-8. Smoke tests manuels Vercel ✅
-9. Tag git créé + poussé ✅  →  git tag -a vX.Y.Z && git push origin vX.Y.Z
-10. Docs mise à jour (ROADMAP + refacto.md) ✅
-11. Monitoring J0–J7 activé ✅
+Gate 1  → Code qualité (tsc + tests + build + vérifs)   ✅
+Gate 2  → CI GitHub Actions vert                         ✅
+Gate 3  → E2E Playwright vert (3 flows critiques)        ✅
+Gate 4  → Sécurité (secrets, variables prod)             ✅
+Gate 5  → Migrations SQL appliquées                      ✅
+Gate 6  → Git propre                                     ✅
+Gate 7  → TNR local                     ./scripts/tnr.sh ✅
+Gate 8  → Deploy VPS              ./scripts/deploy-agent.sh ✅
+Gate 9  → Smoke tests Vercel                             ✅
+Gate 10 → Tag + Release GitHub    ./scripts/release-notes.sh ✅
+Gate 11 → Monitoring J0 activé                          ✅
 ```
-
-*Ce fichier est la référence pour Claude Agent DG et Abdel à chaque release.*
