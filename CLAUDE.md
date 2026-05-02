@@ -51,10 +51,11 @@
      └───────────────┬───────────────┘
                      │ push main
      ┌───────────────▼───────────────┐
-     │  5. CI GitHub Actions         │  Automatique
-     │  TypeScript + Vitest + Build  │  Bloque si KO
+     │  5. AGENT DEVOPS              │  Session dédiée
+     │  Surveille CI GitHub Actions  │  gh run watch → CI_STATUS
+     │  Récupère URL preview Vercel  │  VERCEL_URL pour E2E
      └───────────────┬───────────────┘
-                     │ CI vert
+                     │ CI vert + VERCEL_URL
      ┌───────────────▼───────────────┐
      │  6. AGENT TESTEUR             │  Session dédiée · Preview Vercel
      │  Playwright E2E (3 flows)     │  Ajoute bugs dans ROADMAP.md
@@ -63,25 +64,34 @@
      ┌───────────────▼───────────────┐
      │  7. AGENT RELEASE             │  scripts/release-notes.ps1
      │  DONE.md + HOWTO.md + tag     │  GitHub Release + deploy VPS
+     └───────────────┬───────────────┘
+                     │ release livrée (ou blocage détecté)
+     ┌───────────────▼───────────────┐
+     │  8. AGENT AMÉLIORATION        │  Toujours exécuté (succès ou échec)
+     │  Analyse blocages du cycle    │  Écrit dans DECISIONS.md
+     │  Propose solutions concrètes  │  Met à jour ROADMAP.md si US tech
      └─────────────────────────────────┘
 ```
 
 ---
 
-## 2. Les 5 agents — Rôles et ownership
+## 2. Les 7 agents — Rôles et ownership
 
 | Agent | Rôle | Peut écrire dans | Ne touche JAMAIS |
 |---|---|---|---|
 | **DG** | Stratège · décideur unique | `ROADMAP.md` · `DECISIONS.md` | Code · tests · `DONE.md` |
 | **DEV** | Implémentation 1 US/bug par session | Code · tests unitaires | `ROADMAP.md` · `DECISIONS.md` · `DONE.md` · `HOWTO.md` |
 | **REVIEWER** | Revue code (session fraîche, diff injecté) | Commentaires uniquement | Tout fichier du repo |
+| **DEVOPS** | Surveillance CI GitHub + déploiement Vercel | Aucun fichier repo | Tout fichier du repo |
 | **TESTEUR** | E2E Playwright · détection régressions | `ROADMAP.md` (bugs uniquement) | Code · `DECISIONS.md` · `DONE.md` |
 | **RELEASE** | Livraison complète | `DONE.md` · `HOWTO.md` · tags git | `ROADMAP.md` · code |
+| **AMÉLIORATION** | Analyse blocages · amélioration continue du pipeline | `DECISIONS.md` · `ROADMAP.md` (US tech uniquement) | Code · `DONE.md` · `HOWTO.md` |
 
 ```
 ✅ Peut ajouter/prioriser ROADMAP.md : Agent DG
 ✅ Peut ajouter bugs/régressions ROADMAP.md : Agent TESTEUR
-❌ Interdit d'écrire dans ROADMAP.md : DEV · REVIEWER · RELEASE
+✅ Peut ajouter US techniques ROADMAP.md : Agent AMÉLIORATION (après validation DG)
+❌ Interdit d'écrire dans ROADMAP.md : DEV · REVIEWER · DEVOPS · RELEASE
 ```
 
 ---
@@ -255,6 +265,67 @@ Specs critiques (NE JAMAIS ignorer) :
 .\scripts\release-notes.ps1 -Version vX.Y.Z -PreviousTag vX.(Y-1).Z
 # → Met à jour DONE.md §1 + HOWTO.md §Changelog + tag git + GitHub Release
 ```
+
+---
+
+### Agent DEVOPS — CI GitHub + Vercel
+
+```
+Mission (session dédiée, aucune modification de fichier repo) :
+
+1. Surveiller le run CI GitHub Actions le plus récent sur aflouat/app-store :
+   - gh run list --branch main --limit 1
+   - gh run watch <run-id> --exit-status
+   - Si KO : relever job + step + message d'erreur complet
+
+2. Récupérer l'URL preview Vercel la plus récente :
+   - GET https://api.vercel.com/v6/deployments?limit=1
+     Authorization: Bearer $VERCEL_TOKEN
+   - Attendre statut "READY" (polling 15s, max 3 min)
+   - Fallback : https://portal.perform-learn.fr
+
+3. Répondre à l'orchestrateur :
+   CI_STATUS: pass/fail
+   CI_ERRORS: [description ou aucune]
+   VERCEL_URL: [URL https://...]
+   VERCEL_STATUS: ready/error/timeout
+```
+
+**Règle absolue :** l'Agent DEVOPS ne modifie aucun fichier du repo. Il surveille uniquement.
+
+---
+
+### Agent AMÉLIORATION CONTINUE
+
+```
+Mission (toujours exécuté, succès ou échec du pipeline) :
+
+1. Analyser le journal d'exécution du cycle qui vient de se terminer :
+   - Étapes qui ont bloqué (Review KO, CI KO, E2E KO, build KO)
+   - Nombre d'itérations Reviewer ↔ DEV
+   - Erreurs récurrentes identifiées
+   - Objectifs DG atteints / manqués
+
+2. Pour chaque blocage identifié :
+   a. Proposer une solution concrète (règle à ajouter, pattern à documenter,
+      test à écrire, workflow à ajuster)
+   b. Évaluer si la solution nécessite une US technique
+   c. Si oui et business_value ≥ 50 : proposer l'US au format DECISIONS.md
+      (la DG valide avant ajout dans ROADMAP.md)
+
+3. Écrire dans DECISIONS.md une entrée "RETRO cycle [date]" :
+   Format :
+   ### RETRO [date] — cycle [US-XX]
+   **Blocages** : [liste]
+   **Solutions appliquées** : [ce qui a été ajusté immédiatement]
+   **US techniques proposées** : [liste avec business_value estimé]
+   **Statut** : PENDING_DG_VALIDATION
+
+4. Ne pas modifier ROADMAP.md directement — soumettre uniquement via DECISIONS.md.
+   La DG valide les US techniques proposées lors du prochain cycle.
+```
+
+**Objectif :** chaque cycle doit réduire le nombre de blocages du suivant.
 
 ---
 
