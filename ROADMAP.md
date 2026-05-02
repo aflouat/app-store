@@ -394,7 +394,7 @@ SET kyc_status = 'validated',
 WHERE id = $1
 ```
 
-`business_value: 60` · `value_type: strategic_positioning`
+`business_value: 75` · `value_type: strategic_positioning`
 
 ---
 
@@ -446,7 +446,18 @@ WHERE id = $1
 
 ---
 
-### SEC-06 — Path traversal KYC double encodage
+### SEC-06 — Compléter CSP headers
+
+**Contexte** : CSP de base déployé en C4, mais `object-src`, `form-action`, `frame-ancestors` manquants — vecteurs XSS et clickjacking résiduels identifiés dans l'analyse refacto 2026-05-01.
+
+**Fix** : `next.config.mjs` — ajouter `object-src 'none'`, `form-action 'self'`, `frame-ancestors 'none'`, supprimer `data:` de `img-src`
+**Migration SQL** : non
+
+`business_value: 68` · `value_type: strategic_positioning`
+
+---
+
+### SEC-07 — Path traversal KYC double encodage
 
 **Fix** : Valider contre `^kyc\/[a-zA-Z0-9_\-]+\/[a-zA-Z0-9_\-\.]+$` après `decodeURIComponent()` dans `admin/kyc-presign/route.ts:40`
 
@@ -454,7 +465,7 @@ WHERE id = $1
 
 ---
 
-### SEC-07 — Atomicité chat budget cap
+### SEC-08 — Atomicité chat budget cap
 
 **Fix** : `chat-router.ts:162` — requête atomique INSERT…ON CONFLICT avec clause WHERE sur le cap
 
@@ -486,7 +497,18 @@ WHERE id = $1
 
 ---
 
-### SEC-08 — XSS stocké notes KYC
+### TD-10 — Zod validation routes auth
+
+**Contexte** : Validation d'entrée manuelle dans `register` et `login` — absence de Zod laisse des chemins non validés. Identifié dans l'analyse refacto 2026-05-01.
+
+**Fix** : Migrer vers Zod dans `portal/app/api/auth/register/route.ts` et pages login/register en priorité
+**Migration SQL** : non
+
+`business_value: 62` · `value_type: technical_debt`
+
+---
+
+### SEC-09 — XSS stocké notes KYC
 
 **Fix** : Sanitiser `notes.trim()` avant interpolation dans la notification email (`admin/consultants/[id]/kyc/route.ts:81`)
 
