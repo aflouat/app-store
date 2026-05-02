@@ -23,6 +23,7 @@ dist/
 build/
 *.min.js
 *.min.css
+*.tsbuildinfo
 
 # OS files
 Thumbs.db
