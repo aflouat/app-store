@@ -41,6 +41,21 @@
 
 ---
 
+### CI-01 — Committer package-lock.json (CI bloqué)
+
+**Contexte** : `package-lock.json` absent du repo → `npm ci` échoue immédiatement sur toutes les PRs. Job CI `TypeScript + Vitest + Build` termine en 9s avec `failure`. Bloquant pour la factory.
+
+**Fix** : Générer et committer `portal/package-lock.json` · Ajouter `@types/node` en `devDependencies`
+**Fichiers autorisés** : `portal/package-lock.json`, `portal/package.json`
+**Migration SQL** : non
+**Critères d'acceptance** :
+- [ ] `npm ci` passe en CI GitHub Actions
+- [ ] `npx tsc --noEmit` passe sans erreur `Cannot find name 'process'`
+
+`business_value: 95` · `value_type: technical_debt`
+
+---
+
 ### BUG-01 — Stabilisation login / register
 
 **Contexte** : Des régressions auth empêchent des utilisateurs de se connecter ou de s'inscrire. Bloquant pour la croissance (KPI 100 € CA au 31/05).
@@ -299,6 +314,39 @@ Feature: Facture PDF
 **Fichiers autorisés** : `portal/app/api/govern/tasks/notify/route.ts`, `portal/app/api/govern/smoke-test/route.ts`, `portal/app/api/freelancehub/cron/reminders/route.ts`
 **Migration SQL** : non
 **Fix** : `crypto.timingSafeEqual(Buffer.from(bearer ?? ''), Buffer.from('Bearer ' + secret))`
+
+`business_value: 75` · `value_type: strategic_positioning`
+
+---
+
+### T-01 — Tests unitaires routes critiques manquantes
+
+**Contexte** : Les routes financières et sécuritaires n'ont aucun test : KYC validation, webhook Stripe, cron reminders, libération séquestre. Couverture estimée < 40 % sur les chemins à risque.
+
+**Fichiers à couvrir** :
+- `app/api/freelancehub/admin/consultants/[id]/kyc/route.ts` → Early Adopter, commission
+- `app/api/webhooks/stripe/route.ts` → payment_intent.succeeded, atomicité
+- `app/api/freelancehub/cron/reminders/route.ts` → CRON_SECRET, envoi email
+- `app/api/freelancehub/reviews/route.ts` → libération séquestre, fund release
+
+**Fichiers autorisés** : `portal/__tests__/kyc.test.ts` (à créer), `portal/__tests__/webhooks.test.ts` (à créer), `portal/__tests__/cron.test.ts` (à créer)
+**Migration SQL** : non
+
+`business_value: 80` · `value_type: technical_debt`
+
+---
+
+### D-11 — Error tracking Sentry (observabilité production)
+
+**Contexte** : Zéro visibilité sur les erreurs production. `console.error` non structuré, pas de correlation-id, aucune alerte automatique. Impossible de détecter une régression silencieuse après deploy.
+
+**Fix** : Intégrer `@sentry/nextjs` avec source maps + alertes Slack sur erreurs critiques
+**Fichiers autorisés** : `portal/sentry.client.config.ts` (à créer), `portal/sentry.server.config.ts` (à créer), `portal/next.config.js`
+**Migration SQL** : non
+**Critères d'acceptance** :
+- [ ] Erreurs capturées dans Sentry dashboard
+- [ ] Alerte sur 5xx routes API
+- [ ] Variables `SENTRY_DSN` documentées dans `.env.example`
 
 `business_value: 75` · `value_type: strategic_positioning`
 
