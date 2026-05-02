@@ -9,9 +9,10 @@
 #
 # Prérequis :
 #   - claude CLI (Claude Code) dans le PATH
-#   - gh CLI authentifié (pour CI watch + GitHub Release)
+#   - gh CLI authentifié (pour GitHub Release — Agent DEVOPS l'utilise aussi pour CI watch)
 #   - git configuré, remote origin accessible
 #   - npm disponible dans portal/
+#   - VERCEL_TOKEN dans l'environnement (optionnel, pour récupérer l'URL preview)
 
 param(
     [string]$ForceUS       = "",
@@ -45,7 +46,7 @@ if (-not (Get-Command npm   -ErrorAction SilentlyContinue)) { Fail "npm non trou
 
 $GhAvailable = [bool](Get-Command gh -ErrorAction SilentlyContinue)
 if (-not $GhAvailable) {
-    Warn "gh CLI non trouvé — étapes CI watch et GitHub Release seront skippées"
+    Warn "gh CLI non trouvé — GitHub Release sera skippé (Agent DEVOPS en mode dégradé)"
     Warn "Pour l'installer : winget install --id GitHub.cli"
 }
 
@@ -283,6 +284,45 @@ FIXES_APPLIED: [liste des corrections effectuées]
 
 if (-not $ReviewApproved) {
     git checkout main
+
+    # Amélioration continue même en cas d'échec
+    $FailureSummary = @"
+Cycle interrompu le : $(Get-Date -Format 'yyyy-MM-dd HH:mm')
+US traitées : $SelectedUS
+Résultat final : ÉCHEC — Review KO après $MaxReviewIterations itérations
+Dernier feedback Reviewer :
+$ReviewerFeedback
+"@
+    $AmeliorationFailPrompt = @"
+Tu es Agent AMÉLIORATION CONTINUE pour perform-learn.fr.
+Le pipeline vient d'échouer après $MaxReviewIterations itérations de review sans approbation.
+
+JOURNAL D'ÉCHEC :
+$FailureSummary
+
+Mission :
+1. Analyser pourquoi la review a bloqué autant de fois
+2. Identifier les causes racines (scope trop large, règles DEV mal comprises, RG ambiguë, etc.)
+3. Proposer des améliorations concrètes pour éviter ce blocage au prochain cycle
+4. Écrire dans DECISIONS.md :
+
+### RETRO ÉCHEC $(Get-Date -Format 'yyyy-MM-dd') — cycle $SelectedUS
+**Cause d'échec** : Review KO × $MaxReviewIterations
+**Analyse des causes racines** : [liste]
+**Actions correctives proposées** : [ajustements CLAUDE.md, DEV-RULES.md, format US, etc.]
+**US techniques proposées** : [si pertinent]
+**Statut** : PENDING_DG_VALIDATION
+
+RÈGLES STRICTES : ne PAS modifier ROADMAP.md ni le code.
+
+Réponds avec :
+RETRO_WRITTEN: yes/no
+ROOT_CAUSES: [liste courte]
+"@
+    Info "Lancement Agent AMÉLIORATION CONTINUE (cycle en échec)..."
+    $AmeliorationFailOutput = claude -p $AmeliorationFailPrompt
+    Write-Host $AmeliorationFailOutput
+
     Write-Host ""
     Write-Host "╔══════════════════════════════════════════════════════════════╗" -ForegroundColor Yellow
     Write-Host "║  REVIEW KO après $MaxReviewIterations itérations — intervention manuelle requise" -ForegroundColor Yellow
@@ -298,6 +338,7 @@ if (-not $ReviewApproved) {
     Write-Host "║     git add [fichiers] && git commit -m 'fix: correction review'" -ForegroundColor Cyan
     Write-Host "║  2. Reprendre le pipeline à partir du Reviewer :" -ForegroundColor Cyan
     Write-Host "║     .\scripts\orchestrator.ps1 -ResumeBranch '$FeatureBranch' -ResumeUS '$SelectedUS'" -ForegroundColor Green
+    Write-Host "║  3. Consulter DECISIONS.md (rétro d'échec écrite par Agent AMÉLIORATION)" -ForegroundColor Cyan
     Write-Host "╚══════════════════════════════════════════════════════════════╝" -ForegroundColor Yellow
     exit 1
 }
@@ -312,45 +353,61 @@ git merge --no-ff $FeatureBranch -m "merge: $FeatureBranch"
 git branch -d $FeatureBranch
 Ok "Merge effectué · branche $FeatureBranch supprimée"
 
-# ── ÉTAPE 5 : Push → CI GitHub ──────────────────────────────────────────────
-Step "Étape 5 — Push + attente CI"
+# ── ÉTAPE 5 : Push ──────────────────────────────────────────────────────────
+Step "Étape 5 — Push"
 
 git push origin main
 Info "Push effectué"
 
-if ($GhAvailable) {
-    Info "Attente CI GitHub Actions..."
-    Start-Sleep -Seconds 15
-    if (-not (gh run watch --exit-status 2>$null)) {
-        Fail "CI GitHub KO — vérifier https://github.com/aflouat/app-store/actions"
-    }
-    Ok "CI GitHub vert"
-} else {
-    Warn "gh CLI absent — CI non attendu. Vérifier manuellement : https://github.com/aflouat/app-store/actions"
-    Info "Attente 30s avant de continuer..."
-    Start-Sleep -Seconds 30
+# ── ÉTAPE 6 : Agent DEVOPS (CI GitHub + déploiement Vercel) ─────────────────
+Step "Étape 6 — Agent DEVOPS (CI GitHub + déploiement Vercel)"
+
+$GhNote = if ($GhAvailable) { "gh CLI disponible." } else { "ATTENTION : gh CLI absent — surveiller CI manuellement sur https://github.com/aflouat/app-store/actions" }
+$VercelNote = if ($env:VERCEL_TOKEN) { "VERCEL_TOKEN disponible dans l'environnement." } else { "VERCEL_TOKEN absent — utiliser le fallback https://portal.perform-learn.fr" }
+
+$DevopsPrompt = @"
+Tu es Agent DEVOPS pour perform-learn.fr.
+Tu ne modifies aucun fichier du repo. Tu surveilles uniquement l'infrastructure CI/CD.
+
+Le push sur la branche main de aflouat/app-store vient d'être effectué.
+$GhNote
+$VercelNote
+
+Mission :
+1. Surveiller le run CI GitHub Actions le plus récent (branche main, repo aflouat/app-store) :
+   - Si gh CLI disponible : gh run list --branch main --limit 1, puis gh run watch <run-id> --exit-status
+   - Si KO : relever les erreurs précises (job, step, message d'erreur complet)
+2. Une fois CI vert, récupérer l'URL du déploiement Vercel le plus récent :
+   - Via l'API Vercel REST : GET https://api.vercel.com/v6/deployments?limit=1
+     Header Authorization: Bearer (variable d'env VERCEL_TOKEN)
+   - Attendre que le statut passe à "READY" (polling toutes les 15s, max 3 min)
+   - Fallback si VERCEL_TOKEN absent ou timeout : https://portal.perform-learn.fr
+
+Réponds avec exactement ces 4 lignes (rien d'autre) :
+CI_STATUS: pass/fail
+CI_ERRORS: [description précise si fail, sinon aucune]
+VERCEL_URL: [URL complète https://...]
+VERCEL_STATUS: ready/error/timeout
+"@
+
+Info "Lancement Agent DEVOPS..."
+$DevopsOutput = claude -p $DevopsPrompt
+Write-Host $DevopsOutput
+
+$CiStatus     = ($DevopsOutput -split "`n" | Where-Object { $_ -match "^CI_STATUS:" })    -replace "CI_STATUS:\s*",    ""
+$CiErrors     = ($DevopsOutput -split "`n" | Where-Object { $_ -match "^CI_ERRORS:" })    -replace "CI_ERRORS:\s*",    ""
+$E2EBaseUrl   = ($DevopsOutput -split "`n" | Where-Object { $_ -match "^VERCEL_URL:" })   -replace "VERCEL_URL:\s*",   ""
+$VercelStatus = ($DevopsOutput -split "`n" | Where-Object { $_ -match "^VERCEL_STATUS:" })-replace "VERCEL_STATUS:\s*",""
+
+if ($CiStatus -ne "pass") {
+    Write-Host "  Erreurs CI : $CiErrors" -ForegroundColor Red
+    Fail "CI GitHub KO — vérifier https://github.com/aflouat/app-store/actions"
 }
+Ok "CI GitHub vert"
 
-# ── ÉTAPE 6 : Attente déploiement Vercel ────────────────────────────────────
-Step "Étape 6 — Attente déploiement Vercel (2 min)"
-Info "Attente du déploiement Vercel..."
-Start-Sleep -Seconds 120
-
-$VercelToken = $env:VERCEL_TOKEN
-$E2EBaseUrl = "https://portal.perform-learn.fr"
-
-if ($VercelToken) {
-    try {
-        $Headers = @{ Authorization = "Bearer $VercelToken" }
-        $Response = Invoke-RestMethod -Uri "https://api.vercel.com/v6/deployments?limit=1" -Headers $Headers
-        $PreviewUrl = $Response.deployments[0].url
-        if ($PreviewUrl) { $E2EBaseUrl = "https://$PreviewUrl" }
-    } catch {
-        Warn "URL preview Vercel non récupérée — utilisation de portal.perform-learn.fr"
-    }
-} else {
-    Warn "VERCEL_TOKEN absent — utilisation de portal.perform-learn.fr"
-}
+if (-not $E2EBaseUrl) { $E2EBaseUrl = "https://portal.perform-learn.fr" }
+if ($VercelStatus -eq "error")   { Warn "Déploiement Vercel en erreur — E2E sur fallback prod" }
+if ($VercelStatus -eq "timeout") { Warn "Timeout Vercel — E2E sur fallback prod" }
 Info "E2E URL : $E2EBaseUrl"
 
 # ── ÉTAPE 7 : Agent TESTEUR ─────────────────────────────────────────────────
@@ -412,6 +469,61 @@ if ($GhAvailable) {
     git tag -a $NewVersion -m "Release $NewVersion — $TagDate" 2>$null
     git push origin $NewVersion 2>$null
     Ok "Tag $NewVersion créé et poussé"
+}
+
+# ── ÉTAPE 9 : Agent AMÉLIORATION CONTINUE (toujours exécuté) ────────────────
+Step "Étape 9 — Agent AMÉLIORATION CONTINUE (analyse du cycle)"
+
+$PipelineSummary = @"
+Cycle terminé le : $(Get-Date -Format 'yyyy-MM-dd HH:mm')
+US traitées : $SelectedUS
+Résultat final : SUCCÈS (release $NewVersion livrée)
+Itérations Reviewer effectuées : $Iteration / $MaxReviewIterations
+CI status : $CiStatus
+E2E status : pass
+Vercel status : $VercelStatus
+"@
+
+$AmeliorationPrompt = @"
+Tu es Agent AMÉLIORATION CONTINUE pour perform-learn.fr.
+Tu analyses le cycle qui vient de se terminer pour réduire les blocages des prochains cycles.
+
+JOURNAL DU CYCLE :
+$PipelineSummary
+
+Mission :
+1. Identifier les points de friction du cycle (itérations review excessives, erreurs récurrentes,
+   étapes lentes, objectifs DG non atteints)
+2. Pour chaque blocage : proposer une solution concrète et actionnable
+3. Évaluer si chaque solution nécessite une US technique (business_value estimé)
+4. Écrire dans DECISIONS.md une entrée RETRO au format suivant :
+
+### RETRO $(Get-Date -Format 'yyyy-MM-dd') — cycle $SelectedUS
+**Blocages détectés** : [liste ou aucun]
+**Solutions immédiates appliquées** : [ajustements réalisables sans US]
+**US techniques proposées** : [liste avec business_value ou aucune]
+**Statut** : PENDING_DG_VALIDATION
+
+RÈGLES STRICTES :
+- Ne PAS modifier ROADMAP.md directement (DG valide les US techniques)
+- Ne PAS modifier le code ni les fichiers de configuration
+- Écrire UNIQUEMENT dans DECISIONS.md
+
+Réponds avec :
+RETRO_WRITTEN: yes/no
+BLOCKERS_FOUND: [nombre]
+TECH_US_PROPOSED: [liste ou aucune]
+"@
+
+Info "Lancement Agent AMÉLIORATION CONTINUE..."
+$AmeliorationOutput = claude -p $AmeliorationPrompt
+Write-Host $AmeliorationOutput
+
+$RetroWritten = ($AmeliorationOutput -split "`n" | Where-Object { $_ -match "^RETRO_WRITTEN:" }) -replace "RETRO_WRITTEN:\s*", ""
+if ($RetroWritten -eq "yes") {
+    Ok "Rétro écrite dans DECISIONS.md"
+} else {
+    Warn "Rétro non écrite — vérifier DECISIONS.md manuellement"
 }
 
 # ── Résumé ──────────────────────────────────────────────────────────────────
