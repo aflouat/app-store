@@ -150,6 +150,8 @@ Feature: [Titre]
 **Fichiers autorisés** : [liste explicite]
 **Fichiers interdits** : [liste explicite]
 **Migration SQL** : oui (00X_nom.sql) | non
+**Impact chaîne auth (Edge Runtime)** : oui | non
+  → Si oui : fichiers concernés parmi `auth.config.ts` · `auth.ts` · `middleware.ts`
 **Critères d'acceptance** :
 - [ ] `npm run build` passe
 - [ ] `npm test` passe
@@ -174,8 +176,12 @@ Feature: [Titre]
            → Comprendre l'implémentation existante : interfaces, types,
              imports, dépendances, patterns utilisés
            → Identifier ce qui existe déjà vs ce qui est à créer
-           → Détecter les risques : Edge Runtime, migration SQL imprévue,
-             Stripe, modules partagés, chaîne auth
+           → Détecter les risques : migration SQL imprévue, Stripe, modules partagés
+           → Si l'US déclare "Impact chaîne auth = oui" OU si un fichier autorisé
+             appartient à {auth.config.ts, auth.ts, middleware.ts} :
+             LIRE et LISTER les imports actuels de ces 3 fichiers AVANT d'écrire
+             la première ligne · Vérifier que la séparation Edge Runtime (§7)
+             est respectée dans l'état existant
 
 5. ANNONCER un plan d'implémentation :
    - Fichiers touchés (liste exacte avec raison)
