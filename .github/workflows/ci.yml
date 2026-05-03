@@ -58,12 +58,78 @@ jobs:
           echo "✅ Aucun secret live dans le code"
         working-directory: portal
 
-  # ── Job 2 : E2E Playwright (uniquement sur push main) ────────────────────
-  e2e:
-    name: E2E Playwright — flows critiques
+  # ── Job 2 : Smoke test — attend Vercel + vérifie DB ──────────────────────
+  smoke-test:
+    name: Smoke test — Vercel + DB health
     needs: typecheck-build-test
     runs-on: ubuntu-latest
-    # N'exécuter qu'en push sur main (pas sur les PRs pour éviter d'exposer les secrets)
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    outputs:
+      deploy-url: ${{ steps.wait-deploy.outputs.deploy-url }}
+
+    steps:
+      - name: Attendre déploiement Vercel et vérifier health
+        id: wait-deploy
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_TEAM_ID: ${{ secrets.VERCEL_TEAM_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          SHA="${{ github.sha }}"
+          echo "Attente du déploiement Vercel pour commit ${SHA:0:7}..."
+
+          DEPLOY_URL=""
+          for i in $(seq 1 24); do
+            DEPLOY_INFO=$(curl -sf \
+              -H "Authorization: Bearer $VERCEL_TOKEN" \
+              "https://api.vercel.com/v6/deployments?teamId=$VERCEL_TEAM_ID&projectId=$VERCEL_PROJECT_ID&limit=5" \
+              | jq -r --arg sha "$SHA" \
+                '.deployments[] | select(.meta.githubCommitSha == $sha) | "\(.state) \(.url)"' \
+              | head -1)
+
+            STATE=$(echo "$DEPLOY_INFO" | cut -d' ' -f1)
+            URL=$(echo "$DEPLOY_INFO"  | cut -d' ' -f2)
+
+            if [ "$STATE" = "READY" ] && [ -n "$URL" ]; then
+              DEPLOY_URL="https://$URL"
+              echo "✅ Déploiement READY : $DEPLOY_URL"
+              break
+            elif [ "$STATE" = "ERROR" ]; then
+              echo "❌ Déploiement en erreur sur Vercel"
+              exit 1
+            fi
+
+            echo "  Tentative $i/24 — état: ${STATE:-en attente} — retry dans 10s"
+            sleep 10
+          done
+
+          if [ -z "$DEPLOY_URL" ]; then
+            echo "❌ Timeout : déploiement non prêt après 4 min"
+            exit 1
+          fi
+
+          echo "deploy-url=$DEPLOY_URL" >> "$GITHUB_OUTPUT"
+
+          # Health check sur le déploiement exact
+          echo "Health check sur $DEPLOY_URL/api/freelancehub/health ..."
+          HEALTH=$(curl -sf "$DEPLOY_URL/api/freelancehub/health" || echo '{}')
+          echo "Réponse : $HEALTH"
+
+          STATUS=$(echo "$HEALTH" | jq -r '.status // "error"')
+          DB=$(echo "$HEALTH"     | jq -r '.db // false')
+
+          if [ "$STATUS" != "ok" ] || [ "$DB" != "true" ]; then
+            echo "❌ Smoke test KO — status=$STATUS db=$DB"
+            exit 1
+          fi
+
+          echo "✅ Smoke test OK — DB connectée, schéma freelancehub présent"
+
+  # ── Job 3 : E2E Playwright (uniquement sur push main) ────────────────────
+  e2e:
+    name: E2E Playwright — flows critiques
+    needs: [typecheck-build-test, smoke-test]
+    runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     defaults:
       run:
@@ -86,41 +152,20 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
-      - name: Attente déploiement Vercel (2 min)
-        run: sleep 120
-
-      - name: Récupérer l'URL preview Vercel
-        id: vercel-url
-        run: |
-          # Tente de récupérer l'URL preview du dernier déploiement via l'API Vercel
-          DEPLOYMENT_URL=$(curl -sf \
-            -H "Authorization: Bearer ${{ secrets.VERCEL_TOKEN }}" \
-            "https://api.vercel.com/v6/deployments?teamId=${{ secrets.VERCEL_TEAM_ID }}&projectId=${{ secrets.VERCEL_PROJECT_ID }}&limit=1" \
-            | python3 -c "import sys,json; d=json.load(sys.stdin)['deployments'][0]; print(d.get('url',''))" 2>/dev/null || echo "")
-
-          if [ -n "$DEPLOYMENT_URL" ]; then
-            echo "E2E_BASE_URL=https://$DEPLOYMENT_URL" >> $GITHUB_ENV
-            echo "  E2E URL : https://$DEPLOYMENT_URL"
-          else
-            # Fallback : utiliser l'URL de production stable
-            echo "E2E_BASE_URL=https://portal.perform-learn.fr" >> $GITHUB_ENV
-            echo "  E2E URL (fallback prod) : https://portal.perform-learn.fr"
-          fi
-
       - name: Run E2E — auth flows
         run: npx playwright test tests/e2e/auth.spec.ts
         env:
-          E2E_BASE_URL: ${{ env.E2E_BASE_URL }}
+          E2E_BASE_URL: ${{ needs.smoke-test.outputs.deploy-url }}
 
       - name: Run E2E — booking flows
         run: npx playwright test tests/e2e/booking.spec.ts
         env:
-          E2E_BASE_URL: ${{ env.E2E_BASE_URL }}
+          E2E_BASE_URL: ${{ needs.smoke-test.outputs.deploy-url }}
 
       - name: Run E2E — consultant flows
         run: npx playwright test tests/e2e/consultant.spec.ts
         env:
-          E2E_BASE_URL: ${{ env.E2E_BASE_URL }}
+          E2E_BASE_URL: ${{ needs.smoke-test.outputs.deploy-url }}
 
       - name: Upload rapport E2E (si échec)
         if: failure()
