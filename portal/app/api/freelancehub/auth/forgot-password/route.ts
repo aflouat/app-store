@@ -30,9 +30,13 @@ export async function POST(req: NextRequest) {
         [token, expires.toISOString(), user.id]
       )
 
+      const maskedEmail = normalized.replace(/(?<=.{2}).(?=.*@)/g, '*')
+      console.log('[forgot-password] queuing email for:', maskedEmail)
       sendPasswordReset(user.email, token).catch((err: unknown) =>
-        console.error('[forgot-password] sendPasswordReset failed', { email: user.email, err: String(err) })
+        console.error('[forgot-password] sendPasswordReset failed', { email: maskedEmail, err: String(err) })
       )
+    } else {
+      console.log('[forgot-password] no active user found for request')
     }
 
     return NextResponse.json({ message: 'Si un compte existe, un email a été envoyé.' })
