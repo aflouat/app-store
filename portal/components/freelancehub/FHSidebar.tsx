@@ -2,49 +2,50 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import type { UserRole } from '@/lib/freelancehub/types'
 
-interface NavItem {
-  label: string
-  href:  string
-  icon:  string
+interface NavConfig {
+  key:  string
+  href: string
+  icon: string
 }
 
-const CONSULTANT_NAV: NavItem[] = [
-  { label: 'Tableau de bord', href: '/freelancehub/consultant',           icon: '◉' },
-  { label: 'Mes tâches',      href: '/freelancehub/tasks',               icon: '▤' },
-  { label: 'Mon profil',      href: '/freelancehub/consultant/profile',   icon: '○' },
-  { label: 'Mon agenda',      href: '/freelancehub/consultant/agenda',    icon: '◫' },
-  { label: 'Réservations',    href: '/freelancehub/consultant/bookings',  icon: '◈' },
-  { label: 'Mes gains',       href: '/freelancehub/consultant/earnings',  icon: '◇' },
-  { label: 'Mon CV',          href: '/freelancehub/consultant/cv',        icon: '◻' },
-  { label: 'Mon KYC',         href: '/freelancehub/consultant/kyc',       icon: '◑' },
-  { label: 'NDA',             href: '/freelancehub/consultant/nda',       icon: '◐' },
-  { label: 'Support',         href: '/freelancehub/support',              icon: '?' },
+const CONSULTANT_NAV: NavConfig[] = [
+  { key: 'navDashboard', href: '/freelancehub/consultant',           icon: '◉' },
+  { key: 'navTasks',     href: '/freelancehub/tasks',               icon: '▤' },
+  { key: 'navProfile',   href: '/freelancehub/consultant/profile',   icon: '○' },
+  { key: 'navAgenda',    href: '/freelancehub/consultant/agenda',    icon: '◫' },
+  { key: 'navBookings',  href: '/freelancehub/consultant/bookings',  icon: '◈' },
+  { key: 'navEarnings',  href: '/freelancehub/consultant/earnings',  icon: '◇' },
+  { key: 'navCV',        href: '/freelancehub/consultant/cv',        icon: '◻' },
+  { key: 'navKYC',       href: '/freelancehub/consultant/kyc',       icon: '◑' },
+  { key: 'navNDA',       href: '/freelancehub/consultant/nda',       icon: '◐' },
+  { key: 'navSupport',   href: '/freelancehub/support',              icon: '?' },
 ]
 
-const CLIENT_NAV: NavItem[] = [
-  { label: 'Tableau de bord', href: '/freelancehub/client',              icon: '◉' },
-  { label: 'Mes tâches',      href: '/freelancehub/tasks',              icon: '▤' },
-  { label: 'Trouver un expert', href: '/freelancehub/client/search',     icon: '◎' },
-  { label: 'Mes réservations', href: '/freelancehub/client/bookings',    icon: '◈' },
-  { label: 'Mes paiements',    href: '/freelancehub/client/payments',    icon: '◇' },
-  { label: 'Mes évaluations',  href: '/freelancehub/client/reviews',     icon: '◌' },
-  { label: 'Support',          href: '/freelancehub/support',            icon: '?' },
+const CLIENT_NAV: NavConfig[] = [
+  { key: 'navDashboard',  href: '/freelancehub/client',              icon: '◉' },
+  { key: 'navTasks',      href: '/freelancehub/tasks',              icon: '▤' },
+  { key: 'navFindExpert', href: '/freelancehub/client/search',       icon: '◎' },
+  { key: 'navMyBookings', href: '/freelancehub/client/bookings',     icon: '◈' },
+  { key: 'navPayments',   href: '/freelancehub/client/payments',     icon: '◇' },
+  { key: 'navReviews',    href: '/freelancehub/client/reviews',      icon: '◌' },
+  { key: 'navSupport',    href: '/freelancehub/support',             icon: '?' },
 ]
 
-const ADMIN_NAV: NavItem[] = [
-  { label: 'Dashboard',       href: '/freelancehub/admin',               icon: '◉' },
-  { label: 'Mes tâches',      href: '/freelancehub/tasks',              icon: '▤' },
-  { label: 'Consultants',     href: '/freelancehub/admin/consultants',   icon: '○' },
-  { label: 'Expertises',      href: '/freelancehub/admin/skills',        icon: '◑' },
-  { label: 'Réservations',    href: '/freelancehub/admin/bookings',      icon: '◈' },
-  { label: 'Paiements',       href: '/freelancehub/admin/payments',      icon: '◇' },
-  { label: 'Matching engine', href: '/freelancehub/admin/matching',      icon: '◎' },
-  { label: 'Support',         href: '/freelancehub/support',             icon: '?' },
+const ADMIN_NAV: NavConfig[] = [
+  { key: 'navAdminDashboard', href: '/freelancehub/admin',               icon: '◉' },
+  { key: 'navTasks',          href: '/freelancehub/tasks',              icon: '▤' },
+  { key: 'navConsultants',    href: '/freelancehub/admin/consultants',   icon: '○' },
+  { key: 'navSkills',         href: '/freelancehub/admin/skills',        icon: '◑' },
+  { key: 'navAdminBookings',  href: '/freelancehub/admin/bookings',      icon: '◈' },
+  { key: 'navAdminPayments',  href: '/freelancehub/admin/payments',      icon: '◇' },
+  { key: 'navMatchingEngine', href: '/freelancehub/admin/matching',      icon: '◎' },
+  { key: 'navSupport',        href: '/freelancehub/support',             icon: '?' },
 ]
 
-const NAV_BY_ROLE: Record<UserRole, NavItem[]> = {
+const NAV_BY_ROLE: Record<UserRole, NavConfig[]> = {
   consultant: CONSULTANT_NAV,
   client:     CLIENT_NAV,
   admin:      ADMIN_NAV,
@@ -55,25 +56,27 @@ interface FHSidebarProps {
 }
 
 export default function FHSidebar({ role }: FHSidebarProps) {
+  const t        = useTranslations('FHSidebar')
   const pathname = usePathname()
-  const items    = NAV_BY_ROLE[role]
+  const configs  = NAV_BY_ROLE[role]
 
   return (
     <aside className="fh-sidebar">
       <nav className="fh-sidebar-nav">
-        {items.map(item => {
+        {configs.map(({ key, href, icon }) => {
           const active =
-            item.href === `/freelancehub/${role}`
-              ? pathname === item.href
-              : pathname.startsWith(item.href)
+            href === `/freelancehub/${role}`
+              ? pathname === href
+              : pathname.startsWith(href)
           return (
             <Link
-              key={item.href}
-              href={item.href}
+              key={href}
+              href={href}
               className={`fh-sidebar-item${active ? ' active' : ''}`}
             >
-              <span className="fh-sidebar-icon">{item.icon}</span>
-              <span>{item.label}</span>
+              <span className="fh-sidebar-icon">{icon}</span>
+              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+              <span>{t(key as any)}</span>
             </Link>
           )
         })}

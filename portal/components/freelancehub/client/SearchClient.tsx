@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useTranslations, useLocale } from 'next-intl'
 import type { Skill, MatchingResult } from '@/lib/freelancehub/types'
 import BookingModal from './BookingModal'
 import { trackEvent } from '@/lib/freelancehub/analytics'
@@ -17,6 +18,9 @@ function priceTTC(dailyRate: number | null | undefined): number {
 }
 
 export default function SearchClient({ skills, clientId }: Props) {
+  const t      = useTranslations('SearchClient')
+  const locale = useLocale()
+
   const [skillId,     setSkillId]     = useState('')
   const [budget,      setBudget]      = useState('')
   const [notes,       setNotes]       = useState('')
@@ -44,7 +48,7 @@ export default function SearchClient({ skills, clientId }: Props) {
     setLoading(false)
     if (!res.ok) {
       const d = await res.json().catch(() => ({}))
-      setError(d.error ?? 'Erreur lors de la recherche.')
+      setError(d.error ?? t('searchError'))
       return
     }
     const data = await res.json()
@@ -53,7 +57,6 @@ export default function SearchClient({ skills, clientId }: Props) {
     trackEvent('search_consultant', { skill_id: Number(skillId), results_count: matches.length })
   }
 
-  // Grouper les compétences par catégorie
   const byCategory: Record<string, Skill[]> = {}
   skills.forEach(s => {
     const cat = s.category ?? 'Autre'
@@ -74,20 +77,25 @@ export default function SearchClient({ skills, clientId }: Props) {
     return availFilter === 'week' ? daysUntil <= 7 : daysUntil <= 30
   }) ?? []
 
+  const AVAIL_FILTERS: [AvailFilter, string][] = [
+    ['all',   t('filterAll')],
+    ['week',  t('filterWeek')],
+    ['month', t('filterMonth')],
+  ]
+
   return (
     <div className="srch-wrap">
-      {/* Formulaire */}
       <div className="srch-form-card">
         <div className="srch-form-header">
-          <h2 className="srch-form-title">Trouver un expert</h2>
-          <span className="srch-price-badge">💶 Tarif personnalisé / consultation 1h</span>
+          <h2 className="srch-form-title">{t('formTitle')}</h2>
+          <span className="srch-price-badge">{t('priceBadge')}</span>
         </div>
 
         <div className="srch-form-grid">
           <div className="srch-field srch-field-wide">
-            <label>Expertise recherchée <span className="req">*</span></label>
+            <label>{t('expertiseLabel')} <span className="req">*</span></label>
             <select value={skillId} onChange={e => setSkillId(e.target.value)}>
-              <option value="">— Sélectionnez une compétence —</option>
+              <option value="">{t('expertisePlaceholder')}</option>
               {Object.entries(byCategory).map(([cat, catSkills]) => (
                 <optgroup key={cat} label={cat}>
                   {catSkills.map(s => (
@@ -99,29 +107,29 @@ export default function SearchClient({ skills, clientId }: Props) {
           </div>
 
           <div className="srch-field">
-            <label>Budget max (€ TTC)</label>
+            <label>{t('budgetLabel')}</label>
             <input
               type="number"
               value={budget}
               onChange={e => setBudget(e.target.value)}
-              placeholder="Min. 100 €"
+              placeholder={t('budgetPlaceholder')}
               min={0}
             />
             {budgetInsuffisant && (
               <span className="srch-budget-warn">
-                Le tarif minimum est {minPriceTTC} € TTC
+                {t('budgetWarning', { price: minPriceTTC })}
               </span>
             )}
           </div>
         </div>
 
         <div className="srch-field">
-          <label>Contexte / description du besoin</label>
+          <label>{t('notesLabel')}</label>
           <textarea
             value={notes}
             onChange={e => setNotes(e.target.value)}
             rows={3}
-            placeholder="Décrivez votre projet, vos attentes, le contexte de la consultation…"
+            placeholder={t('notesPlaceholder')}
           />
         </div>
 
@@ -132,34 +140,30 @@ export default function SearchClient({ skills, clientId }: Props) {
           onClick={handleSearch}
           disabled={loading || !skillId || !!budgetInsuffisant}
         >
-          {loading ? 'Recherche en cours…' : 'Rechercher un expert disponible'}
+          {loading ? t('searching') : t('searchBtn')}
         </button>
       </div>
 
-      {/* Résultats */}
       {results !== null && (
         <div className="srch-results">
           {results.length === 0 ? (
             <div className="srch-no-result">
-              <p>Aucun expert disponible pour cette compétence.</p>
-              <p className="srch-hint">
-                Essayez une autre expertise ou revenez plus tard — les consultants mettent à jour leurs disponibilités régulièrement.
-              </p>
+              <p>{t('noResults')}</p>
+              <p className="srch-hint">{t('noResultsHint')}</p>
             </div>
           ) : (
             <>
               <div className="srch-results-header">
                 <div>
                   <h2 className="srch-results-title">
-                    {results.length} expert{results.length > 1 ? 's' : ''} disponible{results.length > 1 ? 's' : ''}
+                    {t('resultsCount', { count: results.length })}
                   </h2>
                   <p className="srch-results-sub">
-                    Identité anonyme jusqu&apos;au paiement · À partir de <strong>{minPriceTTC} € TTC</strong>
+                    {t('anonymousBadge')} <strong>{minPriceTTC} € TTC</strong>
                   </p>
                 </div>
-                {/* Availability filter */}
                 <div className="srch-avail-filters">
-                  {([['all','Tous'],['week','Cette semaine'],['month','Ce mois']] as [AvailFilter,string][]).map(([v,l]) => (
+                  {AVAIL_FILTERS.map(([v, l]) => (
                     <button
                       key={v}
                       className={`srch-avail-btn${availFilter === v ? ' active' : ''}`}
@@ -171,9 +175,9 @@ export default function SearchClient({ skills, clientId }: Props) {
 
               {filteredResults.length === 0 ? (
                 <div className="srch-no-result">
-                  <p>Aucun expert disponible avec ce filtre.</p>
+                  <p>{t('noResultsFilter')}</p>
                   <button className="srch-reset-filter" onClick={() => setAvailFilter('all')}>
-                    Voir tous les experts
+                    {t('seeAllExperts')}
                   </button>
                 </div>
               ) : (
@@ -183,6 +187,7 @@ export default function SearchClient({ skills, clientId }: Props) {
                       key={r.slot.id}
                       result={r}
                       rank={i + 1}
+                      locale={locale}
                       onBook={() => { trackEvent('select_consultant', { rank: i + 1 }); setSelected(r) }}
                     />
                   ))}
@@ -193,7 +198,6 @@ export default function SearchClient({ skills, clientId }: Props) {
         </div>
       )}
 
-      {/* Modal de réservation */}
       {selected && (
         <BookingModal
           match={selected}
@@ -241,14 +245,12 @@ export default function SearchClient({ skills, clientId }: Props) {
         .srch-no-result { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.8rem; text-align: center; }
         .srch-no-result p { color: var(--text-mid); font-size: .95rem; }
         .srch-hint { font-size: .85rem; color: var(--text-light); margin-top: .4rem; }
-        /* Filter */
         .srch-results-header { display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: .8rem; }
         .srch-avail-filters { display: flex; gap: .4rem; }
         .srch-avail-btn { padding: .38rem .85rem; border: 1.5px solid var(--border); border-radius: 20px; background: var(--white); font-size: .82rem; color: var(--text-mid); cursor: pointer; transition: border-color .12s, background .12s; white-space: nowrap; }
         .srch-avail-btn:hover { border-color: var(--c1); color: var(--c1); }
         .srch-avail-btn.active { border-color: var(--c1); background: var(--c1-pale); color: var(--c1); font-weight: 600; }
         .srch-reset-filter { margin-top: .8rem; padding: .45rem 1rem; background: var(--c1-pale); color: var(--c1); border: 1.5px solid var(--c1); border-radius: var(--radius-sm); font-size: .85rem; font-weight: 600; cursor: pointer; }
-        /* Mini-agenda */
         .ac-mini-agenda-wrap { display: flex; flex-direction: column; gap: .4rem; padding-top: .5rem; border-top: 1px solid var(--border); }
         .ac-mini-agenda-label { font-size: .73rem; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--text-light); }
         .mini-ag { display: flex; gap: .3rem; }
@@ -264,7 +266,7 @@ export default function SearchClient({ skills, clientId }: Props) {
   )
 }
 
-function MiniAgenda({ consultantId }: { consultantId: string }) {
+function MiniAgenda({ consultantId, locale, unavailableLabel }: { consultantId: string; locale: string; unavailableLabel: string }) {
   const [slotMap, setSlotMap] = useState<Record<string, number>>({})
 
   useEffect(() => {
@@ -291,9 +293,14 @@ function MiniAgenda({ consultantId }: { consultantId: string }) {
       {days.map(d => {
         const iso   = d.toISOString().split('T')[0]
         const count = slotMap[iso] ?? 0
-        const label = d.toLocaleDateString('fr-FR', { weekday: 'short' }).slice(0, 3)
+        const label = d.toLocaleDateString(locale, { weekday: 'short' }).slice(0, 3)
+        const dateStr = d.toLocaleDateString(locale)
         return (
-          <div key={iso} className={`mini-ag-cell${count > 0 ? ' mini-ag-cell--avail' : ''}`} title={count > 0 ? `${count} créneau${count > 1 ? 'x' : ''} le ${d.toLocaleDateString('fr-FR')}` : 'Indisponible'}>
+          <div
+            key={iso}
+            className={`mini-ag-cell${count > 0 ? ' mini-ag-cell--avail' : ''}`}
+            title={count > 0 ? `${count} / ${dateStr}` : unavailableLabel}
+          >
             <span className="mini-ag-day">{label}</span>
             <span className="mini-ag-num">{d.getDate()}</span>
             <span className="mini-ag-dot" />
@@ -304,9 +311,10 @@ function MiniAgenda({ consultantId }: { consultantId: string }) {
   )
 }
 
-function AnonymousCard({ result, rank, onBook }: { result: MatchingResult; rank: number; onBook: () => void }) {
+function AnonymousCard({ result, rank, locale, onBook }: { result: MatchingResult; rank: number; locale: string; onBook: () => void }) {
+  const t = useTranslations('SearchClient')
   const { consultant: c, slot, score, score_breakdown: sb } = result
-  const nextDate = new Date(slot.slot_date + 'T00:00:00').toLocaleDateString('fr-FR', {
+  const nextDate = new Date(slot.slot_date + 'T00:00:00').toLocaleDateString(locale, {
     weekday: 'long', day: 'numeric', month: 'long',
   })
 
@@ -316,14 +324,14 @@ function AnonymousCard({ result, rank, onBook }: { result: MatchingResult; rank:
         <div className="ac-top">
           <div className="ac-avatar"><span>{rank}</span></div>
           <div className="ac-info">
-            <p className="ac-title">{c.title ?? 'Consultant Expert'}</p>
+            <p className="ac-title">{c.title ?? t('expertConsultant')}</p>
             <div className="ac-meta">
               {c.location && <span>📍 {c.location}</span>}
             </div>
             <div className="ac-trust-badges">
-              {c.is_verified && <span className="ac-trust-pill ac-trust-verified">✓ KYC vérifié</span>}
-              <span className="ac-trust-pill ac-trust-escrow">🔒 Paiement séquestre</span>
-              {c.is_early_adopter && <span className="ac-trust-pill ac-trust-founder">★ Fondateur</span>}
+              {c.is_verified && <span className="ac-trust-pill ac-trust-verified">{t('kycVerified')}</span>}
+              <span className="ac-trust-pill ac-trust-escrow">{t('escrowPayment')}</span>
+              {c.is_early_adopter && <span className="ac-trust-pill ac-trust-founder">{t('founder')}</span>}
             </div>
             <div className="ac-rating">
               {'★'.repeat(Math.round(c.rating))}{'☆'.repeat(5 - Math.round(c.rating))}
@@ -332,30 +340,29 @@ function AnonymousCard({ result, rank, onBook }: { result: MatchingResult; rank:
           </div>
           <div className="ac-score-wrap">
             <div className="ac-score">{score}</div>
-            <div className="ac-score-label">score</div>
+            <div className="ac-score-label">{t('score')}</div>
           </div>
         </div>
 
         <div className="ac-breakdown">
-          <ScoreBar label="Compétence"   value={sb.skill_match}        />
-          <ScoreBar label="Réputation"   value={sb.rating_score}       />
-          <ScoreBar label="Disponibilité" value={sb.availability_score} />
+          <ScoreBar label={t('skillBar')}        value={sb.skill_match}        />
+          <ScoreBar label={t('reputationBar')}   value={sb.rating_score}       />
+          <ScoreBar label={t('availabilityBar')} value={sb.availability_score} />
         </div>
 
         <div className="ac-slot-info">
-          <span>📅 Prochaine dispo : <strong>{nextDate}</strong> à {slot.slot_time.slice(0, 5)}</span>
+          <span>{t('nextAvailability')} <strong>{nextDate}</strong> à {slot.slot_time.slice(0, 5)}</span>
           <span className="ac-price-tag">💶 {priceTTC(c.daily_rate)} € TTC</span>
         </div>
 
-        {/* Mini-agenda 7 jours */}
         <div className="ac-mini-agenda-wrap">
-          <span className="ac-mini-agenda-label">Disponibilités · 7 prochains jours</span>
-          <MiniAgenda consultantId={c.id} />
+          <span className="ac-mini-agenda-label">{t('availabilityLabel')}</span>
+          <MiniAgenda consultantId={c.id} locale={locale} unavailableLabel={t('unavailable')} />
         </div>
       </div>
 
       <button className="ac-book-btn" onClick={onBook}>
-        Réserver · {priceTTC(c.daily_rate)} € →
+        {t('bookBtn', { price: priceTTC(c.daily_rate) })}
       </button>
 
       <style>{`
@@ -367,7 +374,6 @@ function AnonymousCard({ result, rank, onBook }: { result: MatchingResult; rank:
         .ac-info { flex: 1; display: flex; flex-direction: column; gap: .3rem; }
         .ac-title { font-weight: 600; font-size: .95rem; color: var(--text); }
         .ac-meta { display: flex; flex-wrap: wrap; gap: .7rem; font-size: .82rem; color: var(--text-mid); }
-        .ac-verified { color: var(--c3); font-weight: 600; font-size: .78rem; background: var(--c3-pale); padding: .15em .5em; border-radius: 10px; }
         .ac-rating { font-size: .95rem; color: #e8b84b; letter-spacing: .05em; }
         .ac-rating-num { font-size: .82rem; color: var(--text-mid); margin-left: .4rem; }
         .ac-score-wrap { text-align: center; flex-shrink: 0; }

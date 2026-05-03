@@ -2,10 +2,16 @@ import { auth } from '@/auth'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { query } from '@/lib/freelancehub/db'
+import { getTranslations, getLocale } from 'next-intl/server'
 
 export default async function ClientDashboard() {
   const session = await auth()
   if (!session?.user || session.user.role !== 'client') redirect('/freelancehub/login')
+
+  const [t, locale] = await Promise.all([
+    getTranslations('ClientDashboard'),
+    getLocale(),
+  ])
 
   const userId = session.user.id
 
@@ -47,32 +53,41 @@ export default async function ClientDashboard() {
 
   const name = session.user.name || session.user.email
 
+  const STATUS_LABELS: Record<string, string> = {
+    pending:     t('statusPending'),
+    confirmed:   t('statusConfirmed'),
+    in_progress: t('statusInProgress'),
+    completed:   t('statusCompleted'),
+    cancelled:   t('statusCancelled'),
+    disputed:    t('statusDisputed'),
+  }
+
   return (
     <div className="fh-page">
       <header className="fh-page-header">
         <div>
-          <h1 className="fh-page-title">Bonjour, {name.split(' ')[0]} 👋</h1>
-          <p className="fh-page-sub">Trouvez l&apos;expert idéal pour votre projet.</p>
+          <h1 className="fh-page-title">{t('greeting', { name: name.split(' ')[0] })}</h1>
+          <p className="fh-page-sub">{t('subtitle')}</p>
         </div>
         <Link href="/freelancehub/client/search" className="fh-cta-btn">
-          + Trouver un expert
+          {t('findExpert')}
         </Link>
       </header>
 
       <div className="fh-kpi-grid">
-        <KpiCard label="Réservations"  value={String(stats?.total ?? 0)}     color="var(--c1)" />
-        <KpiCard label="En attente"    value={String(stats?.pending ?? 0)}    color="var(--c2)" />
-        <KpiCard label="Confirmées"    value={String(stats?.confirmed ?? 0)}  color="var(--c3)" />
-        <KpiCard label="Terminées"     value={String(stats?.completed ?? 0)}  color="var(--c4)" />
+        <KpiCard label={t('kpiBookings')}  value={String(stats?.total ?? 0)}     color="var(--c1)" />
+        <KpiCard label={t('kpiPending')}   value={String(stats?.pending ?? 0)}   color="var(--c2)" />
+        <KpiCard label={t('kpiConfirmed')} value={String(stats?.confirmed ?? 0)} color="var(--c3)" />
+        <KpiCard label={t('kpiCompleted')} value={String(stats?.completed ?? 0)} color="var(--c4)" />
       </div>
 
       <section className="fh-section">
-        <h2 className="fh-section-title">Réservations récentes</h2>
+        <h2 className="fh-section-title">{t('recentBookings')}</h2>
         {recentBookings.length === 0 ? (
           <div className="fh-empty-state">
-            <p>Aucune réservation pour le moment.</p>
+            <p>{t('noBookings')}</p>
             <Link href="/freelancehub/client/search" className="fh-link-btn">
-              Parcourir les experts →
+              {t('browseExperts')}
             </Link>
           </div>
         ) : (
@@ -80,9 +95,9 @@ export default async function ClientDashboard() {
             {recentBookings.map(b => (
               <div key={b.id} className="fh-booking-row">
                 <div className="fh-booking-info">
-                  <span className="fh-booking-skill">{b.skill_name ?? 'Expertise'}</span>
+                  <span className="fh-booking-skill">{b.skill_name ?? t('defaultSkill')}</span>
                   <span className="fh-booking-date">
-                    {new Date(b.slot_date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}
+                    {new Date(b.slot_date).toLocaleDateString(locale, { day: 'numeric', month: 'long' })}
                     {' '}{b.slot_time?.slice(0,5)}
                   </span>
                 </div>
@@ -90,7 +105,7 @@ export default async function ClientDashboard() {
                   {b.amount_ht && (
                     <span className="fh-booking-amount">{(b.amount_ht / 100).toFixed(0)} €</span>
                   )}
-                  <StatusBadge status={b.status} />
+                  <StatusBadge status={b.status} label={STATUS_LABELS[b.status] ?? STATUS_LABELS.pending} />
                 </div>
               </div>
             ))}
@@ -131,20 +146,20 @@ function KpiCard({ label, value, color }: { label: string; value: string; color:
   )
 }
 
-const STATUS_MAP: Record<string, { label: string; bg: string; color: string }> = {
-  pending:     { label: 'En attente',  bg: 'var(--c2-pale)', color: 'var(--text-mid)' },
-  confirmed:   { label: 'Confirmée',  bg: 'var(--c3-pale)', color: 'var(--c3)' },
-  in_progress: { label: 'En cours',   bg: 'var(--c1-pale)', color: 'var(--c1)' },
-  completed:   { label: 'Terminée',   bg: 'var(--c4-pale)', color: 'var(--c4)' },
-  cancelled:   { label: 'Annulée',    bg: '#f5f5f5',        color: '#999' },
-  disputed:    { label: 'Litige',     bg: '#fef0f0',        color: '#c0392b' },
+const STATUS_STYLES: Record<string, { bg: string; color: string }> = {
+  pending:     { bg: 'var(--c2-pale)', color: 'var(--text-mid)' },
+  confirmed:   { bg: 'var(--c3-pale)', color: 'var(--c3)' },
+  in_progress: { bg: 'var(--c1-pale)', color: 'var(--c1)' },
+  completed:   { bg: 'var(--c4-pale)', color: 'var(--c4)' },
+  cancelled:   { bg: '#f5f5f5',        color: '#999' },
+  disputed:    { bg: '#fef0f0',        color: '#c0392b' },
 }
 
-function StatusBadge({ status }: { status: string }) {
-  const s = STATUS_MAP[status] ?? STATUS_MAP.pending
+function StatusBadge({ status, label }: { status: string; label: string }) {
+  const s = STATUS_STYLES[status] ?? STATUS_STYLES.pending
   return (
     <span style={{ fontSize: '.78rem', fontWeight: 600, padding: '.2em .7em', borderRadius: '20px', background: s.bg, color: s.color }}>
-      {s.label}
+      {label}
     </span>
   )
 }

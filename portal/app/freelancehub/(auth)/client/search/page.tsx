@@ -3,23 +3,22 @@ import { redirect } from 'next/navigation'
 import { query } from '@/lib/freelancehub/db'
 import SearchClient from '@/components/freelancehub/client/SearchClient'
 import type { Skill } from '@/lib/freelancehub/types'
+import { getTranslations } from 'next-intl/server'
 
 export default async function ClientSearchPage() {
   const session = await auth()
   if (!session?.user || session.user.role !== 'client') redirect('/freelancehub/login')
 
-  const skills = await query<Skill>(
-    `SELECT id, name, category FROM freelancehub.skills ORDER BY category, name`
-  )
+  const [t, skills] = await Promise.all([
+    getTranslations('ClientSearch'),
+    query<Skill>(`SELECT id, name, category FROM freelancehub.skills ORDER BY category, name`),
+  ])
 
   return (
     <div className="fh-page">
       <header className="fh-page-header">
-        <h1 className="fh-page-title">Trouver un expert</h1>
-        <p className="fh-page-sub">
-          Notre algorithme sélectionne le meilleur consultant disponible de façon anonyme.
-          Son identité vous sera révélée après paiement.
-        </p>
+        <h1 className="fh-page-title">{t('title')}</h1>
+        <p className="fh-page-sub">{t('subtitle')}</p>
       </header>
       <SearchClient skills={skills} clientId={session.user.id} />
       <style>{`

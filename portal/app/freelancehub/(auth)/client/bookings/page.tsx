@@ -2,10 +2,16 @@ import { auth } from '@/auth'
 import { redirect } from 'next/navigation'
 import { query } from '@/lib/freelancehub/db'
 import Link from 'next/link'
+import { getTranslations, getLocale } from 'next-intl/server'
 
 export default async function ClientBookingsPage() {
   const session = await auth()
   if (!session?.user || session.user.role !== 'client') redirect('/freelancehub/login')
+
+  const [t, locale] = await Promise.all([
+    getTranslations('ClientBookings'),
+    getLocale(),
+  ])
 
   const userId = session.user.id
 
@@ -41,30 +47,30 @@ export default async function ClientBookingsPage() {
   )
 
   const STATUS_MAP: Record<string, { label: string; bg: string; color: string }> = {
-    pending:     { label: 'En attente de paiement', bg: 'var(--c2-pale)', color: 'var(--text-mid)' },
-    confirmed:   { label: 'Confirmée',   bg: 'var(--c3-pale)', color: 'var(--c3)' },
-    in_progress: { label: 'En cours',    bg: 'var(--c1-pale)', color: 'var(--c1)' },
-    completed:   { label: 'Terminée',    bg: 'var(--c4-pale)', color: 'var(--c4)' },
-    cancelled:   { label: 'Annulée',     bg: '#f5f5f5',        color: '#999' },
-    disputed:    { label: 'Litige',      bg: '#fef0f0',        color: '#c0392b' },
+    pending:     { label: t('statusPending'),    bg: 'var(--c2-pale)', color: 'var(--text-mid)' },
+    confirmed:   { label: t('statusConfirmed'),  bg: 'var(--c3-pale)', color: 'var(--c3)' },
+    in_progress: { label: t('statusInProgress'), bg: 'var(--c1-pale)', color: 'var(--c1)' },
+    completed:   { label: t('statusCompleted'),  bg: 'var(--c4-pale)', color: 'var(--c4)' },
+    cancelled:   { label: t('statusCancelled'),  bg: '#f5f5f5',        color: '#999' },
+    disputed:    { label: t('statusDisputed'),   bg: '#fef0f0',        color: '#c0392b' },
   }
 
   return (
     <div className="fh-page">
       <header className="fh-page-header">
         <div>
-          <h1 className="fh-page-title">Mes réservations</h1>
-          <p className="fh-page-sub">{bookings.length} réservation{bookings.length !== 1 ? 's' : ''}</p>
+          <h1 className="fh-page-title">{t('title')}</h1>
+          <p className="fh-page-sub">{t('bookingCount', { count: bookings.length })}</p>
         </div>
         <Link href="/freelancehub/client/search" className="fh-cta-btn">
-          + Nouvelle réservation
+          {t('newBooking')}
         </Link>
       </header>
 
       {bookings.length === 0 ? (
         <div className="bk-empty">
-          <p>Aucune réservation pour le moment.</p>
-          <Link href="/freelancehub/client/search" className="fh-link">Trouver un expert →</Link>
+          <p>{t('noBookings')}</p>
+          <Link href="/freelancehub/client/search" className="fh-link">{t('findExpert')}</Link>
         </div>
       ) : (
         <div className="bk-list">
@@ -77,9 +83,9 @@ export default async function ClientBookingsPage() {
                   <div className="bk-ref">
                     {b.booking_number ? `#${b.booking_number}` : ''}
                   </div>
-                  <div className="bk-skill">{b.skill_name ?? 'Expertise'}</div>
+                  <div className="bk-skill">{b.skill_name ?? t('defaultSkill')}</div>
                   <div className="bk-date">
-                    {new Date(b.slot_date + 'T00:00:00').toLocaleDateString('fr-FR', {
+                    {new Date(b.slot_date + 'T00:00:00').toLocaleDateString(locale, {
                       weekday: 'long', day: 'numeric', month: 'long',
                     })}
                     {' '}{b.slot_time?.slice(0,5)}
@@ -91,10 +97,10 @@ export default async function ClientBookingsPage() {
                     </div>
                   )}
                   {!isRevealed && b.status !== 'cancelled' && (
-                    <div className="bk-anon">🔒 Consultant anonyme (identité révélée après paiement)</div>
+                    <div className="bk-anon">{t('anonConsultant')}</div>
                   )}
                   {b.matching_score && (
-                    <div className="bk-score">Score de matching : {b.matching_score}/100</div>
+                    <div className="bk-score">{t('matchScore', { score: b.matching_score })}</div>
                   )}
                 </div>
                 <div className="bk-card-right">

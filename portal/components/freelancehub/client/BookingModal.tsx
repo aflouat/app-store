@@ -3,22 +3,20 @@
 import { useState, useEffect } from 'react'
 import { loadStripe } from '@stripe/stripe-js'
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js'
+import { useTranslations, useLocale } from 'next-intl'
 import type { MatchingResult } from '@/lib/freelancehub/types'
 import { trackEvent } from '@/lib/freelancehub/analytics'
 
 interface AvailableSlot { id: string; slot_time: string; duration_min: number }
 
-const MONTHS_FR = ['jan','fév','mar','avr','mai','jun','jul','aoû','sep','oct','nov','déc']
-
-function fmtDate(dateStr: string) {
+function fmtDate(dateStr: string, locale: string) {
   const d = new Date(dateStr + 'T00:00:00')
-  return d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })
+  return d.toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'short' })
 }
 
 const STRIPE_PK = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
 const stripePromise = STRIPE_PK ? loadStripe(STRIPE_PK) : null
 
-// ─── Calcul prix depuis le taux horaire consultant ───────────
 function buildPricing(hourlyRateEur: number) {
   const htCents    = Math.round(hourlyRateEur * 100)
   const ttcCents   = Math.round(htCents * 1.20)
@@ -45,7 +43,6 @@ interface Props {
   onBooked: () => void
 }
 
-// Sub-component rendered inside <Elements> so useStripe/useElements are available
 function StripeForm({
   bookingId,
   priceTTC,
@@ -57,6 +54,7 @@ function StripeForm({
   onSuccess: () => void
   onBack:    () => void
 }) {
+  const t        = useTranslations('BookingModal')
   const stripe   = useStripe()
   const elements = useElements()
   const [paying,      setPaying]      = useState(false)
@@ -64,12 +62,11 @@ function StripeForm({
   const [stripeReady, setStripeReady] = useState(false)
   const [initTimeout, setInitTimeout] = useState(false)
 
-  // Timeout 15s si Stripe ne s'initialise pas
   useEffect(() => {
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       if (!stripeReady) setInitTimeout(true)
     }, 15000)
-    return () => clearTimeout(t)
+    return () => clearTimeout(timer)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -79,15 +76,13 @@ function StripeForm({
     setPaying(true)
 
     try {
-      // Finalize Elements form validation
       const { error: submitError } = await elements.submit()
       if (submitError) {
-        setError(submitError.message ?? 'Erreur de validation.')
+        setError(submitError.message ?? t('stripeValidationError'))
         setPaying(false)
         return
       }
 
-      // Confirm payment client-side (no redirect for card payments)
       const { error: confirmError, paymentIntent } = await stripe.confirmPayment({
         elements,
         confirmParams: {
@@ -97,18 +92,17 @@ function StripeForm({
       })
 
       if (confirmError) {
-        setError(confirmError.message ?? 'Paiement refusé.')
+        setError(confirmError.message ?? t('paymentDeclined'))
         setPaying(false)
         return
       }
 
       if (!paymentIntent || paymentIntent.status !== 'succeeded') {
-        setError('Le paiement n\'a pas pu être finalisé.')
+        setError(t('paymentNotFinalized'))
         setPaying(false)
         return
       }
 
-      // Notify server: verify PaymentIntent + confirm booking
       const res = await fetch(`/api/freelancehub/client/bookings/${bookingId}/pay`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -117,44 +111,40 @@ function StripeForm({
 
       if (!res.ok) {
         const d = await res.json().catch(() => ({}))
-        setError(d.error ?? 'Erreur lors de la confirmation.')
+        setError(d.error ?? t('confirmationError'))
         setPaying(false)
         return
       }
 
       onSuccess()
     } catch {
-      setError('Erreur réseau. Veuillez réessayer.')
+      setError(t('networkError'))
       setPaying(false)
     }
   }
 
   return (
     <>
-      <h2 className="modal-title">Paiement sécurisé</h2>
+      <h2 className="modal-title">{t('stepPaymentTitle')}</h2>
       <div className="modal-payment-info">
-        <p>Montant à régler : <strong>{priceTTC} € TTC</strong></p>
-        <p className="modal-stripe-note">
-          Les fonds sont sécurisés sur escrow jusqu&apos;à la fin de la mission.
-        </p>
+        <p>{t('paymentAmount', { amount: priceTTC })}</p>
+        <p className="modal-stripe-note">{t('escrowNote')}</p>
         <div className="modal-stripe-elements">
           <PaymentElement
             options={{ layout: 'tabs' }}
             onReady={() => setStripeReady(true)}
-            onLoadError={() => setError('Formulaire de paiement indisponible. Rechargez la page.')}
+            onLoadError={() => setError(t('stripeLoadError'))}
           />
         </div>
       </div>
       {initTimeout && !stripeReady && (
-        <p className="modal-error">
-          Le formulaire de paiement n&apos;a pas pu se charger. Rechargez la page ou réessayez.
-        </p>
+        <p className="modal-error">{t('stripeTimeoutError')}</p>
       )}
       {error && <p className="modal-error">{error}</p>}
       <div className="modal-actions">
-        <button className="modal-btn-ghost" onClick={onBack} disabled={paying}>Retour</button>
+        <button className="modal-btn-ghost" onClick={onBack} disabled={paying}>{t('backBtn')}</button>
         <button className="fh-btn-primary" onClick={handlePay} disabled={paying || !stripeReady}>
-          {paying ? 'Traitement…' : !stripeReady ? 'Chargement…' : `Payer ${priceTTC} € TTC`}
+          {paying ? t('payBtnLoading') : !stripeReady ? t('loadingBtn') : t('payBtn', { amount: priceTTC })}
         </button>
       </div>
     </>
@@ -162,9 +152,10 @@ function StripeForm({
 }
 
 export default function BookingModal({ match, clientId, notes, onClose, onBooked }: Props) {
+  const t      = useTranslations('BookingModal')
+  const locale = useLocale()
   const { consultant: c } = match
 
-  // Calcul prix depuis le taux horaire du consultant
   const pricing = buildPricing(c.daily_rate ?? 85)
 
   const [step,           setStep]           = useState<'slot' | 'confirm' | 'payment' | 'done'>('slot')
@@ -177,14 +168,12 @@ export default function BookingModal({ match, clientId, notes, onClose, onBooked
   const [bookingId,      setBookingId]      = useState<string | null>(null)
   const [clientSecret,   setClientSecret]   = useState<string | null>(null)
 
-  // Fetch available slots for this consultant
   useEffect(() => {
     setSlotsLoading(true)
     fetch(`/api/freelancehub/client/slots?consultant_id=${c.id}`)
       .then(r => r.json())
       .then(d => {
         setSlotsByDate(d.slots_by_date ?? {})
-        // Pre-select first available date/slot
         const dates = Object.keys(d.slots_by_date ?? {}).sort()
         if (dates.length > 0) {
           setSelectedDate(dates[0])
@@ -210,7 +199,7 @@ export default function BookingModal({ match, clientId, notes, onClose, onBooked
     setSelectedSlot({ ...match.slot, ...s, slot_date: selectedDate })
   }
 
-  const nextDate = new Date(selectedSlot.slot_date + 'T00:00:00').toLocaleDateString('fr-FR', {
+  const nextDate = new Date(selectedSlot.slot_date + 'T00:00:00').toLocaleDateString(locale, {
     weekday: 'long', day: 'numeric', month: 'long',
   })
 
@@ -219,7 +208,6 @@ export default function BookingModal({ match, clientId, notes, onClose, onBooked
     setLoading(true)
 
     try {
-      // 1. Créer la réservation
       const bookingRes = await fetch('/api/freelancehub/client/bookings', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -237,7 +225,7 @@ export default function BookingModal({ match, clientId, notes, onClose, onBooked
 
       if (!bookingRes.ok) {
         const d = await bookingRes.json().catch(() => ({}))
-        setError(d.error ?? 'Erreur lors de la réservation.')
+        setError(d.error ?? t('bookingError'))
         setLoading(false)
         return
       }
@@ -245,21 +233,20 @@ export default function BookingModal({ match, clientId, notes, onClose, onBooked
       const { booking_id } = await bookingRes.json()
       setBookingId(booking_id)
 
-      // 2. Create PaymentIntent
       const piRes = await fetch(`/api/freelancehub/client/bookings/${booking_id}/payment-intent`, {
         method: 'POST',
       })
 
       if (!piRes.ok) {
         const d = await piRes.json().catch(() => ({}))
-        setError(d.error ?? 'Erreur lors de l\'initialisation du paiement.')
+        setError(d.error ?? t('paymentInitError'))
         setLoading(false)
         return
       }
 
       const { client_secret } = await piRes.json()
       if (!client_secret) {
-        setError('Réponse de paiement invalide. Veuillez réessayer.')
+        setError(t('invalidPaymentResponse'))
         setLoading(false)
         return
       }
@@ -268,7 +255,7 @@ export default function BookingModal({ match, clientId, notes, onClose, onBooked
       setLoading(false)
       setStep('payment')
     } catch {
-      setError('Erreur réseau. Veuillez vérifier votre connexion et réessayer.')
+      setError(t('networkErrorConnection'))
       setLoading(false)
     }
   }
@@ -276,23 +263,20 @@ export default function BookingModal({ match, clientId, notes, onClose, onBooked
   return (
     <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) onClose() }}>
       <div className="modal-box">
-        <button className="modal-close" onClick={onClose} aria-label="Fermer">×</button>
+        <button className="modal-close" onClick={onClose} aria-label={t('closeLabel')}>×</button>
 
         {step === 'slot' && (
           <>
-            <h2 className="modal-title">Choisir un créneau</h2>
-            <p className="modal-slot-sub">Sélectionnez une date et une heure pour votre consultation.</p>
+            <h2 className="modal-title">{t('stepSlotTitle')}</h2>
+            <p className="modal-slot-sub">{t('stepSlotSub')}</p>
 
             {slotsLoading ? (
-              <div className="modal-slot-loading">Chargement des disponibilités…</div>
+              <div className="modal-slot-loading">{t('slotsLoading')}</div>
             ) : availableDates.length === 0 ? (
-              <div className="modal-slot-empty">
-                Ce consultant n&apos;a aucun créneau disponible pour les 60 prochains jours.
-              </div>
+              <div className="modal-slot-empty">{t('noSlots')}</div>
             ) : (
               <>
-                {/* Date chips */}
-                <div className="modal-slot-section-label">Date</div>
+                <div className="modal-slot-section-label">{t('dateLabel')}</div>
                 <div className="modal-date-chips">
                   {availableDates.map(d => (
                     <button
@@ -300,13 +284,12 @@ export default function BookingModal({ match, clientId, notes, onClose, onBooked
                       className={`modal-date-chip${d === selectedDate ? ' modal-date-chip--active' : ''}`}
                       onClick={() => selectDate(d)}
                     >
-                      {fmtDate(d)}
+                      {fmtDate(d, locale)}
                     </button>
                   ))}
                 </div>
 
-                {/* Time chips */}
-                <div className="modal-slot-section-label">Heure</div>
+                <div className="modal-slot-section-label">{t('timeLabel')}</div>
                 <div className="modal-time-chips">
                   {slotsForDate.map(s => (
                     <button
@@ -315,7 +298,7 @@ export default function BookingModal({ match, clientId, notes, onClose, onBooked
                       onClick={() => selectTime(s)}
                     >
                       {s.slot_time.slice(0, 5)}
-                      <span className="modal-time-chip-dur">{s.duration_min} min</span>
+                      <span className="modal-time-chip-dur">{s.duration_min} {t('rowTimeSuffix')}</span>
                     </button>
                   ))}
                 </div>
@@ -323,13 +306,13 @@ export default function BookingModal({ match, clientId, notes, onClose, onBooked
             )}
 
             <div className="modal-actions">
-              <button className="modal-btn-ghost" onClick={onClose}>Annuler</button>
+              <button className="modal-btn-ghost" onClick={onClose}>{t('cancelBtn')}</button>
               <button
                 className="fh-btn-primary"
                 onClick={() => setStep('confirm')}
                 disabled={slotsLoading || availableDates.length === 0}
               >
-                Continuer →
+                {t('continueBtn')}
               </button>
             </div>
           </>
@@ -337,43 +320,41 @@ export default function BookingModal({ match, clientId, notes, onClose, onBooked
 
         {step === 'confirm' && (
           <>
-            <h2 className="modal-title">Confirmation de réservation</h2>
+            <h2 className="modal-title">{t('stepConfirmTitle')}</h2>
             <div className="modal-summary">
-              <Row label="Expertise"   value={c.title ?? 'Consultant Expert'} />
-              <Row label="Date"        value={nextDate} />
-              <Row label="Heure"       value={`${selectedSlot.slot_time.slice(0,5)} — ${selectedSlot.duration_min} min de consultation`} />
-              <Row label="Score match" value={`${match.score} / 100`} />
+              <Row label={t('rowExpertise')} value={c.title ?? t('defaultConsultant')} />
+              <Row label={t('rowDate')}      value={nextDate} />
+              <Row label={t('rowTime')}      value={`${selectedSlot.slot_time.slice(0,5)} — ${selectedSlot.duration_min} ${t('rowTimeSuffix')}`} />
+              <Row label={t('rowScore')}     value={`${match.score} / 100`} />
               <hr className="modal-divider" />
               <div className="modal-price-block">
                 <div className="modal-price-line">
-                  <span>Montant HT</span><span>{pricing.priceHT} €</span>
+                  <span>{t('amountHT')}</span><span>{pricing.priceHT} €</span>
                 </div>
                 <div className="modal-price-line modal-price-tva">
-                  <span>TVA 20%</span><span>+ {pricing.tva} €</span>
+                  <span>{t('vat')}</span><span>+ {pricing.tva} €</span>
                 </div>
                 <div className="modal-price-line modal-price-total">
-                  <span>Total TTC</span><span>{pricing.priceTTC} €</span>
+                  <span>{t('totalTTC')}</span><span>{pricing.priceTTC} €</span>
                 </div>
               </div>
               <hr className="modal-divider" />
               <div className="modal-ventil">
-                <p className="modal-ventil-title">Ventilation plateforme</p>
+                <p className="modal-ventil-title">{t('platformTitle')}</p>
                 <div className="modal-price-line">
-                  <span>CA plateforme (15% HT)</span><span>{pricing.commission} €</span>
+                  <span>{t('platformCommission')}</span><span>{pricing.commission} €</span>
                 </div>
                 <div className="modal-price-line">
-                  <span>Honoraire consultant</span><span>{pricing.consultantNet} €</span>
+                  <span>{t('consultantFee')}</span><span>{pricing.consultantNet} €</span>
                 </div>
               </div>
             </div>
-            <p className="modal-anon-notice">
-              🔒 L&apos;identité du consultant vous sera révélée après confirmation du paiement.
-            </p>
+            <p className="modal-anon-notice">{t('anonNotice')}</p>
             {error && <p className="modal-error">{error}</p>}
             <div className="modal-actions">
-              <button className="modal-btn-ghost" onClick={() => setStep('slot')} disabled={loading}>Retour</button>
+              <button className="modal-btn-ghost" onClick={() => setStep('slot')} disabled={loading}>{t('backBtn')}</button>
               <button className="fh-btn-primary" onClick={handleConfirm} disabled={loading}>
-                {loading ? 'Chargement…' : 'Confirmer et payer'}
+                {loading ? t('loadingBtn') : t('confirmAndPayBtn')}
               </button>
             </div>
           </>
@@ -381,9 +362,7 @@ export default function BookingModal({ match, clientId, notes, onClose, onBooked
 
         {step === 'payment' && clientSecret && (
           !stripePromise ? (
-            <div className="modal-error">
-              Paiement indisponible — configuration manquante. Contactez le support.
-            </div>
+            <div className="modal-error">{t('paymentUnavailable')}</div>
           ) : (
             <Elements
               stripe={stripePromise}
@@ -409,8 +388,8 @@ export default function BookingModal({ match, clientId, notes, onClose, onBooked
           <>
             <div className="modal-success">
               <div className="modal-success-icon">✓</div>
-              <h2 className="modal-title">Réservation confirmée !</h2>
-              <p>Le paiement a été reçu. Votre consultant est maintenant révélé :</p>
+              <h2 className="modal-title">{t('stepDoneTitle')}</h2>
+              <p>{t('stepDoneText')}</p>
               <div className="modal-reveal-card">
                 <div className="reveal-avatar">{(c.title ?? 'C')[0]}</div>
                 <div className="reveal-info">
@@ -419,12 +398,10 @@ export default function BookingModal({ match, clientId, notes, onClose, onBooked
                   {c.location && <p className="reveal-location">📍 {c.location}</p>}
                 </div>
               </div>
-              <p className="modal-reveal-note">
-                Un email de confirmation vous a été envoyé avec les détails de contact.
-              </p>
+              <p className="modal-reveal-note">{t('stepDoneNote')}</p>
             </div>
             <button className="fh-btn-primary" style={{ alignSelf: 'center' }} onClick={onBooked}>
-              Voir mes réservations
+              {t('viewBookings')}
             </button>
           </>
         )}
@@ -453,12 +430,9 @@ export default function BookingModal({ match, clientId, notes, onClose, onBooked
           .fh-btn-primary { padding: .68rem 1.3rem; background: var(--c1); color: #fff; border: none; border-radius: var(--radius-sm); font-size: .9rem; font-weight: 600; cursor: pointer; transition: background .15s; }
           .fh-btn-primary:hover:not(:disabled) { background: var(--c1-light); }
           .fh-btn-primary:disabled { opacity: .6; cursor: not-allowed; }
-          /* Payment */
           .modal-payment-info { display: flex; flex-direction: column; gap: .9rem; }
           .modal-stripe-note { font-size: .84rem; color: var(--text-light); }
           .modal-stripe-elements { background: var(--bg); border-radius: var(--radius-sm); padding: 1.1rem; }
-          .stripe-test-note { font-size: .78rem; color: var(--text-light); font-style: italic; }
-          /* Success */
           .modal-success { display: flex; flex-direction: column; align-items: center; gap: .8rem; text-align: center; }
           .modal-success-icon { width: 56px; height: 56px; border-radius: 50%; background: var(--c3-pale); color: var(--c3); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 700; }
           .modal-reveal-card { display: flex; align-items: center; gap: 1rem; background: var(--bg); border-radius: var(--radius-sm); padding: 1rem 1.3rem; width: 100%; }
@@ -468,7 +442,6 @@ export default function BookingModal({ match, clientId, notes, onClose, onBooked
           .reveal-title { font-size: .85rem; color: var(--text-mid); }
           .reveal-location { font-size: .8rem; color: var(--text-light); }
           .modal-reveal-note { font-size: .82rem; color: var(--text-light); }
-          /* Slot picker */
           .modal-slot-sub { font-size: .88rem; color: var(--text-mid); margin-top: -.4rem; }
           .modal-slot-loading { font-size: .88rem; color: var(--text-light); padding: 1.5rem 0; text-align: center; }
           .modal-slot-empty { font-size: .88rem; color: var(--text-mid); background: var(--bg); padding: 1rem; border-radius: var(--radius-sm); text-align: center; }
