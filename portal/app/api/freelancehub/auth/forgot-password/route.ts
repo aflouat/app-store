@@ -4,35 +4,40 @@ import { queryOne } from '@/lib/freelancehub/db'
 import { sendPasswordReset } from '@/lib/freelancehub/email'
 
 export async function POST(req: NextRequest) {
-  const { email } = await req.json()
+  try {
+    const { email } = await req.json()
 
-  if (!email || typeof email !== 'string') {
-    return NextResponse.json({ error: 'Email requis.' }, { status: 400 })
-  }
+    if (!email || typeof email !== 'string') {
+      return NextResponse.json({ error: 'Email requis.' }, { status: 400 })
+    }
 
-  const normalized = email.toLowerCase().trim()
+    const normalized = email.toLowerCase().trim()
 
-  const user = await queryOne<{ id: string; email: string; name: string | null }>(
-    `SELECT id, email, name FROM freelancehub.users WHERE email = $1 AND is_active = true`,
-    [normalized]
-  )
-
-  // Always return 200 — anti-enumeration (never reveal if email exists)
-  if (user) {
-    const token   = randomBytes(32).toString('hex')
-    const expires = new Date(Date.now() + 60 * 60 * 1000) // 1h
-
-    await queryOne(
-      `UPDATE freelancehub.users
-       SET password_reset_token = $1, password_reset_expires_at = $2
-       WHERE id = $3`,
-      [token, expires.toISOString(), user.id]
+    const user = await queryOne<{ id: string; email: string; name: string | null }>(
+      `SELECT id, email, name FROM freelancehub.users WHERE email = $1 AND is_active = true`,
+      [normalized]
     )
 
-    sendPasswordReset(user.email, token).catch((err: unknown) =>
-      console.error('[forgot-password] sendPasswordReset failed', { email: user.email, err: String(err) })
-    )
-  }
+    // Always return 200 — anti-enumeration (never reveal if email exists)
+    if (user) {
+      const token   = randomBytes(32).toString('hex')
+      const expires = new Date(Date.now() + 60 * 60 * 1000) // 1h
 
-  return NextResponse.json({ message: 'Si un compte existe, un email a été envoyé.' })
+      await queryOne(
+        `UPDATE freelancehub.users
+         SET password_reset_token = $1, password_reset_expires_at = $2
+         WHERE id = $3`,
+        [token, expires.toISOString(), user.id]
+      )
+
+      sendPasswordReset(user.email, token).catch((err: unknown) =>
+        console.error('[forgot-password] sendPasswordReset failed', { email: user.email, err: String(err) })
+      )
+    }
+
+    return NextResponse.json({ message: 'Si un compte existe, un email a été envoyé.' })
+  } catch (err) {
+    console.error('[forgot-password] error:', err instanceof Error ? err.message : err)
+    return NextResponse.json({ error: 'Erreur serveur.' }, { status: 500 })
+  }
 }

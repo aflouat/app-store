@@ -8,7 +8,11 @@ export type DbClient = {
 }
 
 async function withPgClient<T>(fn: (client: Client) => Promise<T>): Promise<T> {
-  const client = new Client({ connectionString: process.env.DATABASE_URL })
+  const url = process.env.DATABASE_URL ?? ''
+  const client = new Client({
+    connectionString: url,
+    ssl: url.startsWith('postgresql') ? { rejectUnauthorized: false } : false,
+  })
   await client.connect()
   try {
     return await fn(client)
