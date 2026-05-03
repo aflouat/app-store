@@ -58,7 +58,105 @@ jobs:
           echo "✅ Aucun secret live dans le code"
         working-directory: portal
 
-  # ── Job 2 : Smoke test — attend Vercel + vérifie DB ──────────────────────
+  # ── Job 2 : E2E Isolation — Postgres éphémère (sur PR uniquement) ─────────
+  e2e-isolation:
+    name: E2E Isolation — Postgres éphémère
+    needs: typecheck-build-test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: appstore
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/appstore
+      NEXTAUTH_SECRET: ci-nextauth-secret-isolation-32chars-ok
+      NEXTAUTH_URL: http://localhost:3000
+      NEXT_PUBLIC_API_URL: http://localhost:3000
+      NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: pk_test_ci_placeholder
+      RESEND_API_KEY: re_test_ci_placeholder
+      STRIPE_SECRET_KEY: sk_test_ci_placeholder
+      STRIPE_WEBHOOK_SECRET: whsec_ci_placeholder
+      CRON_SECRET: ci-cron-secret-placeholder
+
+    defaults:
+      run:
+        working-directory: portal
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: portal/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Appliquer les migrations
+        run: |
+          for sql in $(ls ../migrations/*.sql | sort); do
+            echo "→ $sql"
+            PGPASSWORD=ci psql -h localhost -U ci -d appstore -f "$sql"
+          done
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Build Next.js
+        run: npm run build
+
+      - name: Démarrer Next.js (production)
+        run: npm start &
+
+      - name: Attendre que l'app soit prête
+        run: |
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:3000/api/freelancehub/health && echo "" && break
+            echo "  Tentative $i/30 — retry dans 2s"
+            sleep 2
+          done
+
+      - name: Run E2E — auth flows
+        run: npx playwright test tests/e2e/auth.spec.ts
+        env:
+          E2E_BASE_URL: http://localhost:3000
+
+      - name: Run E2E — booking flows
+        run: npx playwright test tests/e2e/booking.spec.ts
+        env:
+          E2E_BASE_URL: http://localhost:3000
+
+      - name: Run E2E — consultant flows
+        run: npx playwright test tests/e2e/consultant.spec.ts
+        env:
+          E2E_BASE_URL: http://localhost:3000
+
+      - name: Upload rapport E2E isolation (si échec)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-isolation-report-${{ github.sha }}
+          path: portal/playwright-report/
+          retention-days: 7
+
+  # ── Job 3 : Smoke test — attend Vercel + vérifie DB ──────────────────────
   smoke-test:
     name: Smoke test — Vercel + DB health
     needs: typecheck-build-test
@@ -125,7 +223,7 @@ jobs:
 
           echo "✅ Smoke test OK — DB connectée, schéma freelancehub présent"
 
-  # ── Job 3 : E2E Playwright (uniquement sur push main) ────────────────────
+  # ── Job 4 : E2E Playwright (uniquement sur push main) ────────────────────
   e2e:
     name: E2E Playwright — flows critiques
     needs: [typecheck-build-test, smoke-test]
