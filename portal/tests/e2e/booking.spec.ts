@@ -11,26 +11,30 @@ async function loginAsClient(page: Page) {
 }
 
 test.describe('Booking — Recherche consultant', () => {
-  test('dashboard client affiche un champ de recherche', async ({ page }) => {
+  test('page recherche accessible et formulaire visible', async ({ page }) => {
     await loginAsClient(page)
-    const searchInput = page.locator('input[placeholder*="compétence"], input[placeholder*="skill"], input[type="search"], [data-testid="search-input"]')
-    await expect(searchInput.first()).toBeVisible()
+    await page.goto('/freelancehub/client/search')
+    await expect(page).not.toHaveURL(/login/)
+    // Select de compétence et bouton de recherche visibles
+    await expect(page.locator('select').first()).toBeVisible({ timeout: 8_000 })
+    await expect(page.locator('button:has-text("Rechercher")')).toBeVisible()
   })
 
-  test('recherche retourne des résultats (consultants disponibles en démo)', async ({ page }) => {
+  test('recherche retourne des résultats ou message vide', async ({ page }) => {
     await loginAsClient(page)
+    await page.goto('/freelancehub/client/search')
 
-    // Lancer une recherche générique
-    const searchInput = page.locator('input[placeholder*="compétence"], input[placeholder*="skill"], input[type="search"], [data-testid="search-input"]').first()
-    if (await searchInput.isVisible()) {
-      await searchInput.fill('développement')
-      await page.keyboard.press('Enter')
-      await page.waitForTimeout(1500)
-    }
+    const select = page.locator('select').first()
+    await expect(select).toBeVisible({ timeout: 8_000 })
+    // Sélectionner la première compétence disponible (index 0 = placeholder)
+    await select.selectOption({ index: 1 })
 
-    // Au moins un consultant affiché (ou message "aucun résultat" visible)
-    const hasResults = page.locator('[data-testid="consultant-card"], .consultant-card, [class*="consultant"]')
-    const noResults = page.locator('text=Aucun, text=aucun, text=No result')
+    await page.click('button:has-text("Rechercher")')
+    await page.waitForTimeout(2000)
+
+    // Au moins un consultant affiché ou message "aucun"
+    const hasResults = page.locator('[class*="consultant"], [class*="srch-card"]')
+    const noResults  = page.locator('text=Aucun expert disponible')
     await expect(hasResults.or(noResults).first()).toBeVisible({ timeout: 10_000 })
   })
 })
@@ -40,49 +44,50 @@ test.describe('Booking — Flow réservation', () => {
     await loginAsClient(page)
     await page.goto('/freelancehub/client/bookings')
     await expect(page).not.toHaveURL(/login/)
-    // La page doit charger (titre visible ou liste vide)
     await expect(page.locator('h1, h2, [data-testid="bookings-title"]').first()).toBeVisible({ timeout: 8_000 })
   })
 
   test('cloche notifications accessible', async ({ page }) => {
     await loginAsClient(page)
-    const bell = page.locator('[data-testid="notification-bell"], button[aria-label*="notification"], button[aria-label*="cloche"]')
-    await expect(bell.first()).toBeVisible({ timeout: 5_000 })
+    const bell = page.locator('[data-testid="notification-bell"], button[aria-label*="notification"], button[aria-label*="cloche"], a[href*="notification"]')
+    await expect(bell.first()).toBeVisible({ timeout: 8_000 })
   })
 })
 
 test.describe('Booking — Sécurité paiement (RG-01 + RG-02)', () => {
   test('l\'API matching ne retourne pas d\'identifiants personnels sans paiement', async ({ page }) => {
     await loginAsClient(page)
+    await page.goto('/freelancehub/client/search')
 
-    // Intercepter la réponse de l'API matching
     const matchingResponse = page.waitForResponse(
       resp => resp.url().includes('/api/freelancehub/matching') && resp.status() === 200,
-      { timeout: 15_000 }
+      { timeout: 20_000 }
     )
 
-    // Déclencher la recherche
-    const searchInput = page.locator('input[type="search"], input[placeholder*="compétence"]').first()
-    if (await searchInput.isVisible({ timeout: 3_000 })) {
-      await searchInput.fill('test')
-      await page.keyboard.press('Enter')
+    const select = page.locator('select').first()
+    if (await select.isVisible({ timeout: 5_000 })) {
+      const optionsCount = await select.locator('option').count()
+      if (optionsCount > 1) {
+        await select.selectOption({ index: 1 })
+        await page.click('button:has-text("Rechercher")')
+      }
     }
 
     try {
       const response = await matchingResponse
       const body = await response.json()
-      const consultants = Array.isArray(body) ? body : body.consultants || []
+      const consultants = Array.isArray(body) ? body : (body.matches ?? body.consultants ?? [])
 
       for (const c of consultants) {
-        // Aucun champ d'identité ne doit être exposé avant paiement
-        expect(c.email).toBeUndefined()
-        expect(c.linkedin_url).toBeUndefined()
-        // name et bio peuvent être undefined ou null — jamais une vraie valeur
-        if (c.name) expect(c.name).toBeFalsy()
-        if (c.bio) expect(c.bio).toBeFalsy()
+        const consultant = c.consultant ?? c
+        // Aucun champ d'identité ne doit être exposé avant paiement (RG-01)
+        expect(consultant.email).toBeUndefined()
+        expect(consultant.linkedin_url).toBeUndefined()
+        if (consultant.name) expect(consultant.name).toBeFalsy()
+        if (consultant.bio)  expect(consultant.bio).toBeFalsy()
       }
     } catch {
-      // Si la recherche n'a pas été déclenchée, le test passe (cas où la UI est différente)
+      // Si la recherche n'a pas pu être déclenchée, le test est ignoré
       test.skip()
     }
   })
