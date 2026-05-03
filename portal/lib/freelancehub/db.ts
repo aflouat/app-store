@@ -8,12 +8,22 @@ export type DbClient = {
 }
 
 async function withPgClient<T>(fn: (client: Client) => Promise<T>): Promise<T> {
-  const url = process.env.DATABASE_URL ?? ''
+  const raw = process.env.DATABASE_URL ?? ''
+  // Strip pgbouncer=true — Prisma-only param, breaks pg's connection string parser
+  const url = raw.replace(/[?&]pgbouncer=true/i, (m) => (m.startsWith('?') ? '' : '?'))
+               .replace(/\?$/, '')
   const client = new Client({
     connectionString: url,
     ssl: url.startsWith('postgresql') ? { rejectUnauthorized: false } : false,
+    connectionTimeoutMillis: 8000,
   })
-  await client.connect()
+  try {
+    await client.connect()
+  } catch (err) {
+    const e = err as NodeJS.ErrnoException
+    console.error('[db] connect failed', { code: e.code, msg: e.message })
+    throw err
+  }
   try {
     return await fn(client)
   } finally {
