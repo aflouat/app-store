@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:db": "node scripts/init-dev-db.mjs",
     "build": "next build",
     "start": "next start",
     "test": "vitest run",
@@ -32,6 +33,7 @@
     "stripe": "^22.0.1"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.4.5",
     "@playwright/test": "^1.49.0",
     "@tailwindcss/postcss": "^4.2.2",
     "@types/node": "^20",

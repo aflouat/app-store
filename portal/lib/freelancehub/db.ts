@@ -25,12 +25,18 @@ async function withPgClient<T>(fn: (client: Client) => Promise<T>): Promise<T> {
 }
 
 // ─── PGlite (dev local) ───────────────────────────────────────
-let _pglite: import('@electric-sql/pglite').PGlite | null = null
+// Utilise 'any' + specifier variable pour empêcher Turbopack de tracer
+// ce module au build — pglite n'est jamais chargé en production.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let _pglite: any = null
 
 async function getPglite() {
   if (!_pglite) {
-    const { PGlite } = await import('@electric-sql/pglite')
-    _pglite = new PGlite(process.env.DATABASE_URL)
+    // La concaténation rend le specifier opaque à l'analyse statique de Turbopack/webpack
+    const id = '@electric-sql' + '/pglite'
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const mod: any = await import(id)
+    _pglite = new mod.PGlite(process.env.DATABASE_URL)
     await _pglite.waitReady
   }
   return _pglite
@@ -44,7 +50,7 @@ export async function query<T = unknown>(
 ): Promise<T[]> {
   if (isLocalDev) {
     const db = await getPglite()
-    const result = await db.query<T>(sql, params as unknown[])
+    const result = await db.query(sql, params as unknown[]) as { rows: T[] }
     return result.rows
   }
   return withPgClient(async (client) => {
@@ -66,7 +72,8 @@ export async function withTransaction<T>(
 ): Promise<T> {
   if (isLocalDev) {
     const db = await getPglite()
-    return db.transaction(async (tx) => fn(tx as unknown as DbClient))
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return db.transaction(async (tx: any) => fn(tx as DbClient))
   }
   return withPgClient(async (client) => {
     await client.query('BEGIN')
