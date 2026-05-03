@@ -1,8 +1,11 @@
 'use client'
 
 import { useState, FormEvent } from 'react'
+import { useTranslations } from 'next-intl'
+import LocaleSwitcher from '@/components/freelancehub/LocaleSwitcher'
 
 export default function ForgotPasswordPage() {
+  const t = useTranslations('ForgotPassword')
   const [email,   setEmail]   = useState('')
   const [loading, setLoading] = useState(false)
   const [sent,    setSent]    = useState(false)
@@ -23,7 +26,7 @@ export default function ForgotPasswordPage() {
     if (res.ok) {
       setSent(true)
     } else {
-      setError('Une erreur est survenue. Réessayez.')
+      setError(t('errorDefault'))
     }
   }
 
@@ -33,37 +36,40 @@ export default function ForgotPasswordPage() {
         <div className="fp-brand">
           <span className="fp-logo-mark">FH</span>
           <span className="fp-logo-text">FreelanceHub</span>
+          <div style={{ marginLeft: 'auto' }}>
+            <LocaleSwitcher />
+          </div>
         </div>
-        <h1 className="fp-title">Mot de passe oublié</h1>
+        <h1 className="fp-title">{t('title')}</h1>
 
         {sent ? (
           <div className="fp-success">
-            <p>Si un compte existe pour <strong>{email}</strong>, vous recevrez un email dans quelques minutes.</p>
-            <p className="fp-hint">Vérifiez vos spams si vous ne le recevez pas.</p>
-            <a href="/freelancehub/login" className="fp-back">← Retour à la connexion</a>
+            <p>{t('sentMessage', { email })}</p>
+            <p className="fp-hint">{t('sentHint')}</p>
+            <a href="/freelancehub/login" className="fp-back">{t('backToLogin')}</a>
           </div>
         ) : (
           <>
-            <p className="fp-sub">Saisissez votre email pour recevoir un lien de réinitialisation.</p>
+            <p className="fp-sub">{t('subtitle')}</p>
             <form onSubmit={handleSubmit} className="fp-form">
               <div className="fp-field">
-                <label htmlFor="email">Email</label>
+                <label htmlFor="email">{t('emailLabel')}</label>
                 <input
                   id="email"
                   type="email"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
-                  placeholder="vous@exemple.fr"
+                  placeholder={t('emailPlaceholder')}
                   required
                   autoFocus
                 />
               </div>
               {error && <p className="fp-error">{error}</p>}
               <button type="submit" className="fp-btn" disabled={loading}>
-                {loading ? 'Envoi…' : 'Envoyer le lien de réinitialisation'}
+                {loading ? t('submitting') : t('submit')}
               </button>
             </form>
-            <a href="/freelancehub/login" className="fp-back">← Retour à la connexion</a>
+            <a href="/freelancehub/login" className="fp-back">{t('backToLogin')}</a>
           </>
         )}
       </div>

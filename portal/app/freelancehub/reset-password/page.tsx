@@ -2,8 +2,11 @@
 
 import { useState, FormEvent, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { useTranslations } from 'next-intl'
+import LocaleSwitcher from '@/components/freelancehub/LocaleSwitcher'
 
 function ResetForm() {
+  const t = useTranslations('ResetPassword')
   const router       = useRouter()
   const searchParams = useSearchParams()
   const token        = searchParams.get('token') ?? ''
@@ -16,7 +19,7 @@ function ResetForm() {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     if (password !== password2) {
-      setError('Les mots de passe ne correspondent pas.')
+      setError(t('errorMismatch'))
       return
     }
     setLoading(true)
@@ -34,25 +37,25 @@ function ResetForm() {
       router.push('/freelancehub/login?reset=1')
     } else {
       const d = await res.json().catch(() => ({}))
-      setError(d.error ?? 'Erreur lors de la réinitialisation.')
+      setError(d.error ?? t('errorDefault'))
     }
   }
 
   if (!token) {
     return (
       <div className="rp-error-state">
-        <p>Lien invalide ou manquant.</p>
-        <a href="/freelancehub/forgot-password">Faire une nouvelle demande →</a>
+        <p>{t('invalidToken')}</p>
+        <a href="/freelancehub/forgot-password">{t('newRequestLink')}</a>
       </div>
     )
   }
 
   return (
     <>
-      <p className="rp-sub">Choisissez un nouveau mot de passe (8 caractères min.)</p>
+      <p className="rp-sub">{t('subtitle')}</p>
       <form onSubmit={handleSubmit} className="rp-form">
         <div className="rp-field">
-          <label htmlFor="password">Nouveau mot de passe</label>
+          <label htmlFor="password">{t('newPasswordLabel')}</label>
           <input
             id="password"
             type="password"
@@ -65,7 +68,7 @@ function ResetForm() {
           />
         </div>
         <div className="rp-field">
-          <label htmlFor="password2">Confirmer le mot de passe</label>
+          <label htmlFor="password2">{t('confirmPasswordLabel')}</label>
           <input
             id="password2"
             type="password"
@@ -78,7 +81,7 @@ function ResetForm() {
         </div>
         {error && <p className="rp-error">{error}</p>}
         <button type="submit" className="rp-btn" disabled={loading}>
-          {loading ? 'Enregistrement…' : 'Enregistrer le nouveau mot de passe'}
+          {loading ? t('submitting') : t('submit')}
         </button>
       </form>
     </>
@@ -86,18 +89,22 @@ function ResetForm() {
 }
 
 export default function ResetPasswordPage() {
+  const t = useTranslations('ResetPassword')
   return (
     <div className="rp-page">
       <div className="rp-card">
         <div className="rp-brand">
           <span className="rp-logo-mark">FH</span>
           <span className="rp-logo-text">FreelanceHub</span>
+          <div style={{ marginLeft: 'auto' }}>
+            <LocaleSwitcher />
+          </div>
         </div>
-        <h1 className="rp-title">Nouveau mot de passe</h1>
-        <Suspense fallback={<p style={{ color: 'var(--text-light)', fontSize: '.9rem' }}>Chargement…</p>}>
+        <h1 className="rp-title">{t('title')}</h1>
+        <Suspense fallback={<p style={{ color: 'var(--text-light)', fontSize: '.9rem' }}>{t('loading')}</p>}>
           <ResetForm />
         </Suspense>
-        <a href="/freelancehub/login" className="rp-back">← Retour à la connexion</a>
+        <a href="/freelancehub/login" className="rp-back">{t('backToLogin')}</a>
       </div>
 
       <style>{`

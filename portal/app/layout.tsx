@@ -1,5 +1,7 @@
 import type { Metadata } from 'next'
 import Script from 'next/script'
+import { NextIntlClientProvider } from 'next-intl'
+import { getLocale, getMessages } from 'next-intl/server'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -29,12 +31,14 @@ export const metadata: Metadata = {
 
 const GTM_ID = 'GTM-5CWFL95D'
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const locale = await getLocale()
+  const messages = await getMessages()
   const umamiUrl = process.env.NEXT_PUBLIC_UMAMI_URL
   const umamiId = process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID
 
   return (
-    <html lang="fr">
+    <html lang={locale}>
       <head>
         <link
           rel="preconnect"
@@ -51,6 +55,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body>
+        <NextIntlClientProvider locale={locale} messages={messages}>
         {/* Google Tag Manager (noscript) — juste après <body> */}
         <noscript>
           <iframe
@@ -88,6 +93,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
             data-website-id={umamiId}
           />
         )}
+        </NextIntlClientProvider>
       </body>
     </html>
   )

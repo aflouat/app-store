@@ -3,12 +3,15 @@
 import { useState, FormEvent } from 'react'
 import { signIn } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import ChatWidget from '@/components/freelancehub/ChatWidget'
+import LocaleSwitcher from '@/components/freelancehub/LocaleSwitcher'
 import { trackEvent } from '@/lib/freelancehub/analytics'
 
 type Role = 'consultant' | 'client' | null
 
 export default function RegisterPage() {
+  const t = useTranslations('Register')
   const router = useRouter()
   const searchParams = useSearchParams()
   const ref = searchParams.get('ref') ?? undefined
@@ -16,9 +19,9 @@ export default function RegisterPage() {
   const [name,       setName]       = useState('')
   const [email,      setEmail]      = useState('')
   const [password,   setPassword]   = useState('')
-  const [loading,         setLoading]         = useState(false)
-  const [error,           setError]           = useState('')
-  const [cguAccepted,     setCguAccepted]     = useState(false)
+  const [loading,          setLoading]          = useState(false)
+  const [error,            setError]            = useState('')
+  const [cguAccepted,      setCguAccepted]      = useState(false)
   const [marketingConsent, setMarketingConsent] = useState(false)
 
   async function handleSubmit(e: FormEvent) {
@@ -35,17 +38,15 @@ export default function RegisterPage() {
 
     if (!res.ok) {
       const d = await res.json().catch(() => ({}))
-      setError(d.error ?? 'Erreur lors de l\'inscription.')
+      setError(d.error ?? t('errorDefault'))
       setLoading(false)
       return
     }
 
-    // Auto-login after registration
     const result = await signIn('credentials', { email, password, redirect: false })
     setLoading(false)
 
     if (result?.error) {
-      // Fallback: redirect to login
       router.push('/freelancehub/login')
       return
     }
@@ -55,39 +56,47 @@ export default function RegisterPage() {
     router.refresh()
   }
 
+  const consultantFeatures = [
+    t('consultantFeature1'), t('consultantFeature2'),
+    t('consultantFeature3'), t('consultantFeature4'),
+  ]
+  const clientFeatures = [
+    t('clientFeature1'), t('clientFeature2'),
+    t('clientFeature3'), t('clientFeature4'),
+  ]
+
   return (
     <div className="reg-page">
       <div className="reg-inner">
         <div className="reg-brand">
           <span className="reg-logo-mark">FH</span>
           <span className="reg-logo-text">FreelanceHub</span>
+          <div style={{ marginLeft: 'auto' }}>
+            <LocaleSwitcher />
+          </div>
         </div>
-        <h1 className="reg-title">Rejoindre la plateforme</h1>
-        <p className="reg-sub">Choisissez votre profil pour démarrer</p>
+        <h1 className="reg-title">{t('title')}</h1>
+        <p className="reg-sub">{t('subtitle')}</p>
 
         {ref && (
           <div className="reg-referral-banner">
-            Vous avez été parrainé — commission réduite à <strong>13 %</strong> pendant 3 mois.
+            {t('referralBanner')}
           </div>
         )}
 
-        {/* Two panels */}
         <div className="reg-panels">
           <div
             className={`reg-panel${activeRole === 'consultant' ? ' reg-panel--active' : ''}`}
             onClick={() => { setActiveRole('consultant'); setError('') }}
           >
             <div className="reg-panel-icon">💼</div>
-            <h2 className="reg-panel-title">Consultant Expert</h2>
-            <p className="reg-panel-desc">Proposez vos expertises à la demande</p>
+            <h2 className="reg-panel-title">{t('consultantTitle')}</h2>
+            <p className="reg-panel-desc">{t('consultantDesc')}</p>
             <ul className="reg-panel-list">
-              <li>Agenda en ligne géré par vous</li>
-              <li>Paiement sécurisé par séquestre</li>
-              <li>Commission 15 % seulement</li>
-              <li>CV vidéo YouTube intégré</li>
+              {consultantFeatures.map((f, i) => <li key={i}>{f}</li>)}
             </ul>
             <span className={`reg-panel-btn${activeRole === 'consultant' ? ' active' : ''}`}>
-              {activeRole === 'consultant' ? '✓ Sélectionné' : 'Rejoindre en tant que consultant'}
+              {activeRole === 'consultant' ? t('selected') : t('selectConsultant')}
             </span>
           </div>
 
@@ -96,51 +105,50 @@ export default function RegisterPage() {
             onClick={() => { setActiveRole('client'); setError('') }}
           >
             <div className="reg-panel-icon">🏢</div>
-            <h2 className="reg-panel-title">Entreprise / Client</h2>
-            <p className="reg-panel-desc">Accédez aux meilleurs experts en quelques clics</p>
+            <h2 className="reg-panel-title">{t('clientTitle')}</h2>
+            <p className="reg-panel-desc">{t('clientDesc')}</p>
             <ul className="reg-panel-list">
-              <li>Matching algorithmique instantané</li>
-              <li>Consultation dès 85 € TTC / 1h</li>
-              <li>Identité révélée après paiement</li>
-              <li>Paiement escrow sécurisé</li>
+              {clientFeatures.map((f, i) => <li key={i}>{f}</li>)}
             </ul>
             <span className={`reg-panel-btn${activeRole === 'client' ? ' active' : ''}`}>
-              {activeRole === 'client' ? '✓ Sélectionné' : 'Rejoindre en tant que client'}
+              {activeRole === 'client' ? t('selected') : t('selectClient')}
             </span>
           </div>
         </div>
 
-        {/* Registration form — shown when a role is selected */}
         {activeRole && (
           <form onSubmit={handleSubmit} className="reg-form">
             <h3 className="reg-form-title">
-              Créer mon compte {activeRole === 'consultant' ? 'consultant' : 'client'}
+              {activeRole === 'consultant' ? t('formTitleConsultant') : t('formTitleClient')}
             </h3>
 
             <div className="reg-field">
-              <label htmlFor="name">Nom complet</label>
+              <label htmlFor="name">{t('nameLabel')}</label>
               <input
                 id="name"
                 type="text"
                 value={name}
                 onChange={e => setName(e.target.value)}
-                placeholder="Jean Dupont"
+                placeholder={t('namePlaceholder')}
                 autoFocus
               />
             </div>
             <div className="reg-field">
-              <label htmlFor="email">Email <span className="req">*</span></label>
+              <label htmlFor="email">{t('emailLabel')} <span className="req">*</span></label>
               <input
                 id="email"
                 type="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
-                placeholder="vous@exemple.fr"
+                placeholder={t('emailPlaceholder')}
                 required
               />
             </div>
             <div className="reg-field">
-              <label htmlFor="password">Mot de passe <span className="req">*</span> <span className="reg-hint">(8 caractères min.)</span></label>
+              <label htmlFor="password">
+                {t('passwordLabel')} <span className="req">*</span>{' '}
+                <span className="reg-hint">{t('passwordHint')}</span>
+              </label>
               <input
                 id="password"
                 type="password"
@@ -163,9 +171,10 @@ export default function RegisterPage() {
                   required
                 />
                 <span>
-                  J'accepte les{' '}
-                  <a href="/freelancehub/cgu" target="_blank">CGU</a> et la{' '}
-                  <a href="/freelancehub/privacy" target="_blank">politique de confidentialité</a>
+                  {t('cguAccept')}{' '}
+                  <a href="/freelancehub/cgu" target="_blank">{t('cguLink')}</a>
+                  {' '}{t('cguAnd')}{' '}
+                  <a href="/freelancehub/privacy" target="_blank">{t('privacyLink')}</a>
                   {' '}<span className="req">*</span>
                 </span>
               </label>
@@ -175,18 +184,18 @@ export default function RegisterPage() {
                   checked={marketingConsent}
                   onChange={e => setMarketingConsent(e.target.checked)}
                 />
-                <span>J'accepte de recevoir des communications et actualités de perform-learn.fr (optionnel)</span>
+                <span>{t('marketingConsent')}</span>
               </label>
             </div>
 
             <button type="submit" className="reg-submit-btn" disabled={loading || !cguAccepted}>
-              {loading ? 'Création du compte…' : 'Créer mon compte et accéder à la plateforme'}
+              {loading ? t('submitting') : t('submit')}
             </button>
           </form>
         )}
 
         <p className="reg-login-link">
-          Déjà inscrit ? <a href="/freelancehub/login">Se connecter</a>
+          {t('alreadyRegistered')} <a href="/freelancehub/login">{t('loginLink')}</a>
         </p>
       </div>
 
@@ -199,8 +208,6 @@ export default function RegisterPage() {
         .reg-logo-text { font-family: 'Fraunces', serif; font-weight: 700; font-size: 1.15rem; color: var(--dark); }
         .reg-title { font-family: 'Fraunces', serif; font-size: 2rem; font-weight: 700; color: var(--dark); }
         .reg-sub { color: var(--text-mid); font-size: .95rem; margin-top: -.8rem; }
-
-        /* Panels */
         .reg-panels { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; }
         @media (max-width: 580px) { .reg-panels { grid-template-columns: 1fr; } }
         .reg-panel { background: var(--white); border: 2px solid var(--border); border-radius: var(--radius); padding: 1.6rem; cursor: pointer; display: flex; flex-direction: column; gap: .7rem; transition: border-color .15s, box-shadow .15s; }
@@ -215,8 +222,6 @@ export default function RegisterPage() {
         .reg-panel-btn { display: inline-block; margin-top: .5rem; padding: .55rem 1.1rem; background: var(--c1); color: #fff; border-radius: var(--radius-sm); font-size: .85rem; font-weight: 600; text-align: center; transition: background .15s; }
         .reg-panel-btn.active { background: var(--c3); }
         .reg-panel:hover .reg-panel-btn:not(.active) { background: var(--c1-light); }
-
-        /* Form */
         .reg-form { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.8rem; display: flex; flex-direction: column; gap: 1rem; }
         .reg-form-title { font-size: 1rem; font-weight: 600; color: var(--text); margin-bottom: .2rem; }
         .reg-field { display: flex; flex-direction: column; gap: .35rem; }
@@ -235,7 +240,6 @@ export default function RegisterPage() {
         .reg-consent-row span { font-size: .83rem; color: var(--text); line-height: 1.5; }
         .reg-consent-row a { color: var(--c1); text-decoration: none; }
         .reg-consent-row a:hover { text-decoration: underline; }
-
         .reg-login-link { text-align: center; font-size: .88rem; color: var(--text-mid); }
         .reg-login-link a { color: var(--c1); font-weight: 600; text-decoration: none; }
         .reg-login-link a:hover { text-decoration: underline; }

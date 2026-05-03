@@ -3,28 +3,29 @@
 import { Suspense, useState, FormEvent } from 'react'
 import { signIn } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import ChatWidget from '@/components/freelancehub/ChatWidget'
+import LocaleSwitcher from '@/components/freelancehub/LocaleSwitcher'
 
-const GOOGLE_ERROR_MESSAGES: Record<string, string> = {
-  AccessDenied:  'Accès refusé par Google. Votre compte n\'est pas encore autorisé — contactez l\'administrateur.',
-  Callback:      'Erreur lors de la connexion Google. Réessayez ou utilisez email/mot de passe.',
-  OAuthCallback: 'Erreur lors de la connexion Google. Réessayez ou utilisez email/mot de passe.',
-  OAuthSignin:   'Impossible de démarrer la connexion Google. Vérifiez votre connexion et réessayez.',
-  Configuration: 'Connexion Google non configurée. Utilisez email/mot de passe.',
-}
+const GOOGLE_ERROR_KEYS = ['AccessDenied', 'Callback', 'OAuthCallback', 'OAuthSignin', 'Configuration'] as const
+type GoogleErrorKey = (typeof GOOGLE_ERROR_KEYS)[number]
 
 function LoginForm() {
+  const t = useTranslations('Login')
   const router       = useRouter()
   const searchParams = useSearchParams()
   const callbackUrl  = searchParams.get('callbackUrl') || '/freelancehub'
   const errorParam   = searchParams.get('error')
+  const resetSuccess = searchParams.get('reset') === '1'
+
+  const getGoogleErrorMsg = (code: string): string =>
+    GOOGLE_ERROR_KEYS.includes(code as GoogleErrorKey)
+      ? t(`errors.${code as GoogleErrorKey}`)
+      : t('errorDefault')
 
   const [email,    setEmail]    = useState('')
   const [password, setPassword] = useState('')
-  const resetSuccess = searchParams.get('reset') === '1'
-  const [error,    setError]    = useState(
-    errorParam ? (GOOGLE_ERROR_MESSAGES[errorParam] ?? 'Erreur de connexion. Réessayez.') : ''
-  )
+  const [error,    setError]    = useState(errorParam ? getGoogleErrorMsg(errorParam) : '')
   const [loading,  setLoading]  = useState(false)
 
   async function handleSubmit(e: FormEvent) {
@@ -32,16 +33,11 @@ function LoginForm() {
     setError('')
     setLoading(true)
 
-    const result = await signIn('credentials', {
-      email,
-      password,
-      redirect: false,
-    })
-
+    const result = await signIn('credentials', { email, password, redirect: false })
     setLoading(false)
 
     if (result?.error) {
-      setError('Email ou mot de passe incorrect.')
+      setError(t('errorInvalidCredentials'))
       return
     }
 
@@ -55,9 +51,12 @@ function LoginForm() {
         <div className="fh-login-brand">
           <span className="fh-logo-mark">FH</span>
           <span className="fh-logo-text">FreelanceHub</span>
+          <div style={{ marginLeft: 'auto' }}>
+            <LocaleSwitcher />
+          </div>
         </div>
-        <h1 className="fh-login-title">Connexion</h1>
-        <p className="fh-login-sub">Connectez-vous à votre espace</p>
+        <h1 className="fh-login-title">{t('title')}</h1>
+        <p className="fh-login-sub">{t('subtitle')}</p>
 
         <button
           type="button"
@@ -71,27 +70,27 @@ function LoginForm() {
             <path d="M3.964 10.71A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
             <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
           </svg>
-          Continuer avec Google
+          {t('continueWithGoogle')}
         </button>
 
-        <div className="fh-divider"><span>ou</span></div>
+        <div className="fh-divider"><span>{t('or')}</span></div>
 
         <form onSubmit={handleSubmit} className="fh-login-form">
           <div className="fh-field">
-            <label htmlFor="email">Email</label>
+            <label htmlFor="email">{t('emailLabel')}</label>
             <input
               id="email"
               type="email"
               value={email}
               onChange={e => setEmail(e.target.value)}
-              placeholder="vous@exemple.fr"
+              placeholder={t('emailPlaceholder')}
               required
               autoFocus
             />
           </div>
 
           <div className="fh-field">
-            <label htmlFor="password">Mot de passe</label>
+            <label htmlFor="password">{t('passwordLabel')}</label>
             <input
               id="password"
               type="password"
@@ -102,27 +101,27 @@ function LoginForm() {
             />
           </div>
 
-          {resetSuccess && <p className="fh-login-success">Mot de passe mis à jour. Connectez-vous avec votre nouveau mot de passe.</p>}
-          {error && <p className="fh-login-error">{error}</p>}
+          {resetSuccess && <p className="fh-login-success">{t('resetSuccess')}</p>}
+          {error && <p className="fh-login-error" role="alert">{error}</p>}
 
           <div className="fh-forgot-link">
-            <a href="/freelancehub/forgot-password">Mot de passe oublié ?</a>
+            <a href="/freelancehub/forgot-password">{t('forgotPassword')}</a>
           </div>
 
           <button type="submit" className="fh-btn-primary" disabled={loading}>
-            {loading ? 'Connexion…' : 'Se connecter'}
+            {loading ? t('submitting') : t('submit')}
           </button>
         </form>
 
         <p className="fh-login-register">
-          Pas encore inscrit ?{' '}
-          <a href="/freelancehub/register" className="fh-login-register-link">Rejoindre la plateforme</a>
+          {t('notRegistered')}{' '}
+          <a href="/freelancehub/register" className="fh-login-register-link">{t('joinPlatform')}</a>
         </p>
 
         {process.env.NEXT_PUBLIC_DEMO_MODE === 'true' && (
           <p className="fh-login-demo">
-            Comptes démo&nbsp;: <code>consultant1@perform-learn.fr</code> · <code>client1@perform-learn.fr</code>
-            <br /><code>admin@perform-learn.fr</code> — mot de passe&nbsp;: <code>demo1234</code>
+            {t('demoAccounts')}&nbsp;: <code>consultant1@perform-learn.fr</code> · <code>client1@perform-learn.fr</code>
+            <br /><code>admin@perform-learn.fr</code> — {t('demoPassword')}&nbsp;: <code>demo1234</code>
           </p>
         )}
       </div>
@@ -246,7 +245,7 @@ function LoginForm() {
 export default function LoginPage() {
   return (
     <>
-      <Suspense fallback={<div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Chargement…</div>}>
+      <Suspense fallback={<div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>…</div>}>
         <LoginForm />
       </Suspense>
       <ChatWidget />
