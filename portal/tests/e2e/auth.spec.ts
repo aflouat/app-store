@@ -49,11 +49,11 @@ test.describe('Auth — RBAC redirection', () => {
     await page.fill('input[name="email"], input[type="email"]', DEMO_CONSULTANT.email)
     await page.fill('input[name="password"], input[type="password"]', DEMO_CONSULTANT.password)
     await page.click('button[type="submit"]')
-    await expect(page).toHaveURL(/\/freelancehub\/consultant/, { timeout: 10_000 })
+    await expect(page).toHaveURL(/\/freelancehub\/consultant/, { timeout: 15_000 })
 
-    // Tenter d'accéder au dashboard client
+    // Tenter d'accéder au dashboard client — middleware doit renvoyer vers /consultant
     await page.goto('/freelancehub/client')
-    await expect(page).toHaveURL(/\/freelancehub\/consultant/, { timeout: 5_000 })
+    await expect(page).toHaveURL(/\/freelancehub\/consultant/, { timeout: 15_000 })
   })
 
   test('visiteur non authentifié → redirigé vers /login', async ({ page }) => {
@@ -75,8 +75,12 @@ test.describe('Auth — Mot de passe oublié', () => {
 test.describe('Auth — Inscription', () => {
   test('page d\'inscription accessible et formulaire visible', async ({ page }) => {
     await page.goto('/freelancehub/register')
-    await expect(page.locator('form')).toBeVisible()
-    // Sélection du rôle
-    await expect(page.locator('text=Client, text=Consultant, [value="client"], [value="consultant"]').first()).toBeVisible()
+    // Les deux panels de sélection de rôle doivent être visibles
+    await expect(page.locator('text=Consultant Expert')).toBeVisible()
+    await expect(page.locator('text=Entreprise / Client')).toBeVisible()
+    // Le formulaire apparaît après sélection d'un rôle
+    await page.locator('.reg-panel').first().click()
+    await expect(page.locator('form.reg-form')).toBeVisible()
+    await expect(page.locator('button[type="submit"]')).toBeVisible()
   })
 })

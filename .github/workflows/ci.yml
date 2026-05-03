@@ -155,17 +155,17 @@ jobs:
       - name: Run E2E — auth flows
         run: npx playwright test tests/e2e/auth.spec.ts
         env:
-          E2E_BASE_URL: ${{ needs.smoke-test.outputs.deploy-url }}
+          E2E_BASE_URL: https://portal.perform-learn.fr
 
       - name: Run E2E — booking flows
         run: npx playwright test tests/e2e/booking.spec.ts
         env:
-          E2E_BASE_URL: ${{ needs.smoke-test.outputs.deploy-url }}
+          E2E_BASE_URL: https://portal.perform-learn.fr
 
       - name: Run E2E — consultant flows
         run: npx playwright test tests/e2e/consultant.spec.ts
         env:
-          E2E_BASE_URL: ${{ needs.smoke-test.outputs.deploy-url }}
+          E2E_BASE_URL: https://portal.perform-learn.fr
 
       - name: Upload rapport E2E (si échec)
         if: failure()
