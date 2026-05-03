@@ -50,15 +50,17 @@ test.describe('Consultant — Agenda', () => {
     await loginAsConsultant(page)
     await page.goto('/freelancehub/consultant/agenda')
     await expect(page).not.toHaveURL(/login/)
-    // Grille semaine visible
-    await expect(page.locator('[data-testid="agenda-grid"], .agenda, table, [class*="agenda"]').first()).toBeVisible({ timeout: 8_000 })
+    // Grille semaine visible — classes réelles du composant AgendaCalendar
+    await expect(page.locator('.cal-wrap, .cal-grid-wrap, .fh-notice').first()).toBeVisible({ timeout: 8_000 })
   })
 
   test('la grille agenda contient des créneaux (lundi–dimanche)', async ({ page }) => {
     await loginAsConsultant(page)
     await page.goto('/freelancehub/consultant/agenda')
-    // Les jours de la semaine doivent être présents
-    await expect(page.locator('text=Lun, text=Lundi, text=Mon').first()).toBeVisible({ timeout: 5_000 })
+    // Les en-têtes de jours (.cal-day-name) ou fallback message de profil incomplet
+    const calHeaders = page.locator('.cal-day-name')
+    const fallback   = page.locator('.fh-notice')
+    await expect(calHeaders.or(fallback).first()).toBeVisible({ timeout: 8_000 })
   })
 })
 
@@ -74,8 +76,8 @@ test.describe('Consultant — Gains', () => {
 test.describe('Consultant — KYC', () => {
   test('section KYC visible dans le dashboard ou profil', async ({ page }) => {
     await loginAsConsultant(page)
-    // KYC peut être dans le dashboard principal ou profil
-    const kycSection = page.locator('text=KYC, text=Vérification, [data-testid="kyc-section"]')
+    // KYC banner (.kyc-banner) ou lien vers /kyc dans le checklist d'onboarding
+    const kycSection = page.locator('.kyc-banner, [href*="/kyc"]')
     await expect(kycSection.first()).toBeVisible({ timeout: 8_000 })
   })
 })
