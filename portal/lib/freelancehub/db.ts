@@ -1,29 +1,56 @@
 // lib/freelancehub/db.ts
 // SERVER ONLY — ne jamais importer côté client
-import { Pool, PoolClient } from 'pg'
+import { Client } from 'pg'
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  max: 2,  // Serverless: each invocation is isolated — 10 would exhaust PG on Vercel
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 5000,
-})
+// Interface minimale compatible pg Client et pglite Transaction
+export type DbClient = {
+  query(sql: string, params?: unknown[]): Promise<{ rows: unknown[] }>
+}
 
-pool.on('error', (err) => {
-  console.error('[db] Unexpected idle client error:', err)
-})
+// Détecte le mode dev local : DATABASE_URL est un chemin fichier, pas une URL postgres
+const isLocalDev = !((process.env.DATABASE_URL ?? '').startsWith('postgres'))
+
+// ─── pg Client par requête (production serverless) ────────────
+// Pas de pool persistant : Vercel gèle la Lambda entre requêtes,
+// ce qui rend les connexions périmées côté PgBouncer/Supabase.
+// Supabase gère le vrai pool côté serveur (PgBouncer port 6543).
+async function withPgClient<T>(fn: (client: Client) => Promise<T>): Promise<T> {
+  const client = new Client({ connectionString: process.env.DATABASE_URL })
+  await client.connect()
+  try {
+    return await fn(client)
+  } finally {
+    await client.end().catch(() => null)
+  }
+}
+
+// ─── PGlite (dev local) ───────────────────────────────────────
+let _pglite: import('@electric-sql/pglite').PGlite | null = null
+
+async function getPglite() {
+  if (!_pglite) {
+    const { PGlite } = await import('@electric-sql/pglite')
+    _pglite = new PGlite(process.env.DATABASE_URL)
+    await _pglite.waitReady
+  }
+  return _pglite
+}
+
+// ─── API publique ─────────────────────────────────────────────
 
 export async function query<T = unknown>(
   sql: string,
   params?: unknown[]
 ): Promise<T[]> {
-  const client = await pool.connect()
-  try {
+  if (isLocalDev) {
+    const db = await getPglite()
+    const result = await db.query<T>(sql, params as unknown[])
+    return result.rows
+  }
+  return withPgClient(async (client) => {
     const result = await client.query(sql, params)
     return result.rows as T[]
-  } finally {
-    client.release()
-  }
+  })
 }
 
 export async function queryOne<T = unknown>(
@@ -34,26 +61,28 @@ export async function queryOne<T = unknown>(
   return rows[0] ?? null
 }
 
-// Transaction helper — the callback receives a connected client
 export async function withTransaction<T>(
-  fn: (client: PoolClient) => Promise<T>
+  fn: (client: DbClient) => Promise<T>
 ): Promise<T> {
-  const client = await pool.connect()
-  try {
-    await client.query('BEGIN')
-    const result = await fn(client)
-    await client.query('COMMIT')
-    return result
-  } catch (err) {
-    await client.query('ROLLBACK')
-    throw err
-  } finally {
-    client.release()
+  if (isLocalDev) {
+    const db = await getPglite()
+    return db.transaction(async (tx) => fn(tx as unknown as DbClient))
   }
+  return withPgClient(async (client) => {
+    await client.query('BEGIN')
+    try {
+      const result = await fn(client as unknown as DbClient)
+      await client.query('COMMIT')
+      return result
+    } catch (err) {
+      await client.query('ROLLBACK').catch(() => null)
+      throw err
+    }
+  })
 }
 
 export async function queryTx<T = unknown>(
-  client: PoolClient,
+  client: DbClient,
   sql: string,
   params?: unknown[]
 ): Promise<T[]> {
@@ -62,7 +91,7 @@ export async function queryTx<T = unknown>(
 }
 
 export async function queryOneTx<T = unknown>(
-  client: PoolClient,
+  client: DbClient,
   sql: string,
   params?: unknown[]
 ): Promise<T | null> {
