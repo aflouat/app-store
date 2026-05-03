@@ -1,2 +1,5 @@
 .vercel
 .env*.local
+dev.db
+dev.db-*
+*.tsbuildinfo

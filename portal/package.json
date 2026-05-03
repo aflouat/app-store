@@ -4,7 +4,6 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "dev:db": "node scripts/init-dev-db.mjs",
     "build": "next build",
     "start": "next start",
     "test": "vitest run",
