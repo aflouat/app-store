@@ -23,9 +23,11 @@
       }
     ],
     "paths": {
-      "@/*": [
-        "./*"
-      ]
+      "@/*": ["./*"],
+      "@app-store/core-db":    ["../../packages/core-db/src/index.ts"],
+      "@app-store/core-auth":  ["../../packages/core-auth/src/index.ts"],
+      "@app-store/core-email": ["../../packages/core-email/src/index.ts"],
+      "@app-store/core-ui":    ["../../packages/core-ui/src/index.ts"]
     }
   },
   "include": [

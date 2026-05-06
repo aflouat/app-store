@@ -1,11 +1,5 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  transpilePackages: [
-    '@app-store/core-db',
-    '@app-store/core-email',
-    '@app-store/core-auth',
-    '@app-store/core-ui',
-  ],
   async headers() {
     return [
       {

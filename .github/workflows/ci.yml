@@ -56,7 +56,6 @@ jobs:
             exit 1
           fi
           echo "✅ Aucun secret live dans le code"
-        working-directory: apps/marketplace
 
   # ── Job 2 : E2E Isolation — Postgres éphémère (sur PR uniquement) ─────────
   e2e-isolation:
@@ -208,7 +207,6 @@ jobs:
 
           echo "deploy-url=$DEPLOY_URL" >> "$GITHUB_OUTPUT"
 
-          # Health check sur le déploiement exact
           echo "Health check sur $DEPLOY_URL/api/freelancehub/health ..."
           HEALTH=$(curl -sf "$DEPLOY_URL/api/freelancehub/health" || echo '{}')
           echo "Réponse : $HEALTH"

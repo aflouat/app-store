@@ -41,7 +41,6 @@ jobs:
             exit 1
           fi
           echo "✅ Aucun secret live dans le code"
-        working-directory: apps/marketplace
 
       - name: Build
         run: npm run build
@@ -65,7 +64,6 @@ jobs:
           curl -sf --max-time 10 https://api.perform-learn.fr/health > /dev/null \
             && echo "✅ api.perform-learn.fr/health OK" \
             || echo "⚠️  api.perform-learn.fr non joignable"
-        working-directory: apps/marketplace
 
       - name: Release summary
         run: |

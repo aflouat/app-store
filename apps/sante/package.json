@@ -10,10 +10,6 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@app-store/core-db": "workspace:*",
-    "@app-store/core-email": "workspace:*",
-    "@app-store/core-auth": "workspace:*",
-    "@app-store/core-ui": "workspace:*",
     "bcryptjs": "^3.0.3",
     "next": "^16.2.3",
     "next-auth": "^5.0.0-beta.30",
