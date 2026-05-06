@@ -2,12 +2,14 @@
   "name": "app-store",
   "private": true,
   "scripts": {
-    "build": "pnpm -r build",
-    "test": "pnpm -r test",
-    "dev:marketplace": "pnpm --filter marketplace dev",
-    "dev:sante": "pnpm --filter sante dev"
+    "dev:marketplace": "npm run dev --prefix apps/marketplace",
+    "dev:sante": "npm run dev --prefix apps/sante"
+  },
+  "dependencies": {
+    "pg": "^8.13.0"
   },
   "devDependencies": {
+    "@types/pg": "^8.20.0",
     "typescript": "^5"
   }
 }

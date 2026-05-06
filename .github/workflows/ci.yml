@@ -26,6 +26,10 @@ jobs:
           cache: 'npm'
           cache-dependency-path: apps/marketplace/package-lock.json
 
+      - name: Install root dependencies (types pour packages/core-*)
+        run: npm install
+        working-directory: .
+
       - name: Install dependencies
         run: npm ci
 
