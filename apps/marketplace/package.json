@@ -1,5 +1,5 @@
 {
-  "name": "perform-learn-portal",
+  "name": "marketplace",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -13,6 +13,10 @@
     "test:e2e:headed": "playwright test --headed"
   },
   "dependencies": {
+    "@app-store/core-db": "workspace:*",
+    "@app-store/core-email": "workspace:*",
+    "@app-store/core-auth": "workspace:*",
+    "@app-store/core-ui": "workspace:*",
     "@anthropic-ai/sdk": "^0.90.0",
     "@aws-sdk/client-s3": "^3.1032.0",
     "@aws-sdk/s3-request-presigner": "^3.1032.0",

@@ -1,6 +1,6 @@
 'use client'
-// CLIENT ONLY — ne jamais importer côté serveur
-// Envoie des events à GTM (dataLayer) et Umami simultanément
+// Re-export from shared core — backward-compatible shim
+// New apps should import from '@app-store/core-analytics' directly
 
 declare global {
   interface Window {
@@ -12,11 +12,9 @@ declare global {
 export function trackEvent(event: string, params?: Record<string, unknown>) {
   if (typeof window === 'undefined') return
 
-  // GTM dataLayer
   window.dataLayer = window.dataLayer ?? []
   window.dataLayer.push({ event, ...params })
 
-  // Umami custom event
   if (window.umami) {
     window.umami.track(event, params)
   }

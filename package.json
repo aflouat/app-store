@@ -1,6 +1,13 @@
 {
-  "dependencies": {
-    "@types/pg": "^8.20.0",
-    "pg": "^8.20.0"
+  "name": "app-store",
+  "private": true,
+  "scripts": {
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "dev:marketplace": "pnpm --filter marketplace dev",
+    "dev:sante": "pnpm --filter sante dev"
+  },
+  "devDependencies": {
+    "typescript": "^5"
   }
 }

@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: portal
+        working-directory: apps/marketplace
 
     steps:
       - name: Checkout
@@ -22,7 +22,7 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: portal/package-lock.json
+          cache-dependency-path: apps/marketplace/package-lock.json
 
       - name: Install dependencies
         run: npm ci
@@ -41,7 +41,7 @@ jobs:
             exit 1
           fi
           echo "✅ Aucun secret live dans le code"
-        working-directory: portal
+        working-directory: apps/marketplace
 
       - name: Build
         run: npm run build
@@ -65,7 +65,7 @@ jobs:
           curl -sf --max-time 10 https://api.perform-learn.fr/health > /dev/null \
             && echo "✅ api.perform-learn.fr/health OK" \
             || echo "⚠️  api.perform-learn.fr non joignable"
-        working-directory: portal
+        working-directory: apps/marketplace
 
       - name: Release summary
         run: |

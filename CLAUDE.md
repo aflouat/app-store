@@ -451,3 +451,47 @@ Vision → Cycle → Epic → User Story (SMART/Gherkin) → Task
 `value_type` : `user_acquisition` · `cost_reduction` · `strategic_positioning` · `ux_improvement` · `technical_debt`
 
 **Entité** : EMMAEINNA · SIREN 103 082 673 · Aminetou (DG) · Abdel (CTO/orchestrateur · aflouat@gmail.com)
+
+---
+
+## 10. Architecture monorepo — Ajouter une nouvelle app
+
+```
+app-store/
+├── packages/core-db/       ← wrapper PostgreSQL partagé (@app-store/core-db)
+├── packages/core-email/    ← sender Resend partagé    (@app-store/core-email)
+├── packages/core-auth/     ← RBAC + rate-limit Edge   (@app-store/core-auth)
+├── packages/core-ui/       ← composants React partagés(@app-store/core-ui)
+├── apps/marketplace/       ← perform-learn.fr (CLAUDE.md propre)
+└── apps/sante/             ← appli santé       (CLAUDE.md propre)
+```
+
+**Pour ajouter une nouvelle app (ex: `formation`) :**
+
+```bash
+# 1. Créer la structure
+mkdir -p apps/formation/{app,lib/formation,components/formation}
+mkdir -p migrations/formation
+
+# 2. Copier les fichiers de démarrage depuis apps/sante/ :
+#    package.json, tsconfig.json, next.config.mjs, auth.config.ts, auth.ts, middleware.ts
+#    Adapter : nom de l'app, rôles, schéma DB, routes RBAC
+
+# 3. Créer migrations/formation/001_formation_schema.sql
+
+# 4. Créer apps/formation/CLAUDE.md (copier depuis apps/sante/CLAUDE.md, adapter)
+```
+
+**Règle absolue :**
+```typescript
+// ✅ Import depuis core — TOUJOURS
+import { query }      from '@app-store/core-db'
+import { sendEmail }  from '@app-store/core-email'
+import { useToast }   from '@app-store/core-ui'
+import { checkRateLimit } from '@app-store/core-auth'
+
+// ❌ Jamais copier du code entre apps/
+```
+
+**Token Claude optimisés :** chaque session DEV démarre dans `apps/{nom}/` — Claude ne charge
+que le CLAUDE.md de cette app et ses fichiers. Les packages `core-*` sont stables et petits.
