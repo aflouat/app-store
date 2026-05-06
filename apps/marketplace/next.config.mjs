@@ -1,9 +1,24 @@
 import createNextIntlPlugin from 'next-intl/plugin'
+import path from 'path'
+import { fileURLToPath } from 'url'
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const withNextIntl = createNextIntlPlugin('./i18n/request.ts')
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  webpack(config) {
+    // Les fichiers dans packages/core-* sont hors de apps/marketplace/.
+    // Webpack remonte depuis leur position physique et ne trouve pas
+    // pg/resend/react dans apps/marketplace/node_modules/.
+    // On l'ajoute explicitement pour que tous les imports des packages core
+    // résolvent depuis ici, quel que soit leur emplacement physique.
+    config.resolve.modules = [
+      path.resolve(__dirname, 'node_modules'),
+      ...config.resolve.modules,
+    ]
+    return config
+  },
   async headers() {
     return [
       {
