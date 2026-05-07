@@ -38,7 +38,8 @@ export default auth((req: NextRequest & { auth: { user?: { role?: string } } | n
   if (pathname === '/' ||
       pathname.startsWith('/login') ||
       pathname.startsWith('/register') ||
-      pathname.startsWith('/api/auth')) {
+      pathname.startsWith('/api/auth') ||
+      pathname.startsWith('/api/health')) {
     return NextResponse.next()
   }
 
