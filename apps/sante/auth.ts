@@ -4,6 +4,7 @@ import Credentials from 'next-auth/providers/credentials'
 import bcrypt from 'bcryptjs'
 import { authConfig } from '@/auth.config'
 import { getUserWithPasswordHash } from '@/lib/sante/auth-queries'
+import type { SanteRole } from '@/lib/sante/types'
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -24,3 +25,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
 })
+
+declare module 'next-auth' {
+  interface User {
+    role: SanteRole
+  }
+  interface Session {
+    user: {
+      id:    string
+      email: string
+      name:  string
+      role:  SanteRole
+    }
+  }
+}
