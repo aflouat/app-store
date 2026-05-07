@@ -2,6 +2,14 @@
   "installCommand": "npm install --prefix ../.. && npm ci",
   "rewrites": [
     {
+      "source": "/sante",
+      "destination": "https://app-store-45so.vercel.app"
+    },
+    {
+      "source": "/sante/:path*",
+      "destination": "https://app-store-45so.vercel.app/:path*"
+    },
+    {
       "source": "/api/vps/:path*",
       "destination": "https://api.perform-learn.fr/:path*"
     }
