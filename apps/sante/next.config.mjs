@@ -6,13 +6,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   serverExternalPackages: ['pg', 'bcryptjs'],
-  turbopack: {
-    resolveAlias: {
-      'react':             path.resolve(__dirname, 'node_modules/react'),
-      'react/jsx-runtime': path.resolve(__dirname, 'node_modules/react/jsx-runtime'),
-      'react-dom':         path.resolve(__dirname, 'node_modules/react-dom'),
-    },
-  },
+  turbopack: {},
   webpack(config) {
     config.resolve.modules = [
       path.resolve(__dirname, 'node_modules'),
