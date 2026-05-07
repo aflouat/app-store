@@ -152,6 +152,44 @@ export default async function Home() {
         </div>
       </section>
 
+      {/* SANTÉ APP */}
+      <section className={styles.santeSection}>
+        <div className={styles.fhContent}>
+          <div className={styles.santeBadge}>En développement</div>
+          <h2 className={styles.fhTitle}>
+            La santé connectée,<br />bientôt disponible.
+          </h2>
+          <p className={styles.fhSub}>
+            SantéApp met en relation patients et médecins pour des consultations simplifiées,
+            avec prise de rendez-vous en ligne, dossier médical sécurisé et suivi personnalisé.
+          </p>
+          <div className={styles.fhPills}>
+            <span className={styles.fhPill}>✓ Rendez-vous en ligne</span>
+            <span className={styles.fhPill}>✓ Dossier sécurisé RGPD</span>
+            <span className={styles.fhPill}>✓ Médecins vérifiés RPPS</span>
+          </div>
+          <div className={styles.fhCtas}>
+            <a href="/sante" className={styles.fhBtn1}>Découvrir SantéApp</a>
+          </div>
+        </div>
+        <div className={styles.fhIllus} aria-hidden="true">
+          <div className={styles.fhCard}>
+            <div className={styles.fhCardTop}>
+              <div className={styles.fhAvatar} style={{ background: 'rgba(134,199,167,0.15)', color: '#a8e6c0' }}>⚕</div>
+              <div>
+                <div className={styles.fhCardName}>Dr. Martin</div>
+                <div className={styles.fhCardRole}>Médecin généraliste · Paris 11e</div>
+              </div>
+              <span className={styles.fhVerified} style={{ background: 'rgba(134,199,167,0.2)', color: '#a8e6c0' }}>✓</span>
+            </div>
+            <div className={styles.fhSkills}>
+              <span>Consultation</span><span>Télémédecine</span>
+            </div>
+            <div className={styles.fhRate}>Prochain créneau <strong style={{ color: '#a8e6c0' }}>demain 10h</strong></div>
+          </div>
+        </div>
+      </section>
+
       {/* CTA BAND */}
       <CtaBand />
 

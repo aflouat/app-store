@@ -512,6 +512,29 @@
   font-weight: 700;
 }
 
+/* SANTÉ APP SECTION */
+.santeSection {
+  padding: 80px 40px;
+  background: linear-gradient(135deg, #0d2b1d 0%, #1a3a2a 50%, #0a3d2b 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 64px;
+}
+
+.santeBadge {
+  display: inline-block;
+  background: rgba(134, 199, 167, 0.15);
+  border: 1px solid rgba(134, 199, 167, 0.35);
+  color: #a8e6c0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 5px 14px;
+  border-radius: 20px;
+  letter-spacing: 0.03em;
+  width: fit-content;
+}
+
 /* RESPONSIVE */
 @media (max-width: 1023px) {
   .catGrid { grid-template-columns: repeat(3, 1fr); }
@@ -537,6 +560,7 @@
   .fhIllus { display: none; }
   .fhCtas { flex-direction: column; }
   .fhBtn1, .fhBtn2 { text-align: center; }
+  .santeSection { flex-direction: column; padding: 56px 20px; gap: 36px; }
 }
 
 @media (max-width: 479px) {
