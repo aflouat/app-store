@@ -1,302 +1,240 @@
-# refacto.md — Analyse quotidienne perform-learn.fr
-**Date** : 2026-05-01 · **Contexte** : J+1 post-lancement · **Analyste** : Claude Agent DG
+# refacto.md — Analyse quotidienne · perform-learn.fr
+
+> **Date** : 2026-05-07 · **Analyste** : Claude Sonnet 4.6 (Agent AMÉLIORATION)
+> **Périmètre** : monorepo `app-store` — `apps/marketplace/`, `apps/sante/`, `packages/core-*/`
+> **Axe** : Sécurité OWASP · Dette technique · Agilité pipeline
 
 ---
 
-## TL;DR
+## Résumé exécutif
 
-**J+1 — Infrastructure stable. Aucun incident prod détecté. 3 vulnérabilités résiduelles prioritaires.**
-
-Depuis J0 : fix GTM `<Script>` placé dans `<body>` (layout.tsx). Aucun nouveau correctif sécurité.
-
-Risques résiduels confirmés par re-scan aujourd'hui :
-- **S15** `password_hash = ''` — compte soft-deleted réactivable sans mot de passe (`user/me/route.ts:40`)
-- **S9** Erreurs email silencieuses `.catch(() => null)` — 3 routes affectées (KYC, register, reviews)
-- **S17** ⚡ NEW — Race condition Early Adopter KYC : 2 validations concurrentes peuvent attribuer le badge à plus de 20 consultants
-
-Nouveaux items dette technique identifiés : S18 CSP incomplet, DT-09 Zod absent, DT-10 Stripe non singleton.
-
----
-
-## 1. Sécurité OWASP
-
-### Critiques résolus ✅ (hérités J0)
-
-| ID | OWASP Cat. | Fichier | Statut |
-|---|---|---|---|
-| C1 | A04 Insecure Design | `client/bookings/route.ts:12-68` | ✅ Montant calculé côté serveur via `computePricing()` + lookup `daily_rate` DB |
-| C2 | A01 Broken Access | `reviews/route.ts:124` | ✅ `consultant_id` → `consultant_user_id` (notification fonds libérés) |
-| N1 | A09 Security Logging | `chat-router.ts` | ✅ Budget cap mensuel enregistré + vérifié dans `chat_limits` avant appel LLM |
-| S12 | A01 Broken Access | `admin/kyc-presign/route.ts:38` | ✅ Guard path traversal (`kyc/` + `..` + `%2e` + `\0`) |
-| S16 | A03 Injection | `admin/export-csv/route.ts:9` | ✅ Préfixe `'` sur caractères formula injection Excel |
-| CORS | A05 Misconfig | `caddy/Caddyfile` | ✅ `*.vercel.app` → `portal.perform-learn.fr` uniquement |
-| PG-PORT | A05 Misconfig | `docker-compose.yml:46` | ✅ `127.0.0.1:5432:5432` — port PG non exposé en prod |
-
-### Critiques résiduels — Semaine 1 obligatoire 🔴
-
-| ID | OWASP Cat. | Description | Fichier | Impact |
-|---|---|---|---|---|
-| S15 | A07 Auth Failures | `password_hash = ''` lors du soft-delete — si `deleted_at` bypassé, compte sans mot de passe | `user/me/route.ts:40` | Authentification sans secret |
-| S9 | A09 Logging Failures | `.catch(() => null)` silencieux sur `sendKycValidated()`, `sendKycRejected()`, `sendWelcomeConsultant()` — incidents Resend invisibles | `admin/kyc/route.ts:69,83` `auth/register/route.ts:58` | Perte notifications critiques sans trace |
-| **S17** ⚡ NEW | A04 Insecure Design | Race condition Early Adopter : 2 KYC concurrent → COUNT < 20 lu deux fois → badge attribué à > 20 consultants | `admin/consultants/[id]/kyc/route.ts:45-51` | Perte financière commission 10% × N surplus |
-
-**Fix S17 proposé** (Pareto — 8 lignes) :
-```sql
--- Remplacer le COUNT() + isEarlyAdopter JS par une UPDATE atomique
-UPDATE freelancehub.consultants
-SET is_early_adopter = (
-  SELECT COUNT(*) < 20
-  FROM freelancehub.consultants
-  WHERE kyc_status = 'validated' AND is_early_adopter = true
-  FOR UPDATE
-),
-commission_rate = CASE
-  WHEN (SELECT COUNT(*) < 20 FROM freelancehub.consultants WHERE kyc_status='validated' AND is_early_adopter=true FOR UPDATE) THEN 0.10
-  ELSE 0.15
-END
-WHERE id = $1;
-```
-
-**Fix S15 proposé** (4 lignes) :
-```typescript
-// user/me/route.ts:40 — remplacer password_hash = ''
-import { randomBytes } from 'crypto'
-password_hash = randomBytes(32).toString('hex'),  // inutilisable, non-bcrypt volontaire
-```
-
-**Fix S9 proposé** (remplacer `.catch(() => null)`) :
-```typescript
-.catch((emailErr: unknown) => {
-  console.error('[email] sendKycValidated failed', { consultantId, error: String(emailErr) })
-})
-```
-
-### Hautes — À corriger C5
-
-| ID | OWASP Cat. | Description | Fichier | Impact |
-|---|---|---|---|---|
-| S3 | A08 Software Failures | Rate limiting in-memory (Map) non persistant — réinitialisé à chaque cold start Vercel | `middleware.ts:16-49` | DDoS sur auth + paiement possible |
-| S13 | A04 Insecure Design | Webhook Stripe `charge.refunded` non géré — remboursement sans mise à jour DB ni notification | `webhooks/stripe/route.ts` | Incohérence comptable |
-| S6 | A05 Misconfig | Metadata Stripe : `client_id`, `amount_ttc`, `amount_ht`, `tva`, `consultant_net` — surface RGPD inutile | `client/bookings/[id]/payment-intent/route.ts:72-80` | RGPD data minimization |
-
-**Fix S6 proposé** (Pareto) — garder uniquement `booking_id` + `platform` :
-```typescript
-// payment-intent/route.ts
-metadata: {
-  booking_id: booking.id,
-  platform: 'perform-learn',
-  // Suppression : client_id, amount_ttc, amount_ht, tva, platform_commission, consultant_net
-}
-```
-
-### Moyennes — Planifiées C5-C6
-
-| ID | Description | Fichier |
-|---|---|---|
-| **S18** ⚡ NEW | CSP incomplet : `unsafe-inline` scripts/styles, `data:` img-src, absence `object-src 'none'`, `form-action 'self'`, `frame-ancestors 'none'` | `next.config.mjs:29-38` |
-| S7 | Webhook deduplication sans TTL — `webhook_events` croît sans limite | `webhooks/stripe/route.ts` |
-| S8 | Audit trail admin absent — modifications KYC/statuts sans log structuré | `admin/consultants/[id]/route.ts` |
-| N2 | Regex escalation `\w+` exclut accents/tirets — sujets chat perdus | `chat-router.ts:162` |
-
-**Fix S18 CSP** (Pareto) :
-```typescript
-// next.config.mjs — amélioration CSP immédiate
-"object-src 'none'",         // bloque Flash/plugins
-"form-action 'self'",        // bloque exfiltration formulaires
-"frame-ancestors 'none'",    // remplace X-Frame-Options plus efficacement
-// Supprimer 'data:' de img-src (remplacer par 'blob:' si nécessaire)
-```
-
-### Incidents (hors git — risque résiduel)
-
-| Incident | Description | Action requise |
-|---|---|---|
-| CRED-01 | `.env.local` sur disque contient credentials live (hors git, non exposé) | Rotation Stripe live + xAI + root VPS — statut inconnu |
-
----
-
-## 2. Dette technique
-
-### Critique (bloque la scalabilité)
-
-#### DT-01 — Rate limiting in-memory `portal/middleware.ts`
-```typescript
-// Actuel — Map réinitialisée à chaque cold start Vercel
-const RL_MAP = new Map<string, RateEntry>()
-// Règles : auth 10 req/15min · payment-intent 5 req/5min · chat/public 20 req/min
-```
-**Fix C5** : Upstash Redis `@upstash/ratelimit` sliding window. Variables : `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN`.
-
-#### DT-02 — Pas de `pricing.ts` centralisé
-`computePricing()` dans `matching.ts` importé par `client/bookings/route.ts`. **26+ occurrences** de `/ 100` inline sans utilitaire typé `fmtEur(cents)`.
-- Risque : double conversion silencieuse, perte de précision
-- Fix C5 : `lib/freelancehub/pricing.ts` → `computePricing()` + `fmtEur()` + `eurToCents()`
-
-### Haute
-
-#### DT-03 — Duplication `STATUS_MAP` (4-5 fichiers confirmés)
-`BOOKING_STATUS_MAP` et `PAYMENT_STATUS_MAP` redéfinis dans :
-- `components/freelancehub/admin/BookingsTable.tsx`
-- `app/freelancehub/(auth)/admin/page.tsx`
-- `app/freelancehub/(auth)/consultant/bookings/page.tsx`
-- `app/freelancehub/(auth)/client/page.tsx`
-→ `lib/freelancehub/constants.ts` en C5.
-
-#### DT-04 — Pool PG `max: 2` — PgBouncer absent
-`db.ts:5` — 2 connexions simultanées max. Scalabilité bloquée > 5 req/s. PgBouncer mode transaction requis avant C6.
-
-#### DT-05 — Composants monolithiques (inchangé)
-
-| Composant | Lignes | Refactoring planifié |
-|---|---|---|
-| `BookingModal.tsx` | ~498 | `<SlotPicker>`, `<PriceSummary>`, `<StripePaymentStep>` — C6 |
-| `SearchClient.tsx` | ~398 | `<SearchForm>` — C6 |
-| `AgendaCalendar.tsx` | ~305 | Hook `useAgendaSlots()` — C6 |
-| `BookingsTable.tsx` | ~293 | `<BookingsFilters>` + `<BookingsTotals>` — C6 |
-
-### Moyenne
-
-#### DT-06 — Absence de tests automatisés
-Zero Vitest/Playwright. Flow booking → paiement → review → libération testé manuellement uniquement.
-**C5** : Vitest unit (`computePricing`, `findMatches`, `esc`) + Playwright E2E (register → KYC → booking → payment → review).
-
-#### DT-07 — Timezone `T00:00:00` non UTC
-`email.ts:36` et cron — timezone locale au lieu de `Z`. Risque si timezone VPS change.
-
-#### DT-08 — `trackEvent()` non intégré dans composants
-`portal/lib/freelancehub/analytics.ts` créé — non appelé depuis `register/page.tsx`, `BookingModal.tsx`, `SearchClient.tsx`, `consultant/kyc/page.tsx`.
-
-#### DT-09 ⚡ NEW — Validation d'entrée manuelle et hétérogène
-Aucune bibliothèque de schéma (Zod/Valibot). Validation par regex custom :
-- `consultant/slots/route.ts:55-66` : regex date/heure manuelles
-- `auth/register/route.ts:20-25` : longueur seule, pas de complexité
-- `auth/register/route.ts:22` : regex email basique `[^\s@]+@[^\s@]+\.[^\s@]+` (accepte `a@b.c`)
-**C5** : Migration progressive Zod en partant des routes d'authentification.
-
-#### DT-10 ⚡ NEW — Stripe non singleton
-`new Stripe(process.env.STRIPE_SECRET_KEY!)` instancié à chaque requête dans les routes concernées. Surcoût connexion HTTPS par invocation serverless.
-**Fix** : `lib/freelancehub/stripe.ts` — instance partagée (déjà planifié ROADMAP C5).
-
----
-
-## 3. Agilité & Processus
-
-### Points positifs ✅
-
-- Architecture monorepo claire avec migrations séquentielles (001–017)
-- Convention de commits respectée (feat/fix/refactor + scopes freelancehub/infra/portal/db)
-- CLAUDE.md complet, ROADMAP.md priorisée avec `business_value` + `value_type`
-- Lancement J0 exécuté sans incident (email waitlist envoyé, OG image, GTM, CSP+HSTS)
-- Système de gouvernance en DB opérationnel
-
-### Points d'amélioration
-
-#### AG-01 — Pas de CI/CD
-Aucun GitHub Actions. Deploy Vercel automatique mais sans lint/typecheck/tests en PR.
-**C5** : `.github/workflows/ci.yml` avec `tsc --noEmit` + `eslint` + `vitest --run`.
-
-#### AG-02 — Pas de staging
-Tests sur Stripe live. Pas d'environnement preview avec test keys.
-**C5** : Variables Vercel preview + schéma `test_freelancehub` ou DB séparée.
-
-#### AG-03 — Onboarding développeur incomplet
-`DEV.md` existe mais ne couvre pas setup complet local (MinIO bucket init, ordre migrations).
-**C5** : `scripts/dev-setup.sh` ou `make setup`.
-
----
-
-## 4. Checklist Pareto — Semaine 1 (J+1 → J+7)
-
-> **Principe** : 20% des actions → 80% de la réduction de risque. Priorisées par rapport impact/effort.
-
-| # | Priorité | Action | Effort | Fichier cible | Impact |
+| Axe | CRITIQUE | HAUTE | MOYENNE | FAIBLE | Total |
 |---|---|---|---|---|---|
-| 1 | 🔴 P0 | Fix S15 — `password_hash` aléatoire au lieu de `''` | 10 min | `user/me/route.ts:40` | Critique sécurité auth |
-| 2 | 🔴 P0 | Fix S17 — Race condition Early Adopter (UPDATE atomique SQL) | 20 min | `admin/consultants/[id]/kyc/route.ts:45-51` | Risque financier direct |
-| 3 | 🔴 P0 | Fix S9 — Logger erreurs email (3 `.catch(() => null)`) | 15 min | `kyc/route.ts:69,83` · `register/route.ts:58` | Observabilité critique |
-| 4 | 🟠 P1 | Fix S6 — Réduire metadata Stripe (`booking_id` + `platform` uniquement) | 10 min | `payment-intent/route.ts:72-80` | RGPD data minimization |
-| 5 | 🟠 P1 | Fix S13 — Gérer `charge.refunded` dans webhook Stripe | 45 min | `webhooks/stripe/route.ts` | Intégrité comptable |
-| 6 | 🟠 P1 | Intégrer `trackEvent()` dans composants (register + BookingModal) | 1h | `register/page.tsx`, `BookingModal.tsx` | Observabilité growth |
-| 7 | 🟡 P2 | Fix S18 — Compléter CSP (`object-src`, `form-action`, `frame-ancestors`) | 10 min | `next.config.mjs:29-38` | XSS defense-in-depth |
-| 8 | 🟡 P2 | Configurer Upstash Redis + migrer rate limiting | 2h | `middleware.ts` + Vercel env vars | DDoS protection persistante |
-| 9 | 🟡 P2 | `constants.ts` — centraliser STATUS_MAP (5 fichiers) | 1h | `lib/freelancehub/constants.ts` | Maintenabilité |
-| 10 | 🟡 P2 | `pricing.ts` — `computePricing()` + `fmtEur()` centralisés | 2h | `lib/freelancehub/pricing.ts` | Éliminer 26+ conversions inline |
+| Sécurité OWASP | 2 | 5 | 2 | 1 | **10** |
+| Dette technique | 2 | 4 | 4 | 1 | **11** |
+| Agilité | 2 | 1 | 3 | 1 | **7** |
+| **TOTAL** | **6** | **10** | **9** | **3** | **28** |
+
+**Nouveaux items hors ROADMAP.md** : 2 (SEC-NEW-01, SEC-NEW-02) — à soumettre à validation DG.
 
 ---
 
-## 5. Plan d'action
+## 1. SÉCURITÉ OWASP
 
-### Immédiat (J+1 — aujourd'hui)
+### CRITIQUE
 
-| Priorité | Action | Responsable | Durée |
-|---|---|---|---|
-| 🔴 P0 | Fix S15, S17, S9 (voir checklist Pareto #1-3) | Claude | 45 min |
-| 🔴 P0 | Rotation credentials si CRED-01 non traité | Abdel | 15 min |
-| 🟠 P1 | Outreach LinkedIn — 10 consultants ERP/D365 | Abdel | 2h |
-| 🟠 P1 | Poster LinkedIn post J+1 (angle fondateur) | Abdel | 20 min |
-| 🟠 P1 | Valider KYC consultants inscrits (admin portal) | Abdel | — |
+#### SEC-01 — Transaction isolation payment *(déjà en ROADMAP.md)*
+- **Fichier** : `apps/marketplace/app/api/freelancehub/client/bookings/[id]/pay/route.ts` · lignes 71–88
+- **Problème** : `UPDATE bookings` + `INSERT INTO payments` en deux requêtes séparées. Si l'INSERT échoue, booking reste `confirmed` sans paiement — état corrompu irréversible.
+- **Fix** : `withTransaction()` comme dans `bookings/route.ts`.
+- **Statut ROADMAP** : `[ ]` à faire — business_value 95
 
-### Semaine 1 (J+2 → J+7)
-
-- Fix S6 metadata Stripe + S13 charge.refunded
-- Intégrer `trackEvent()` dans register + BookingModal
-- Fix S18 CSP headers complet
-- Migration 018 referral `?ref=` (consultant dashboard)
-- GitHub Actions CI (`tsc --noEmit` + `eslint`)
-
-### Semaine 2 (J+8 → J+14)
-
-- Upstash Redis rate limiting persistant (Abdel : créer compte + variables Vercel)
-- `constants.ts` — centraliser STATUS_MAP
-- `pricing.ts` — déplacer `computePricing()` + `fmtEur()`
-- Vitest unit tests : `computePricing`, `findMatches`, `esc`
+#### SEC-NEW-01 — CSV export expose consultants avant `revealed_at` *(NOUVEAU — hors ROADMAP.md)*
+- **Fichier** : `apps/marketplace/app/api/freelancehub/admin/export-csv/route.ts` · lignes 49–94
+- **Problème** : La requête SQL n'a pas de filtre `revealed_at IS NOT NULL`. Les emails et noms de consultants anonymes sont exportés en CSV avant paiement du client — **violation directe de RG-01**.
+- **Fix** : Ajouter `AND (b.revealed_at IS NOT NULL)` sur les colonnes `consultant_name`, `consultant_email` dans la requête, ou remplacer par `'Anonyme'` si `revealed_at IS NULL`.
+- **Sévérité** : CRITIQUE — RG-01
+- **Statut ROADMAP** : absent — à soumettre DG
 
 ---
 
-## 6. Métriques à surveiller J+1–J+7
+### HAUTE
 
-| Métrique | Source | Alerte si |
-|---|---|---|
-| Signups J+1 | Umami `/freelancehub/register` | < 2 en 24h post-lancement |
-| Consultants KYC soumis | `SELECT COUNT(*) FROM freelancehub.consultants WHERE kyc_status='submitted'` | 0 après 72h |
-| Erreurs API 5xx | Vercel Logs | > 5 en 1h |
-| CPU VPS | Netdata `monitor.perform-learn.fr` | > 80% pendant > 5min |
-| Budget IA | `SELECT identifier, count FROM freelancehub.chat_limits WHERE identifier LIKE 'agent:%'` | count > monthlyCap × 0.8 |
-| Emails délivrés | Resend Dashboard | taux livraison < 95% |
-| Early Adopters validés | `SELECT COUNT(*) FROM freelancehub.consultants WHERE is_early_adopter=true` | > 20 (race condition S17) |
+#### SEC-03 — Timing-safe CRON_SECRET *(déjà en ROADMAP.md)*
+- **Fichiers** :
+  - `apps/marketplace/app/api/freelancehub/cron/reminders/route.ts:30`
+  - `apps/marketplace/app/api/govern/tasks/notify/route.ts:11`
+  - `apps/marketplace/app/api/govern/smoke-test/route.ts:11`
+- **Problème** : Comparaison `===` sur bearer token — vulnérable aux timing attacks.
+- **Fix** : `crypto.timingSafeEqual(Buffer.from(bearer ?? ''), Buffer.from('Bearer ' + secret))`
+- **Statut ROADMAP** : `[ ]` à faire — business_value 75
+
+#### SEC-04 — Metadata Stripe expose les marges *(déjà en ROADMAP.md)*
+- **Fichier** : `apps/marketplace/app/api/freelancehub/client/bookings/[id]/payment-intent/route.ts` · lignes 72–81
+- **Problème** : `amount_ht`, `tva`, `platform_commission`, `consultant_net` visibles dans les logs Stripe.
+- **Fix** : Garder uniquement `{ booking_id, amount_ttc }`.
+- **Statut ROADMAP** : `[ ]` à faire — business_value 65
+
+#### SEC-05 — Race condition Early Adopter *(déjà en ROADMAP.md)*
+- **Fichier** : `apps/marketplace/app/api/freelancehub/admin/consultants/[id]/kyc/route.ts`
+- **Problème** : SELECT COUNT + UPDATE non atomique — deux validations simultanées peuvent dépasser le cap des 20.
+- **Fix** : Sous-requête atomique SQL (voir ROADMAP.md §SEC-05).
+- **Statut ROADMAP** : `[ ]` à faire — business_value 75
+
+#### SEC-06 — CSP headers incomplets *(déjà en ROADMAP.md)*
+- **Fichier** : `apps/marketplace/next.config.mjs` · lignes 48–57
+- **Problème** : Manquent `object-src 'none'`, `form-action 'self'`, `frame-ancestors 'none'`. `data:` présent dans `img-src`.
+- **Fix** : Compléter le bloc CSP (voir ROADMAP.md §SEC-06).
+- **Statut ROADMAP** : `[ ]` à faire — business_value 68
+
+#### SEC-07 — Path traversal KYC double encodage *(déjà en ROADMAP.md)*
+- **Fichier** : `apps/marketplace/app/api/freelancehub/admin/kyc-presign/route.ts` · lignes 26–42
+- **Problème** : Check `!key.includes('..')` contournable avec `%2e%2e`.
+- **Fix** : Regex `^kyc\/[a-zA-Z0-9_\-]+\/[a-zA-Z0-9_\-\.]+$` après `decodeURIComponent()`.
+- **Statut ROADMAP** : `[ ]` à faire — business_value 60
 
 ---
 
-## 7. Statut ROADMAP Cycle 4
+### MOYENNE
 
-| Feature C4 | Statut |
+#### SEC-NEW-02 — Console.log DATABASE_URL dans register *(NOUVEAU — hors ROADMAP.md)*
+- **Fichier** : `apps/marketplace/app/api/freelancehub/auth/register/route.ts` · ligne 28
+- **Problème** : `console.log('[register] DB_HOST:', process.env.DATABASE_URL?.replace(...))` — logue l'URL DB même masquée, informations infra visibles dans Vercel logs.
+- **Fix** : Supprimer ce log.
+- **Sévérité** : MOYENNE
+
+#### SEC-08 — Atomicité chat budget cap *(déjà en ROADMAP.md)*
+- **Fichier** : `apps/marketplace/lib/freelancehub/chat-router.ts:162`
+- **Fix** : INSERT…ON CONFLICT avec clause WHERE sur le cap.
+- **Statut ROADMAP** : `[ ]` à faire — business_value 55
+
+---
+
+### FAIBLE
+
+#### SEC-09 — XSS stocké notes KYC *(déjà en ROADMAP.md)*
+- **Fichier** : `apps/marketplace/app/api/freelancehub/admin/consultants/[id]/kyc/route.ts:81`
+- **Fix** : Sanitiser `notes.trim()` avant interpolation email.
+- **Statut ROADMAP** : `[ ]` à faire — business_value 45
+
+---
+
+## 2. DETTE TECHNIQUE
+
+### CRITIQUE
+
+#### TD-02 — NextAuth v5 beta non épinglé *(déjà en ROADMAP.md)*
+- **Fichier** : `apps/marketplace/package.json` · dépendances
+- **Problème** : `"next-auth": "^5.0.0-beta.30"` — le `^` autorise des breaking changes silencieux au prochain `npm install`.
+- **Fix** : Supprimer le `^`.
+- **Statut ROADMAP** : `[ ]` à faire — business_value 70 · **Fix 2 minutes**
+
+#### Couverture de tests insuffisante
+- **30 routes API critiques** vs **7 fichiers test unitaires**.
+- Routes sans tests : `payment-intent`, `pay`, `register`, `KYC presign`, `export-csv`, toutes les routes admin.
+- **Impact** : régressions silencieuses possibles.
+
+---
+
+### HAUTE
+
+#### TD-01 — Constants dupliqués dans 6+ fichiers *(déjà en ROADMAP.md)*
+- **Scope** : `BOOKING_STATUS_MAP`, `PAYMENT_STATUS_MAP`, taux commission (0.15, 0.13, 0.10)
+- **Fichiers concernés** : `matching.ts`, `payment-intent/route.ts`, `pay/route.ts`, `kyc/route.ts`…
+- **Fix** : Centraliser dans `apps/marketplace/lib/freelancehub/constants.ts`.
+- **Statut ROADMAP** : `[ ]` à faire — business_value 70
+
+#### TD-03 — Pricing dupliqué + 41 conversions cents inline *(déjà en ROADMAP.md)*
+- **Scope** : `computePricing()` dans `matching.ts` et `BookingModal.tsx`
+- **Fix** : `apps/marketplace/lib/freelancehub/pricing.ts` — `computePricing()` + `fmtEur(cents)`.
+- **Statut ROADMAP** : `[ ]` à faire — business_value 65
+
+#### TD-05 — Types dupliqués par route *(déjà en ROADMAP.md)*
+- **Scope** : `BookingRow`, `PaymentRow`, `AvailableSlot` redéfinis inline.
+- **Fix** : `apps/marketplace/lib/freelancehub/types.ts` partagé.
+- **Statut ROADMAP** : `[ ]` à faire — business_value 60
+
+#### TD-10 — Validation manuelle (pas Zod) *(déjà en ROADMAP.md)*
+- **Fichiers** : `auth/register/route.ts`, `auth/forgot-password/route.ts`, `auth/reset-password/route.ts`
+- **Fix** : Migrer vers Zod.
+- **Statut ROADMAP** : `[ ]` à faire — business_value 62
+
+---
+
+### MOYENNE
+
+#### TD-04 — Timezone sans `Z` *(déjà en ROADMAP.md)* — business_value 65
+#### TD-06 — Erreurs email `.catch(() => null)` silencieuses *(déjà en ROADMAP.md)* — business_value 60
+#### TD-07 — Skills sync non transactionnel *(déjà en ROADMAP.md)* — business_value 60
+#### TD-08 — S3 client + Stripe réinstanciés par requête *(déjà en ROADMAP.md)* — business_value 60
+
+---
+
+## 3. AGILITÉ & PIPELINE
+
+### CRITIQUE
+
+#### BUG-01 — Stabilisation login/register
+- **ROADMAP.md** : `[ ]` à faire · business_value 95
+- **Urgence** : KPI 100 € CA au 31/05/2026 — aucune session possible si auth cassée.
+- **Action** : Initier branche `feat/BUG-01` en priorité 1.
+
+#### KPI 100 € CA — Deadline J+24
+- **Deadline** : 31/05/2026
+- **Risque** : SEC-01 (booking corrompu) + BUG-01 (auth KO) bloquent la 1ère transaction réelle.
+- **Action** : SEC-01 + BUG-01 avant toute autre US ce cycle.
+
+---
+
+### HAUTE
+
+#### Déploiement sante KO × 3 — Corrigé en session
+- **Root cause** : Next.js 16 active Turbopack par défaut. Webpack config sans `turbopack: {}` → WorkerError.
+- **Fix appliqué** : commit `f013719` — `turbopack: {}` dans `apps/sante/next.config.mjs`.
+- **Leçon** : Toute nouvelle app Next.js 16 avec config webpack doit déclarer `turbopack: {}`.
+
+---
+
+### MOYENNE
+
+#### Plan acquisition C4 — statut DECISIONS.md à mettre à jour
+- KPI : 10 consultants + 5 clients waitlist avant 30/04 (date passée).
+- **Action DG** : Documenter le résultat réel dans DECISIONS.md.
+
+#### Plan 100 € CA — suivi actif recommandé
+- **Prérequis** : BUG-01 + SEC-01 livrés avant la 1ère session facturée.
+
+#### Smoke-test CI — timeout fragile
+- **Fichier** : `.github/workflows/ci.yml` · job smoke-test
+- **Problème** : 24 tentatives × 10s = 4 min — flaky si Vercel lent.
+- **Fix** : 16 tentatives × 15s.
+
+---
+
+### FAIBLE
+
+#### DONE.md — Monitoring post-release 30/04
+- Aucun signalement de régression post-lancement visible.
+- **Action** : Vérifier Umami signups, Vercel 5xx, payments/refunds.
+
+---
+
+## 4. État scaffold SantéApp
+
+| Composant | État |
 |---|---|
-| Fix C1 montant booking côté serveur | ✅ Corrigé J0 |
-| Fix C2 notification fonds libérés | ✅ Corrigé J0 |
-| Fix N1 budget cap IA | ✅ Corrigé J0 |
-| Fix S12 path traversal KYC | ✅ Corrigé J0 |
-| Fix S16 CSV formula injection | ✅ Corrigé J0 |
-| Fix CORS wildcard | ✅ Corrigé J0 |
-| Fix port PostgreSQL public | ✅ Corrigé J0 |
-| Headers HSTS + CSP (base) | ✅ Ajouté J0 |
-| Pool PG max:2 | ✅ Corrigé J0 |
-| OG image dynamique | ✅ Route dynamique créée J0 |
-| GTM portail Next.js | ✅ Ajouté J0 (Script body fix J+1) |
-| Email lancement waitlist | ✅ Envoyé J0 (1/1) |
-| Onboarding KYC consultant | ✅ Upload + validation admin opérationnel |
-| NDA automatique Phase 1 | ✅ Endpoint opérationnel |
-| Offre Early Adopter | ✅ EarlyAdopterBand + badge |
-| Landing page → portail CTA | ✅ front.html → `/freelancehub/register` |
-| Facture PDF post-paiement | ❌ Planifié C5 |
-| Rate limiting persistant (Upstash) | ❌ Planifié C5 |
-| `constants.ts` | ❌ Planifié C5 |
-| `pricing.ts` | ❌ Planifié C5 |
-| S13 charge.refunded | ❌ Semaine 1 |
-| S6 Metadata Stripe | ❌ Semaine 1 |
-| S9 Logger erreurs email | ❌ **P0 — aujourd'hui** |
-| S15 password_hash vide | ❌ **P0 — aujourd'hui** |
-| S17 Race condition Early Adopter | ❌ **P0 — nouveau** |
+| `next.config.mjs` | ✅ Turbopack fix appliqué (session 2026-05-07) |
+| `middleware.ts` | ⚠ Avertissement Next.js 16 : convention `middleware` → `proxy` (cosmétique) |
+| `auth.config.ts` | ✅ Edge-safe (aucun import bcryptjs/pg) |
+| `auth.ts` | ✅ Node.js only |
+| `/api/health` | ✅ Route health opérationnelle |
+| Migrations DB | ⚠ `migrations/sante/001_sante_schema.sql` défini, non appliqué en prod |
+| Tests | ❌ 0 test unitaire — à créer avec la 1ère US fonctionnelle |
 
 ---
 
-*Généré par Agent DG perform-learn.fr · Analyse quotidienne J+1 du 2026-05-01*
+## 5. Nouveaux items à soumettre à validation DG
+
+> Ces items sont absents de ROADMAP.md. Ils doivent passer par DECISIONS.md avant ajout.
+
+| ID proposé | Titre | Sévérité | business_value estimé | value_type |
+|---|---|---|---|---|
+| SEC-NEW-01 | CSV export : filtrer `revealed_at IS NOT NULL` (RG-01) | CRITIQUE | 90 | strategic_positioning |
+| SEC-NEW-02 | Supprimer `console.log` DATABASE_URL dans register | MOYENNE | 55 | strategic_positioning |
+
+---
+
+## 6. Plan d'action immédiat (< 48h)
+
+| Priorité | Item | Durée estimée | Bloquant pour |
+|---|---|---|---|
+| 1 | **BUG-01** : diagnostiquer et corriger auth | 2h | KPI 100 € CA |
+| 2 | **SEC-01** : transaction atomique `pay/route.ts` | 30 min | Fiabilité 1ère transaction |
+| 3 | **SEC-NEW-01** : filtre `revealed_at` CSV export | 15 min | RG-01 conformité |
+| 4 | **SEC-03** : `timingSafeEqual` dans 3 routes CRON | 30 min | Sécurité CRON |
+| 5 | **SEC-NEW-02** : supprimer `console.log` DB URL | 5 min | Hygiène logs |
+| 6 | **TD-02** : épingler NextAuth `5.0.0-beta.30` | 2 min | Stabilité build |
+
+---
+
+*Généré automatiquement — Agent AMÉLIORATION · perform-learn.fr · 2026-05-07*

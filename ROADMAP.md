@@ -101,6 +101,17 @@ Feature: Authentification login et register
 
 ---
 
+### SEC-10 — CSV export : filtrer revealed_at IS NOT NULL (RG-01)
+
+**Contexte** : `GET /api/freelancehub/admin/export-csv` expose les noms et emails de consultants anonymes même sans paiement — violation directe de RG-01. Identifié dans l'analyse refacto 2026-05-07.
+
+**Fix** : `admin/export-csv/route.ts` — remplacer les colonnes `consultant_name`, `consultant_email` par `'Anonyme'` / `NULL` si `b.revealed_at IS NULL`.
+**Migration SQL** : non
+
+`business_value: 90` · `value_type: strategic_positioning`
+
+---
+
 ### SEC-01 — Transaction isolation payment
 
 **Contexte** : `UPDATE bookings SET status='confirmed'` et `INSERT INTO payments` sont deux requêtes séparées. Si l'INSERT échoue, le booking est `confirmed` sans paiement — état corrompu irréversible.
@@ -513,6 +524,17 @@ WHERE id = $1
 **Fix** : Sanitiser `notes.trim()` avant interpolation dans la notification email (`admin/consultants/[id]/kyc/route.ts:81`)
 
 `business_value: 45` · `value_type: strategic_positioning`
+
+---
+
+### SEC-11 — Supprimer console.log DATABASE_URL dans register
+
+**Contexte** : `apps/marketplace/app/api/freelancehub/auth/register/route.ts:28` logue `DATABASE_URL` masquée — informations infra visibles dans Vercel logs. Identifié refacto 2026-05-07.
+
+**Fix** : Supprimer la ligne `console.log('[register] DB_HOST:', process.env.DATABASE_URL?.replace(...))`
+**Migration SQL** : non
+
+`business_value: 55` · `value_type: strategic_positioning`
 
 ---
 
