@@ -5,6 +5,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  serverExternalPackages: ['pg', 'bcryptjs'],
   webpack(config) {
     config.resolve.modules = [
       path.resolve(__dirname, 'node_modules'),
