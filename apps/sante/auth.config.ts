@@ -5,6 +5,7 @@ import type { SanteRole } from '@/lib/sante/types'
 export const authConfig: NextAuthConfig = {
   pages: {
     signIn: '/login',
+    error:  '/login',
   },
   callbacks: {
     jwt({ token, user }) {
