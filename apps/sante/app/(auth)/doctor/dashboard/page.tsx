@@ -47,7 +47,7 @@ export default async function DoctorDashboard() {
         <div className="sa-section">
           <div className="sa-section-header">
             <h2 className="sa-section-title">Agenda du jour</h2>
-            <button className="sa-btn-primary sa-btn-sm">Gérer les disponibilités</button>
+            <a href="/doctor/agenda" className="sa-btn-primary sa-btn-sm">Gérer les disponibilités</a>
           </div>
           <div className="sa-empty-state">
             <div className="sa-empty-icon">📆</div>
@@ -84,6 +84,7 @@ export default async function DoctorDashboard() {
           padding: .72rem 1.2rem; background: var(--c1); color: #fff;
           border: none; border-radius: var(--radius-sm);
           font-size: .9rem; font-weight: 600; cursor: pointer; transition: background .15s;
+          text-decoration: none; display: inline-block;
         }
         .sa-btn-sm { padding: .48rem .9rem; font-size: .83rem; }
         .sa-btn-primary:hover { background: var(--c1-light); }
