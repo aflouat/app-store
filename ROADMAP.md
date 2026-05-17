@@ -205,6 +205,67 @@ Feature: Reversement automatique consultant via Stripe Connect
 
 ---
 
+### US-06 — Partage LinkedIn consultant (acquisition organique)
+
+**Contexte** : L'API "Share on LinkedIn" (Default Tier) est accordée avec Client ID `78r2233idep3v0` et callback `https://portal.perform-learn.fr/callback-published-posts`. Chaque consultant peut publier sa disponibilité sur LinkedIn depuis son dashboard — levier d'acquisition organique B2B gratuit, direct dans le KPI C5 (Time-to-Contract < 5 min).
+**Règles métier** : RG-09 (profil consultant validé KYC requis avant partage), RG-01 (ne pas exposer l'identité avant validation).
+**Critères SMART** :
+- Spécifique : un consultant KYC-validé peut connecter son compte LinkedIn et publier un post "Je suis disponible sur perform-learn.fr" en 1 clic
+- Mesurable : token LinkedIn stocké en DB + post UGC créé visible sur le profil LinkedIn
+- Atteignable : OAuth 2.0 Authorization Code Flow + `POST /v2/ugcPosts` · 3 fichiers + 1 migration
+- Réaliste : API accordée, callback URL déclarée chez LinkedIn
+- Temporel : livrable en 1 session · Cycle 5
+
+**Gherkin** :
+```gherkin
+Feature: Partage LinkedIn consultant
+
+  Scenario: Connexion LinkedIn depuis le dashboard consultant
+    Given je suis consultant connecté avec KYC validé
+    When je clique "Connecter LinkedIn" dans mon dashboard
+    Then je suis redirigé vers LinkedIn OAuth
+    And après autorisation je reviens sur /callback-published-posts
+    And mon linkedin_access_token est stocké en base
+
+  Scenario: Partage de disponibilité sur LinkedIn
+    Given j'ai connecté mon compte LinkedIn
+    When je clique "Partager ma disponibilité"
+    Then un post est publié sur mon profil LinkedIn avec un lien vers perform-learn.fr
+    And une notification in-app confirme la publication
+
+  Scenario: Token LinkedIn expiré
+    Given mon linkedin_access_token a expiré
+    When je clique "Partager ma disponibilité"
+    Then un message m'invite à reconnecter mon compte LinkedIn
+
+  Scenario: Consultant sans KYC validé
+    Given mon KYC n'est pas encore validé
+    When j'accède à la section LinkedIn du dashboard
+    Then le bouton "Connecter LinkedIn" est désactivé avec un message "KYC requis"
+```
+
+**Fichiers autorisés** :
+- `apps/marketplace/app/callback-published-posts/page.tsx` (à créer — callback OAuth)
+- `apps/marketplace/app/api/freelancehub/consultant/linkedin/connect/route.ts` (à créer)
+- `apps/marketplace/app/api/freelancehub/consultant/linkedin/share/route.ts` (à créer)
+- `apps/marketplace/app/freelancehub/(auth)/consultant/page.tsx` (bouton partage)
+- `apps/marketplace/lib/freelancehub/linkedin.ts` (à créer — client OAuth + UGC)
+**Fichiers interdits** : `portal/middleware.ts`, `portal/auth.ts`, `portal/auth.config.ts`
+**Migration SQL** : oui (`022_linkedin_connect.sql` — ajouter `linkedin_access_token`, `linkedin_person_id`, `linkedin_token_expires_at` sur `freelancehub.consultants`)
+**Variables d'environnement** : `LINKEDIN_CLIENT_ID=78r2233idep3v0` · `LINKEDIN_CLIENT_SECRET` (à récupérer dans LinkedIn Developer Portal)
+**Impact chaîne auth (Edge Runtime)** : non
+**Critères d'acceptance** :
+- [ ] `npm run build` passe
+- [ ] `npm test` passe
+- [ ] Flow OAuth complet : authorize → callback → token stocké → post publié
+- [ ] Bouton désactivé si KYC non validé
+- [ ] Token expiré → message de reconnexion (pas de crash)
+- [ ] `LINKEDIN_CLIENT_SECRET` dans `.env.example` (pas hardcodé)
+
+`business_value: 82` · `value_type: user_acquisition`
+
+---
+
 ### SEC-02 — Rate limiting persistant (Upstash Redis)
 
 **Contexte** : Le rate limiter actuel est en mémoire Edge — il se reset à chaque redéploiement Vercel. Un attaquant attend un deploy pour bypasser les limites sur `/api/auth` et `/payment-intent`.

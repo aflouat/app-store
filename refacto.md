@@ -1,8 +1,9 @@
 # refacto.md — Analyse quotidienne · perform-learn.fr
 
-> **Date** : 2026-05-07 · **Analyste** : Claude Sonnet 4.6 (Agent AMÉLIORATION)
+> **Date** : 2026-05-17 · **Analyste** : Claude Sonnet 4.6 (Agent AMÉLIORATION)
 > **Périmètre** : monorepo `app-store` — `apps/marketplace/`, `apps/sante/`, `packages/core-*/`
 > **Axe** : Sécurité OWASP · Dette technique · Agilité pipeline
+> **Δ depuis 2026-05-07** : 10 jours · 15 commits · Axe sante uniquement (marketplace non modifié)
 
 ---
 
@@ -10,12 +11,13 @@
 
 | Axe | CRITIQUE | HAUTE | MOYENNE | FAIBLE | Total |
 |---|---|---|---|---|---|
-| Sécurité OWASP | 2 | 5 | 2 | 1 | **10** |
-| Dette technique | 2 | 4 | 4 | 1 | **11** |
+| Sécurité OWASP | 2 | 4 | 2 | 1 | **9** |
+| Dette technique | 1 | 4 | 4 | 1 | **10** |
 | Agilité | 2 | 1 | 3 | 1 | **7** |
-| **TOTAL** | **6** | **10** | **9** | **3** | **28** |
+| **TOTAL** | **5** | **9** | **9** | **3** | **26** |
 
-**Nouveaux items hors ROADMAP.md** : 2 (SEC-NEW-01, SEC-NEW-02) — à soumettre à validation DG.
+**Items fermés depuis 2026-05-07** : 1 (TD-02 — nextauth épinglé `5.0.0-beta.30` sans `^` ✅)
+**Nouveaux items hors ROADMAP.md** : 1 (US-LI-01 LinkedIn Share — soumis en ROADMAP.md)
 
 ---
 
@@ -23,65 +25,61 @@
 
 ### CRITIQUE
 
-#### SEC-01 — Transaction isolation payment *(déjà en ROADMAP.md)*
-- **Fichier** : `apps/marketplace/app/api/freelancehub/client/bookings/[id]/pay/route.ts` · lignes 71–88
-- **Problème** : `UPDATE bookings` + `INSERT INTO payments` en deux requêtes séparées. Si l'INSERT échoue, booking reste `confirmed` sans paiement — état corrompu irréversible.
-- **Fix** : `withTransaction()` comme dans `bookings/route.ts`.
-- **Statut ROADMAP** : `[ ]` à faire — business_value 95
+#### SEC-10 — CSV export expose consultants avant `revealed_at` *(déjà en ROADMAP.md)*
+- **Fichier** : `apps/marketplace/app/api/freelancehub/admin/export-csv/route.ts` · lignes 48–62
+- **Problème** : Requête SQL retourne `consultant_name` + `consultant_email` sans filtre `revealed_at IS NOT NULL` — **violation directe de RG-01** même pour un admin exportant les données.
+- **Fix** : Masquer `consultant_name → 'Anonyme'` et `consultant_email → NULL` si `b.revealed_at IS NULL` dans la requête ou dans la boucle CSV.
+- **Statut ROADMAP** : `[ ]` à faire — business_value 90
 
-#### SEC-NEW-01 — CSV export expose consultants avant `revealed_at` *(NOUVEAU — hors ROADMAP.md)*
-- **Fichier** : `apps/marketplace/app/api/freelancehub/admin/export-csv/route.ts` · lignes 49–94
-- **Problème** : La requête SQL n'a pas de filtre `revealed_at IS NOT NULL`. Les emails et noms de consultants anonymes sont exportés en CSV avant paiement du client — **violation directe de RG-01**.
-- **Fix** : Ajouter `AND (b.revealed_at IS NOT NULL)` sur les colonnes `consultant_name`, `consultant_email` dans la requête, ou remplacer par `'Anonyme'` si `revealed_at IS NULL`.
-- **Sévérité** : CRITIQUE — RG-01
-- **Statut ROADMAP** : absent — à soumettre DG
+#### SEC-01 — Transaction isolation payment *(déjà en ROADMAP.md)*
+- **Fichier** : `apps/marketplace/app/api/webhooks/stripe/route.ts` · handler `payment_intent.succeeded`
+- **Problème** : `UPDATE payments SET status='captured'` + `UPDATE bookings SET status='confirmed'` en deux requêtes séparées hors transaction. Si la 2ᵉ échoue, état incohérent irréversible.
+- **Note** : `POST /client/bookings/route.ts` utilise correctement `withTransaction()` — **ce pattern doit être appliqué au webhook aussi.**
+- **Fix** : Envelopper les deux UPDATE dans `withTransaction()` dans `webhooks/stripe/route.ts`.
+- **Statut ROADMAP** : `[ ]` à faire — business_value 95
 
 ---
 
 ### HAUTE
 
-#### SEC-03 — Timing-safe CRON_SECRET *(déjà en ROADMAP.md)*
-- **Fichiers** :
-  - `apps/marketplace/app/api/freelancehub/cron/reminders/route.ts:30`
-  - `apps/marketplace/app/api/govern/tasks/notify/route.ts:11`
-  - `apps/marketplace/app/api/govern/smoke-test/route.ts:11`
-- **Problème** : Comparaison `===` sur bearer token — vulnérable aux timing attacks.
-- **Fix** : `crypto.timingSafeEqual(Buffer.from(bearer ?? ''), Buffer.from('Bearer ' + secret))`
-- **Statut ROADMAP** : `[ ]` à faire — business_value 75
-
-#### SEC-04 — Metadata Stripe expose les marges *(déjà en ROADMAP.md)*
-- **Fichier** : `apps/marketplace/app/api/freelancehub/client/bookings/[id]/payment-intent/route.ts` · lignes 72–81
-- **Problème** : `amount_ht`, `tva`, `platform_commission`, `consultant_net` visibles dans les logs Stripe.
-- **Fix** : Garder uniquement `{ booking_id, amount_ttc }`.
-- **Statut ROADMAP** : `[ ]` à faire — business_value 65
-
 #### SEC-05 — Race condition Early Adopter *(déjà en ROADMAP.md)*
 - **Fichier** : `apps/marketplace/app/api/freelancehub/admin/consultants/[id]/kyc/route.ts`
-- **Problème** : SELECT COUNT + UPDATE non atomique — deux validations simultanées peuvent dépasser le cap des 20.
-- **Fix** : Sous-requête atomique SQL (voir ROADMAP.md §SEC-05).
+- **Problème** : `SELECT COUNT(*) ... WHERE kyc_status='validated'` puis `UPDATE ... SET is_early_adopter = $2` — deux requêtes non atomiques. Deux validations simultanées peuvent dépasser le cap 20.
+- **Fix** : Sous-requête atomique inline :
+  ```sql
+  UPDATE freelancehub.consultants
+  SET is_early_adopter = (SELECT COUNT(*) < 20 FROM freelancehub.consultants WHERE kyc_status = 'validated')
+  WHERE id = $1
+  ```
+- **Statut ROADMAP** : `[ ]` à faire — business_value 75
+
+#### SEC-03 — Timing-safe CRON_SECRET *(déjà en ROADMAP.md)*
+- **Fichier** : `apps/marketplace/app/api/freelancehub/cron/reminders/route.ts:29`
+- **Problème** : `secret !== process.env.CRON_SECRET` — comparaison `!==` vulnérable aux timing attacks.
+- **Fix** : `crypto.timingSafeEqual(Buffer.from(bearer ?? ''), Buffer.from(process.env.CRON_SECRET ?? ''))`
 - **Statut ROADMAP** : `[ ]` à faire — business_value 75
 
 #### SEC-06 — CSP headers incomplets *(déjà en ROADMAP.md)*
-- **Fichier** : `apps/marketplace/next.config.mjs` · lignes 48–57
-- **Problème** : Manquent `object-src 'none'`, `form-action 'self'`, `frame-ancestors 'none'`. `data:` présent dans `img-src`.
-- **Fix** : Compléter le bloc CSP (voir ROADMAP.md §SEC-06).
+- **Fichier** : `apps/marketplace/next.config.mjs` · lignes 43–57
+- **Problème** : CSP présent mais `object-src`, `form-action`, `frame-ancestors` manquants. `data:` autorisé dans `img-src`. À noter : l'intégration LinkedIn ajoutera des endpoints (`linkedin.com/oauth/v2/`, `api.linkedin.com`) à déclarer dans `connect-src`.
+- **Fix** : Ajouter `object-src 'none'`, `form-action 'self'`, `frame-ancestors 'none'`. Prévoir `connect-src += https://api.linkedin.com https://www.linkedin.com`.
 - **Statut ROADMAP** : `[ ]` à faire — business_value 68
 
-#### SEC-07 — Path traversal KYC double encodage *(déjà en ROADMAP.md)*
-- **Fichier** : `apps/marketplace/app/api/freelancehub/admin/kyc-presign/route.ts` · lignes 26–42
-- **Problème** : Check `!key.includes('..')` contournable avec `%2e%2e`.
-- **Fix** : Regex `^kyc\/[a-zA-Z0-9_\-]+\/[a-zA-Z0-9_\-\.]+$` après `decodeURIComponent()`.
-- **Statut ROADMAP** : `[ ]` à faire — business_value 60
+#### SEC-11 — Console.log DATABASE_URL dans register *(déjà en ROADMAP.md)*
+- **Fichier** : `apps/marketplace/app/api/freelancehub/auth/register/route.ts:28`
+- **Problème** : `console.log('[register] DB_HOST:', process.env.DATABASE_URL?.replace(...))` — informations infra dans Vercel logs. Également ligne 57 : `console.log('[register] success:', email, role)` — PII (email utilisateur) dans logs.
+- **Fix** : Supprimer les deux lignes. (**5 min**)
+- **Statut ROADMAP** : `[ ]` à faire — business_value 55
 
 ---
 
 ### MOYENNE
 
-#### SEC-NEW-02 — Console.log DATABASE_URL dans register *(NOUVEAU — hors ROADMAP.md)*
-- **Fichier** : `apps/marketplace/app/api/freelancehub/auth/register/route.ts` · ligne 28
-- **Problème** : `console.log('[register] DB_HOST:', process.env.DATABASE_URL?.replace(...))` — logue l'URL DB même masquée, informations infra visibles dans Vercel logs.
-- **Fix** : Supprimer ce log.
-- **Sévérité** : MOYENNE
+#### SEC-07 — Path traversal KYC double encodage *(déjà en ROADMAP.md)*
+- **Fichier** : `apps/marketplace/app/api/freelancehub/admin/kyc-presign/route.ts` · lignes 26–42
+- **Problème** : Check `!key.includes('..')` contournable avec `%2e%2e` avant `decodeURIComponent`.
+- **Fix** : Regex `^kyc\/[a-zA-Z0-9_\-]+\/[a-zA-Z0-9_\-\.]+$` après `decodeURIComponent()`.
+- **Statut ROADMAP** : `[ ]` à faire — business_value 60
 
 #### SEC-08 — Atomicité chat budget cap *(déjà en ROADMAP.md)*
 - **Fichier** : `apps/marketplace/lib/freelancehub/chat-router.ts:162`
@@ -94,7 +92,7 @@
 
 #### SEC-09 — XSS stocké notes KYC *(déjà en ROADMAP.md)*
 - **Fichier** : `apps/marketplace/app/api/freelancehub/admin/consultants/[id]/kyc/route.ts:81`
-- **Fix** : Sanitiser `notes.trim()` avant interpolation email.
+- **Fix** : Sanitiser `notes.trim()` avant interpolation dans le template email.
 - **Statut ROADMAP** : `[ ]` à faire — business_value 45
 
 ---
@@ -103,41 +101,30 @@
 
 ### CRITIQUE
 
-#### TD-02 — NextAuth v5 beta non épinglé *(déjà en ROADMAP.md)*
-- **Fichier** : `apps/marketplace/package.json` · dépendances
-- **Problème** : `"next-auth": "^5.0.0-beta.30"` — le `^` autorise des breaking changes silencieux au prochain `npm install`.
-- **Fix** : Supprimer le `^`.
-- **Statut ROADMAP** : `[ ]` à faire — business_value 70 · **Fix 2 minutes**
-
-#### Couverture de tests insuffisante
-- **30 routes API critiques** vs **7 fichiers test unitaires**.
-- Routes sans tests : `payment-intent`, `pay`, `register`, `KYC presign`, `export-csv`, toutes les routes admin.
-- **Impact** : régressions silencieuses possibles.
+#### Couverture tests insuffisante (inchangée)
+- 30 routes API critiques · 7 fichiers test unitaires.
+- Routes sans tests : `payment-intent`, `pay` (webhook), `register`, `export-csv`, toutes les routes admin.
+- **Impact** : régressions silencieuses à chaque commit marketplace.
 
 ---
 
 ### HAUTE
 
-#### TD-01 — Constants dupliqués dans 6+ fichiers *(déjà en ROADMAP.md)*
-- **Scope** : `BOOKING_STATUS_MAP`, `PAYMENT_STATUS_MAP`, taux commission (0.15, 0.13, 0.10)
-- **Fichiers concernés** : `matching.ts`, `payment-intent/route.ts`, `pay/route.ts`, `kyc/route.ts`…
-- **Fix** : Centraliser dans `apps/marketplace/lib/freelancehub/constants.ts`.
-- **Statut ROADMAP** : `[ ]` à faire — business_value 70
+#### TD-01 — Constants dupliqués *(déjà en ROADMAP.md)* — business_value 70
+- `BOOKING_STATUS_MAP`, taux commission (0.15, 0.13, 0.10) dans 6+ fichiers.
+- **Fix** : `apps/marketplace/lib/freelancehub/constants.ts`.
 
-#### TD-03 — Pricing dupliqué + 41 conversions cents inline *(déjà en ROADMAP.md)*
-- **Scope** : `computePricing()` dans `matching.ts` et `BookingModal.tsx`
-- **Fix** : `apps/marketplace/lib/freelancehub/pricing.ts` — `computePricing()` + `fmtEur(cents)`.
-- **Statut ROADMAP** : `[ ]` à faire — business_value 65
+#### TD-03 — Pricing dupliqué *(déjà en ROADMAP.md)* — business_value 65
+- `computePricing()` importé depuis `matching.ts` dans `bookings/route.ts` — couplage incorrect.
+- **Fix** : déplacer vers `lib/freelancehub/pricing.ts`.
 
-#### TD-05 — Types dupliqués par route *(déjà en ROADMAP.md)*
-- **Scope** : `BookingRow`, `PaymentRow`, `AvailableSlot` redéfinis inline.
-- **Fix** : `apps/marketplace/lib/freelancehub/types.ts` partagé.
-- **Statut ROADMAP** : `[ ]` à faire — business_value 60
-
-#### TD-10 — Validation manuelle (pas Zod) *(déjà en ROADMAP.md)*
-- **Fichiers** : `auth/register/route.ts`, `auth/forgot-password/route.ts`, `auth/reset-password/route.ts`
+#### TD-10 — Validation manuelle sans Zod *(déjà en ROADMAP.md)* — business_value 62
+- `register/route.ts`, `forgot-password`, `reset-password` : validations regex manuelles.
 - **Fix** : Migrer vers Zod.
-- **Statut ROADMAP** : `[ ]` à faire — business_value 62
+
+#### TD-05 — Types dupliqués *(déjà en ROADMAP.md)* — business_value 60
+- `BookingRow`, `PaymentRow`, `AvailableSlot` redéfinis inline dans chaque route.
+- **Fix** : `apps/marketplace/lib/freelancehub/types.ts` partagé.
 
 ---
 
@@ -146,7 +133,15 @@
 #### TD-04 — Timezone sans `Z` *(déjà en ROADMAP.md)* — business_value 65
 #### TD-06 — Erreurs email `.catch(() => null)` silencieuses *(déjà en ROADMAP.md)* — business_value 60
 #### TD-07 — Skills sync non transactionnel *(déjà en ROADMAP.md)* — business_value 60
-#### TD-08 — S3 client + Stripe réinstanciés par requête *(déjà en ROADMAP.md)* — business_value 60
+#### TD-08 — Stripe réinstancié par requête *(déjà en ROADMAP.md)* — business_value 60
+- `new Stripe(process.env.STRIPE_SECRET_KEY!)` dans `webhooks/stripe/route.ts` — devrait être singleton.
+
+---
+
+### FAIBLE (FERMÉ)
+
+#### ~~TD-02 — NextAuth v5 non épinglé~~ ✅ DONE
+- `package.json` : `"next-auth": "5.0.0-beta.30"` sans `^` — **épinglé depuis 2026-05-07**.
 
 ---
 
@@ -154,87 +149,124 @@
 
 ### CRITIQUE
 
-#### BUG-01 — Stabilisation login/register
+#### BUG-01 — Stabilisation login/register — J+14 sans fix
 - **ROADMAP.md** : `[ ]` à faire · business_value 95
-- **Urgence** : KPI 100 € CA au 31/05/2026 — aucune session possible si auth cassée.
-- **Action** : Initier branche `feat/BUG-01` en priorité 1.
+- **Urgence** : KPI 100 € CA au 31/05/2026 — **J-14**. Aucune session facturable possible si auth cassée.
+- **Action** : Initier branche `feat/BUG-01` immédiatement.
 
-#### KPI 100 € CA — Deadline J+24
-- **Deadline** : 31/05/2026
-- **Risque** : SEC-01 (booking corrompu) + BUG-01 (auth KO) bloquent la 1ère transaction réelle.
-- **Action** : SEC-01 + BUG-01 avant toute autre US ce cycle.
+#### KPI 100 € CA — J-14
+- **Deadline** : 31/05/2026 — **14 jours restants**.
+- **Blocants** : SEC-01 (webhook) + BUG-01 (auth) doivent être livrés cette semaine.
+- **Chemin critique** : BUG-01 → SEC-01 → première session réelle → 100 € CA.
 
 ---
 
 ### HAUTE
 
-#### Déploiement sante KO × 3 — Corrigé en session
-- **Root cause** : Next.js 16 active Turbopack par défaut. Webpack config sans `turbopack: {}` → WorkerError.
-- **Fix appliqué** : commit `f013719` — `turbopack: {}` dans `apps/sante/next.config.mjs`.
-- **Leçon** : Toute nouvelle app Next.js 16 avec config webpack doit déclarer `turbopack: {}`.
+#### App sante — scaffold opérationnel (progrès C5)
+- Auth fonctionnel (login/register médecin/patient/admin).
+- Admin dashboard KPIs + liste utilisateurs livré.
+- Agenda médecin hebdomadaire livré.
+- **Manque** : routes booking patient, notifications, tests unitaires (0 test).
+- **Next** : première US fonctionnelle sante (booking patient → médecin).
 
 ---
 
 ### MOYENNE
 
-#### Plan acquisition C4 — statut DECISIONS.md à mettre à jour
-- KPI : 10 consultants + 5 clients waitlist avant 30/04 (date passée).
-- **Action DG** : Documenter le résultat réel dans DECISIONS.md.
+#### LinkedIn OAuth — nouveau levier acquisition (NOUVEAU)
+- Intégration "Share on LinkedIn" configurée côté LinkedIn (Client ID `78r2233idep3v0`).
+- Callback URL déclarée : `https://portal.perform-learn.fr/callback-published-posts`.
+- **US-06 ajoutée en ROADMAP.md** — impacte direct le KPI acquisition C5.
 
-#### Plan 100 € CA — suivi actif recommandé
+#### Plan acquisition C4 — résultat à documenter dans DECISIONS.md
+- KPI 10 consultants + 5 clients waitlist avant 30/04 (date passée).
+- **Action DG** : documenter le résultat réel.
+
+#### Plan 100 € CA — suivi hebdomadaire requis
 - **Prérequis** : BUG-01 + SEC-01 livrés avant la 1ère session facturée.
-
-#### Smoke-test CI — timeout fragile
-- **Fichier** : `.github/workflows/ci.yml` · job smoke-test
-- **Problème** : 24 tentatives × 10s = 4 min — flaky si Vercel lent.
-- **Fix** : 16 tentatives × 15s.
 
 ---
 
 ### FAIBLE
 
-#### DONE.md — Monitoring post-release 30/04
-- Aucun signalement de régression post-lancement visible.
-- **Action** : Vérifier Umami signups, Vercel 5xx, payments/refunds.
+#### Smoke-test CI — timeout fragile (inchangé)
+- `.github/workflows/ci.yml` · 24 tentatives × 10s = 4 min — flaky si Vercel lent.
+- **Fix** : 16 tentatives × 15s.
 
 ---
 
-## 4. État scaffold SantéApp
+## 4. État apps
+
+### marketplace (apps/marketplace)
 
 | Composant | État |
 |---|---|
-| `next.config.mjs` | ✅ Turbopack fix appliqué (session 2026-05-07) |
-| `middleware.ts` | ⚠ Avertissement Next.js 16 : convention `middleware` → `proxy` (cosmétique) |
-| `auth.config.ts` | ✅ Edge-safe (aucun import bcryptjs/pg) |
-| `auth.ts` | ✅ Node.js only |
-| `/api/health` | ✅ Route health opérationnelle |
-| Migrations DB | ⚠ `migrations/sante/001_sante_schema.sql` défini, non appliqué en prod |
-| Tests | ❌ 0 test unitaire — à créer avec la 1ère US fonctionnelle |
+| Auth chain | ⚠ BUG-01 non résolu — login/register instable |
+| Stripe webhook | ⚠ SEC-01 — UPDATE non transactionnel |
+| CSP headers | ⚠ SEC-06 — incomplet (object-src, form-action manquants) |
+| Rate limiting | ⚠ SEC-02 — en mémoire Edge (reset au redéploiement) |
+| CSV export | ⚠ SEC-10 — consultant_name/email exposés avant revealed_at |
+| nextauth | ✅ Épinglé `5.0.0-beta.30` |
+| Tests unitaires | ✅ matching · pricing · rbac · payment |
+
+### sante (apps/sante)
+
+| Composant | État |
+|---|---|
+| Auth (login/register) | ✅ Fonctionnel (médecin / patient / admin) |
+| Admin dashboard | ✅ KPIs + liste utilisateurs |
+| Agenda médecin | ✅ Hebdomadaire — créneaux disponibilités |
+| Booking patient | ❌ Non livré |
+| Notifications | ❌ Non livré |
+| Tests unitaires | ❌ 0 test |
+| DB migrations | ⚠ `001_sante_schema.sql` défini, statut prod inconnu |
 
 ---
 
-## 5. Nouveaux items à soumettre à validation DG
+## 5. Intégration LinkedIn — analyse technique
 
-> Ces items sont absents de ROADMAP.md. Ils doivent passer par DECISIONS.md avant ajout.
+**Contexte** : Accès API "Share on LinkedIn" (Default Tier) accordé.
+- **Client ID** : `78r2233idep3v0` · **Client Secret** : à stocker dans `LINKEDIN_CLIENT_SECRET` (Vercel env)
+- **Callback URL déclarée** : `https://portal.perform-learn.fr/callback-published-posts`
+- **Scope requis** : `w_member_social` (création de posts UGC)
+- **Endpoint post** : `POST https://www.linkedin.com/v2/ugcPosts`
 
-| ID proposé | Titre | Sévérité | business_value estimé | value_type |
-|---|---|---|---|---|
-| SEC-NEW-01 | CSV export : filtrer `revealed_at IS NOT NULL` (RG-01) | CRITIQUE | 90 | strategic_positioning |
-| SEC-NEW-02 | Supprimer `console.log` DATABASE_URL dans register | MOYENNE | 55 | strategic_positioning |
+**Flux OAuth 2.0** :
+```
+1. Consultant clique "Connecter LinkedIn"
+   → GET /api/freelancehub/consultant/linkedin/connect
+   → Redirect vers https://www.linkedin.com/oauth/v2/authorization?client_id=78r2233idep3v0
+      &redirect_uri=https://portal.perform-learn.fr/callback-published-posts
+      &scope=w_member_social&state=[csrf_token]
+
+2. LinkedIn → /callback-published-posts?code=...&state=...
+   → Exchange code → access_token (POST /oauth/v2/accessToken)
+   → Store linkedin_access_token + linkedin_person_id + expires_at en DB
+
+3. Consultant clique "Partager ma disponibilité"
+   → POST /api/freelancehub/consultant/linkedin/share
+   → POST https://www.linkedin.com/v2/ugcPosts avec le token stocké
+   → Post LinkedIn publié
+```
+
+**Valeur acquisition** : chaque partage = exposition organique du profil consultant sur LinkedIn → traffic entrant qualifié B2B.
+
+**US-06 ajoutée en ROADMAP.md** · `business_value: 82` · `value_type: user_acquisition`
 
 ---
 
-## 6. Plan d'action immédiat (< 48h)
+## 6. Plan d'action immédiat (< 72h)
 
-| Priorité | Item | Durée estimée | Bloquant pour |
+| Priorité | Item | Durée estimée | Impact |
 |---|---|---|---|
-| 1 | **BUG-01** : diagnostiquer et corriger auth | 2h | KPI 100 € CA |
-| 2 | **SEC-01** : transaction atomique `pay/route.ts` | 30 min | Fiabilité 1ère transaction |
-| 3 | **SEC-NEW-01** : filtre `revealed_at` CSV export | 15 min | RG-01 conformité |
-| 4 | **SEC-03** : `timingSafeEqual` dans 3 routes CRON | 30 min | Sécurité CRON |
-| 5 | **SEC-NEW-02** : supprimer `console.log` DB URL | 5 min | Hygiène logs |
-| 6 | **TD-02** : épingler NextAuth `5.0.0-beta.30` | 2 min | Stabilité build |
+| 🔴 1 | **BUG-01** : diagnostiquer et corriger auth | 2h | KPI 100 € CA — bloquant |
+| 🔴 2 | **SEC-01** : `withTransaction()` dans webhook Stripe | 45 min | Fiabilité 1ère transaction |
+| 🟠 3 | **SEC-10** : filtre `revealed_at` CSV export | 15 min | Conformité RG-01 |
+| 🟠 4 | **SEC-11** : supprimer `console.log` DB URL + email | 5 min | Hygiène logs + RGPD |
+| 🟡 5 | **US-06** : LinkedIn Share consultant | 3h | Acquisition C5 |
+| 🟡 6 | **SEC-03** : `timingSafeEqual` CRON_SECRET | 30 min | Sécurité CRON |
 
 ---
 
-*Généré automatiquement — Agent AMÉLIORATION · perform-learn.fr · 2026-05-07*
+*Généré automatiquement — Agent AMÉLIORATION · perform-learn.fr · 2026-05-17*
